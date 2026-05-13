@@ -1,0 +1,10 @@
+.env
+.env.backup
+.env.*.local
+/vendor
+/node_modules
+/.idea
+.DS_Store
+
+# Dane tylko na tej maszynie (poza repozytorium — utwórz katalog ręcznie)
+/local/
