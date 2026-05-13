@@ -10,3 +10,5 @@
 /local/
 /ezd_dump_chojnice_sidas.sql
 /ezd_dump_chojnice_sidas.sql.gz
+*.sql
+*.sql.gz
