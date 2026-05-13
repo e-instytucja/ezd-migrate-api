@@ -8,5 +8,5 @@
 
 # Dane tylko na tej maszynie (poza repozytorium — utwórz katalog ręcznie)
 /local/
-ezd_dump_chojnice_sidas.sql
-ezd_dump_chojnice_sidas.sql.gz
+/ezd_dump_chojnice_sidas.sql
+/ezd_dump_chojnice_sidas.sql.gz
