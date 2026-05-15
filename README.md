@@ -1,84 +1,199 @@
-# sidas — aplikacja (`site/`)
+# sidas — API integracyjne EZD (`site/`)
 
-Ten katalog to **korzeń projektu** (Docker, PHP, skrypty). Komendy uruchamiaj stąd (albo ustaw workspace w edytorze na `site`).
+Ten katalog to **korzeń projektu** (Docker, Laravel, skrypty). Komendy uruchamiaj stąd (albo ustaw workspace w edytorze na `site`).
 
 **Tylko na tym komputerze (nie commituj):** utwórz `local/` w tym katalogu — jest w `.gitignore` (duże dumpy `.sql`, kopie `.env`).
 
-## Docker (development)
+---
+
+## Pierwsze uruchomienie
 
 Będąc w **`…/sidas/site`** (ten katalog):
 
 ```bash
 docker compose up -d --build
-```
-
-Po starcie kontenerów (w katalogu projektu Laravel):
-
-```bash
 docker compose exec app composer install
+docker compose exec app cp .env.example .env
 docker compose exec app php artisan key:generate
 docker compose exec app php artisan migrate
 ```
 
-Aplikacja HTTP: [http://localhost:8080](http://localhost:8080).
+Aplikacja HTTP: [http://localhost:8080](http://localhost:8080)
 
-### REST API (prosty endpoint)
+---
 
-Po `docker compose up -d`:
+## API V1 – endpointy
 
-```bash
-curl http://localhost:8080/health
-curl "http://localhost:8080/api/eurzad-sprawa-sample?limit=1"
-curl "http://localhost:8080/api/eurzad-teczka?teczka_znak_sprawy=BM.7021.2.9.2024"
+Bazowy prefiks: `/api/v1/`
+
+### Health check
+
+```
+GET /health
 ```
 
-### Baza danych
+### Wyszukiwanie
 
-- Z poziomu Laravela (sieć Dockera): host `db`, port `5432` — jak w `.env.example`.
-- Z hosta: domyślnie port Postgresa **nie jest** wystawiany (uniknięcie konfliktu z lokalnym PostgreSQL). Dostęp z maszyny: `docker compose exec db psql …` albo dopisz w `docker-compose.yml` sekcję `ports` z wolnym portem hosta (np. `5434:5432`).
-- Serwis Compose dla Postgresa nazywa się **`db`**.
+```
+GET /api/v1/search?type=<typ>&q=<fraza>&limit=20&offset=0
+```
+
+| Parametr | Wymagany | Opis                                               |
+|----------|----------|----------------------------------------------------|
+| `type`   | tak      | `case` \| `document` \| `registry` \| `shipment`  |
+| `q`      | nie      | Fraza tekstowa (ILIKE)                             |
+| `limit`  | nie      | Liczba wyników (1–100, domyślnie 20)               |
+| `offset` | nie      | Przesunięcie (domyślnie 0)                         |
+
+**Przykłady:**
+
+```bash
+curl "http://localhost:8080/api/v1/search?type=case&q=BM.7021&limit=5"
+curl "http://localhost:8080/api/v1/search?type=document&q=umowa"
+curl "http://localhost:8080/api/v1/search?type=shipment&limit=10&offset=20"
+```
+
+### Pobieranie rekordu po ID
+
+```
+GET /api/v1/cases/{id}
+GET /api/v1/documents/{id}
+GET /api/v1/registries/{id}
+GET /api/v1/shipments/{id}
+```
+
+**Przykłady:**
+
+```bash
+curl "http://localhost:8080/api/v1/cases/42"
+curl "http://localhost:8080/api/v1/documents/17"
+```
+
+### Format odpowiedzi
+
+**Pojedynczy rekord:**
+```json
+{
+    "data": { … }
+}
+```
+
+**Lista (search):**
+```json
+{
+    "data": [ … ],
+    "meta": {
+        "type": "case",
+        "total": 137,
+        "limit": 20,
+        "offset": 0
+    }
+}
+```
+
+**Błąd 404:**
+```json
+{
+    "error": "not_found",
+    "message": "Case #42 not found."
+}
+```
+
+**Błąd walidacji 422 (/search):**
+```json
+{
+    "message": "…",
+    "errors": { "type": ["…"] }
+}
+```
+
+---
+
+## Architektura
+
+```
+app/
+├── Http/
+│   ├── Controllers/
+│   │   └── Api/V1/          ← cienkie controllery (delegują do adaptera)
+│   └── Requests/
+│       └── Api/V1/          ← walidacja wejścia
+├── Shared/
+│   └── Contracts/
+│       └── SourceAdapterInterface.php   ← wspólny kontrakt V1/V2/…
+└── Source/
+    └── V1/
+        ├── Queries/          ← odpytywanie bazy importu (connection: import)
+        ├── Mappers/          ← mapowanie wierszy DB → reprezentacja API
+        ├── CaseAdapter.php
+        ├── DocumentAdapter.php
+        ├── RegistryAdapter.php
+        └── ShipmentAdapter.php
+```
+
+**Połączenia DB:**
+- `pgsql` — baza Laravel (migracje, cache); serwis `db` w Docker Compose
+- `import` — baza starego EZD (tylko odczyt); `host.docker.internal:5433`
+
+---
+
+## Baza danych
+
+### Baza aplikacji Laravel (serwis `db`)
+
+Z poziomu Laravela (sieć Dockera): host `db`, port `5432` — jak w `.env.example`.
+
+Z hosta: domyślnie port Postgresa **nie jest** wystawiany. Dostęp: `docker compose exec db psql …` albo dopisz w `docker-compose.yml` sekcję `ports` z wolnym portem hosta (np. `5434:5432`).
+
+```bash
+docker compose exec db psql -U laravel -d laravel_api -c '\dt'
+```
 
 ### Baza importu (`pg_import` na hoście)
 
-Zaimportowana baza działa w kontenerze **`pg_import`**, na hoście pod portem **5433** (`5433→5432` w `docker ps`). Inny Postgres na tym komputerze (np. **`chi_db`**) często ma **5432** — to **inne** instancje; aplikacja w Dockerze łączy się z importem przez **`host.docker.internal:5433`**.
+Kontener **`pg_import`** działa na hoście pod portem **5433**. Aplikacja łączy się przez `host.docker.internal:5433`.
 
-Kontener **`app`** ma `extra_hosts: host.docker.internal` i zmienne **`IMPORT_DB_*`** (patrz `docker-compose.yml` oraz `.env.example`). Domyślnie: host `host.docker.internal`, port **5433**, baza `importdb`, użytkownik `postgres` — dopasuj do `docker exec pg_import env | grep POSTGRES`.
-
-**Weryfikacja połączenia** (najpierw `cd` do katalogu `site/`):
+**Weryfikacja połączenia:**
 
 ```bash
 docker compose up -d
 docker compose exec app php bin/eurzad-sprawa-sample.php
 ```
 
-Jeśli pojawi się **`password authentication failed`**, a `docker exec pg_import env` pokazuje `POSTGRES_PASSWORD=postgres`, często przyczyną jest **stary wolumen danych** (hasło ustawione przy pierwszym `init` inne niż w obecnym `docker run`). Wtedy z hosta lub z innego kontenera TCP nie przejdzie, a `docker exec pg_import psql -U postgres …` dalej działa (socket / trust). Naprawa przykładowa (jednorazowo w kontenerze):
+Jeśli pojawi się `password authentication failed`, przyczyną może być stary wolumen:
 
 ```bash
 docker exec pg_import psql -U postgres -d postgres -c "ALTER USER postgres WITH PASSWORD 'postgres';"
 ```
 
-(dostosuj hasło do tego, co masz w `IMPORT_DB_PASSWORD` / `.env`).
-
-### Import dumpa (`ezd_dump_chojnice_sidas`)
-
-W katalogu głównym projektu umieść `ezd_dump_chojnice_sidas.sql.gz` albo `ezd_dump_chojnice_sidas.sql`, potem:
+### Import dumpa
 
 ```bash
 bash scripts/import-db.sh
 ```
 
-Skrypt podniesie stack (`docker compose up -d`), jeśli kontener `db` nie działa, odczyta `POSTGRES_USER` / `POSTGRES_DB` z kontenera i zaimportuje plik przez `psql`.
+---
 
-### Sprawdzenie tabel w `psql`
+## Dostosowanie schematów bazy importu
 
-W kontenerze (użytkownik i baza zgodne z `docker-compose.yml`: `laravel` / `laravel_api`):
+Nazwy tabel i kolumn w `app/Source/V1/Queries/` są **zgadywane** na podstawie konwencji `eurzad_*`.  
+Po podłączeniu do rzeczywistej bazy importu zweryfikuj je i zaktualizuj:
 
-```bash
-docker compose exec db psql -U laravel -d laravel_api -c '\dt'
-```
+| Plik | Tabela (stała `TABLE`) | Klucz główny (`PK_COL`) |
+|------|------------------------|--------------------------|
+| `CaseQuery.php`     | `eurzad_sprawa`   | `sprawa_id`   |
+| `DocumentQuery.php` | `eurzad_dokument` | `dokument_id` |
+| `RegistryQuery.php` | `eurzad_rejestr`  | `rejestr_id`  |
+| `ShipmentQuery.php` | `eurzad_wysylka`  | `wysylka_id`  |
 
-Interaktywna sesja:
+Następnie uzupełnij mappery w `app/Source/V1/Mappers/` o jawne mapowanie pól.
 
-```bash
-docker compose exec db psql -U laravel -d laravel_api
-```
+---
+
+## Przyszłe wersje API (V2/V3)
+
+Aby dodać nową wersję:
+1. Skopiuj `app/Source/V1/` → `app/Source/V2/`
+2. Skopiuj `app/Http/Controllers/Api/V1/` → `app/Http/Controllers/Api/V2/`
+3. Dodaj grupę `Route::prefix('v2')` w `routes/api.php`
+4. V1 pozostaje bez zmian

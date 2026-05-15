@@ -15,22 +15,23 @@
 
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+# SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+PROJECT_ROOT='';
 
-CONTAINER="${PG_IMPORT_CONTAINER:-pg_import}"
+CONTAINER="${PG_IMPORT_CONTAINER:-site-db-1}"
 
 resolve_default_dump() {
   local f
   for f in \
-    "$PROJECT_ROOT/ezd_dump_chojnice_sidas.sql" \
-    "$PROJECT_ROOT/ezd_dump_chojnice_sidas.sql.gz"; do
+    "ezd_dump_chojnice_sidas.sql" \
+    "ezd_dump_chojnice_sidas.sql.gz"; do
     if [[ -f "$f" ]]; then
       printf '%s' "$f"
       return 0
     fi
   done
-  printf '%s' "$PROJECT_ROOT/ezd_dump_chojnice_sidas.sql"
+  printf '%s' "ezd_dump_chojnice_sidas.sql"
 }
 
 if [[ -n "${1:-}" ]]; then

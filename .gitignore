@@ -6,7 +6,25 @@
 /.idea
 .DS_Store
 
-# Dane tylko na tej maszynie (poza repozytorium — utwórz katalog ręcznie)
+# Storage (katalogi muszą istnieć, zawartość nie)
+/storage/app/public/*
+/storage/framework/cache/data/*
+/storage/framework/sessions/*
+/storage/framework/testing/*
+/storage/framework/views/*
+/storage/logs/*.log
+!/storage/app/public/.gitkeep
+!/storage/framework/cache/data/.gitkeep
+!/storage/framework/sessions/.gitkeep
+!/storage/framework/testing/.gitkeep
+!/storage/framework/views/.gitkeep
+!/storage/logs/.gitkeep
+
+# Bootstrap cache
+/bootstrap/cache/*.php
+!/bootstrap/cache/.gitkeep
+
+# Dane tylko na tej maszynie (utwórz katalog ręcznie, nie commituj)
 /local/
 /ezd_dump_chojnice_sidas.sql
 /ezd_dump_chojnice_sidas.sql.gz

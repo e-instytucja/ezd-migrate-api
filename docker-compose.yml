@@ -39,7 +39,7 @@ services:
     image: postgres:16
     restart: unless-stopped
     environment:
-      POSTGRES_DB: laravel_api
+      POSTGRES_DB: ezd_chojnice
       POSTGRES_USER: laravel
       POSTGRES_PASSWORD: secret
     volumes:
