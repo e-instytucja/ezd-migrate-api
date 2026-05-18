@@ -41,12 +41,22 @@ SQL;
         return $retColumn;
     }
 
-
     public function getProcesNameByPID($processId)
     {
         $name = DB::table('galaxia_processes')
             ->where('pId', $processId)
             ->value('name');
+        if(empty($name)) {
+            throw new \Exception("Brak danych dla procesu {$processId}");
+        }
+        return $name;
+    }
+
+    public function getNormalizedProcesNameByPID($processId)
+    {
+        $name = DB::table('galaxia_processes')
+            ->where('pId', $processId)
+            ->value('normalized_name');
         if(empty($name)) {
             throw new \Exception("Brak danych dla procesu {$processId}");
         }

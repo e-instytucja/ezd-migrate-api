@@ -10,27 +10,30 @@ namespace App\Source\V1\DTO;
 class TypPracownik
 {
     /**
-     * Login użytkownika w SIDAS EZD - string
-     *
      * @var string
      */
-    public $id_uzytkownika = '';
+    public string $id_uzytkownika;
     /**
      * @var string
      */
-    public $imie;
+    public string $imie;
     /**
      * Wszystkie człony nazwiska połączone ze sobą znakiem "-"
      *
      * @var string
      */
-    public $nazwisko;
+    public string $nazwisko;
     /**
      * @var string
      */
-    public $id_stanowiska;
+    public int $id_stanowiska;
     /**
      * @var string
      */
-    public $nazwa_stanowiska;
+    public string $nazwa_stanowiska;
+
+    public string $login;
+
+    public string $nazwa_komorki;
+    public string $skrot_komorki;
 }

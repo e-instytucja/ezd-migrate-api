@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\Api\V1\AttachmentController;
 use App\Http\Controllers\Api\V1\CasesController;
 use App\Http\Controllers\Api\V1\DocumentsController;
 use Illuminate\Support\Facades\Route;
@@ -44,5 +45,12 @@ Route::prefix('v1')
             [DocumentsController::class, 'show']
         )
             ->whereNumber('id')
+            ->name('documents.show');
+
+        Route::get(
+            '/attachment/{token}',
+            [AttachmentController::class, 'show']
+        )
+            ->whereNumber('token')
             ->name('documents.show');
     });

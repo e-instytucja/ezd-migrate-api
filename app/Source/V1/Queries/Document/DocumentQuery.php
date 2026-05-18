@@ -4,11 +4,18 @@ declare(strict_types=1);
 
 namespace App\Source\V1\Queries\Document;
 
+use App\Source\V1\Enum\DocumentQueryContext;
+use App\Source\V1\Enum\TypDokumentu;
 use Illuminate\Support\Facades\DB;
 use stdClass;
 
 class DocumentQuery
 {
+    public function __construct(
+        private QueryBuilder $documentListQueryBuilder,
+    )
+    {
+    }
     public function getRowFromHistory(
         $documentUid,
         array $statuses = [],
@@ -51,5 +58,50 @@ class DocumentQuery
             ->where($column, $value)
             ->orderByDesc('pismo_wersja')
             ->first();
+    }
+
+    public function getDocumentList($caseUID) {
+        $sql = $this->prepareSQLForDataFromCase($caseUID);
+        $data = collect(DB::select($sql['query'], $sql['params']))
+            ->map(fn($item) => (array) $item)
+            ->toArray();
+        return $data;
+
+    }
+
+    private function prepareSQLForDataFromCase($caseUID)
+    {
+        $sql = [
+            'query'  =>
+                '(' . $this->documentListQueryBuilder->buildSQLQuery(
+                    DocumentQueryContext::CASE_UID,
+                    TypDokumentu::PISMO
+                ) . ')
+                UNION
+                (' .
+                $this->documentListQueryBuilder->buildSQLQuery(
+                    DocumentQueryContext::CASE_UID,
+                    TypDokumentu::DOKUMENT
+                ) . ')
+                UNION
+                (' .
+                $this->documentListQueryBuilder->buildSQLQuery(
+                    DocumentQueryContext::CASE_UID_MAIN_DOCUMENT_ATTACHED_TO_CASE,
+                    TypDokumentu::PISMO
+                ) . ')
+                UNION
+                (' .
+                $this->documentListQueryBuilder->buildSQLQuery(
+                    DocumentQueryContext::CASE_UID_MAIN_DOCUMENT_ATTACHED_TO_DOCUMENT,
+                    TypDokumentu::PISMO
+                ) . ')' .
+                $this->documentListQueryBuilder->addDocumentGroupOrder(),
+            'params' => [],
+        ];
+
+        // prepare params
+        $sql['params'] = [$caseUID, $caseUID, $caseUID, $caseUID];
+
+        return $sql;
     }
 }

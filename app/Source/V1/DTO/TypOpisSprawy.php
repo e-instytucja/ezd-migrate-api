@@ -89,8 +89,10 @@ class TypOpisSprawy
      * Lista stron sprawy wskazanych w SIDAS EZD,w strukturze TYP_POZYCJA_INTERESANTA zdefiniowanej w metodzie
      * pobierzDokumentOpis. W parametrze ROLA struktury obsługiwane wartości to: ”Główny”, ”Do wiadomości”.
      *
-     * @var TypPozycjaInteresanta[]
      */
+    public $dane_formularza;
+
+    public $historia_obiegu;
     public array $strony;
     /**
      * Lista stanowisk którym udostępniono sprawę (pracowników pracujących wspólnie nad sprawą wraz z właścicielem),

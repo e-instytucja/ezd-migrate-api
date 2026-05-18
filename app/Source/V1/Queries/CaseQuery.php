@@ -8,6 +8,32 @@ use Illuminate\Support\Facades\DB;
 
 class CaseQuery
 {
+
+    public function getList()
+    {
+        $rows = DB::select(<<<SQL
+            SELECT
+            DISTINCT ON (id_sprawy)
+            et.teczka_uid          AS id_sprawy,
+            et.teczka_znak_sprawy  AS znak,
+            et.sprawa_uid          AS main_document_uid,
+            gp.name                AS nazwa_procesu,
+            gp."pId"               AS id_procesu,
+            ess.opis               AS status_procesu,
+            et.teczka_createdate   AS rejestracja
+            FROM eurzad_teczka et
+            INNER JOIN eurzad_sprawa          es  ON es.sprawa_uid        = et.sprawa_uid
+            INNER JOIN galaxia_processes      gp  ON gp.normalized_name   = es.form_name
+            INNER JOIN eurzad_obieg           eo  ON eo.sprawa_uid        = es.sprawa_uid
+            INNER JOIN eurzad_slownik_status  ess ON ess.symbol           = eo.status
+            INNER JOIN galaxia_instances      gi  ON gi."instanceId"      = eo."instanceId"
+                                                AND max_status_sprawy_id > 0
+            INNER JOIN eurzad_sprawa_przedluzanie sp ON sp.sprawa_uid     = es.sprawa_uid
+            ORDER BY id_sprawy ASC, eo.status_sprawy_id DESC
+        SQL);
+
+        return array_map(fn ($r) => (array) $r, $rows);
+    }
     public function getTeczkaSyg($uid, $dntas = 0)
     {
         return DB::table('eurzad_teczka')
@@ -50,7 +76,7 @@ class CaseQuery
         return $status;
     }
 
-    public function getSprawaPrzedluzanie($mainDocumentUid, $column = 'sprawa_createdate')
+    public function getSprawaPrzedluzanie($mainDocumentUid, $column)
     {
         $createdate = DB::table('eurzad_sprawa_przedluzanie')
             ->where('sprawa_uid', $mainDocumentUid)
@@ -132,8 +158,7 @@ class CaseQuery
     }
 
     public function getAllFromTeczkaBySprawaUid(
-        $uid,
-        bool $getFromCache = true
+        $uid
     ): object {
         $ret = DB::table('eurzad_teczka as t')
             ->leftJoin(
@@ -175,5 +200,61 @@ class CaseQuery
         return DB::table('eurzad_sprawa')
             ->where('sprawa_uid', $mainDocumentUid)
             ->value('form_name');
+    }
+
+    public function getCaseOwnerByCaseUid($mainDocumentUid)
+    {
+        return $this->getCaseOwnerByInstanceId(
+            $this->getInstanceIdByCaseUid($mainDocumentUid)
+        );
+    }
+
+    public function getInstanceIdByCaseUid($caseUid): int
+    {
+        $row = $this->getFirstRowFromHistory($caseUid);
+        return $row->instanceId;
+    }
+
+    public function getSprawaCreateDate($documentId = 0)
+    {
+        if (!$documentId) {
+            return null;
+        }
+
+        $caseData = (array)DB::table('eurzad_sprawa')
+            ->where('sprawa_uid', $documentId)
+            ->first();
+
+        if (empty($caseData) || $caseData['rodzaj_pisma'] != 'internal') {
+            return null;
+        }
+
+        $hour = date('H', strtotime($caseData['sprawa_createdate']));
+        if ((int)$hour > 0) {
+            return $caseData['sprawa_createdate'];
+        }
+
+        $createdate = DB::table('eurzad_teczka_zawartosc')
+            ->where('teczka_zawartosc_uid', $documentId)
+            ->value('createdate');
+
+        return !empty($createdate) ? $createdate : null;
+    }
+
+    public function getHistory($caseUid)
+    {
+        return DB::table('eurzad_obieg as o')
+            ->join('eurzad_slownik_status as ss', 'o.status', '=', 'ss.symbol')
+            ->where('o.sprawa_uid', $caseUid)
+            ->select(
+                'o.sprawa_uid',
+                'o.createdate',
+                'o.instanceId',
+                'ss.opis as action',
+                'o.uugid_from',
+                'o.uugid_to'
+            )
+            ->orderBy('o.status_sprawy_id', 'DESC')
+            ->get();
     }
 }

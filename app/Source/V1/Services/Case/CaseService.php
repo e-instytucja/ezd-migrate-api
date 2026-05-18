@@ -7,12 +7,14 @@ use App\Source\V1\DTO\TypPracownik;
 use App\Source\V1\DTO\TypZnakSprawy;
 use App\Source\V1\Enum\RodzajPracownika;
 use App\Source\V1\Enum\TypDokumentu;
-use App\Source\V1\Enum\TypZapytania;
 use App\Source\V1\Queries\CaseQuery;
 use App\Source\V1\Queries\ProcessQuery;
-use App\Source\V1\Queries\Structure\UugQuery;
 use App\Source\V1\Queries\Structure\WorkstationQuery;
 use App\Source\V1\Services\Document\DocumentService;
+use App\Source\V1\Services\Document\HistoryService as DocumentHistoryService;
+use App\Source\V1\Services\Case\HistoryService as CaseHistoryService;
+use App\Source\V1\Services\Form\FormService;
+use App\Source\V1\Services\Structure\EmployeeService;
 use Exception;
 use Illuminate\Support\Facades\DB;
 
@@ -27,7 +29,10 @@ class CaseService {
         private readonly ProcessQuery $processQuery,
         private readonly DocumentService $documentService,
         private readonly WorkstationQuery $workstationQuery,
-        private readonly UugQuery $UugQuery,
+        private readonly DocumentHistoryService $documentHistoryService,
+        private readonly EmployeeService $employeeService,
+        private readonly FormService $formService,
+        private readonly CaseHistoryService $caseHistoryService
     ) 
     {
 
@@ -53,6 +58,7 @@ class CaseService {
         $this->caseDetails->id_procesu = $processId;
 
         $processName = $this->processQuery->getProcesNameByPID($processId);
+        $normalizedProcessName = $this->processQuery->getNormalizedProcesNameByPID($processId);
 
         $this->caseDetails->nazwa_procesu = $processName;
 
@@ -85,11 +91,11 @@ class CaseService {
 
         $this->caseDetails->termin = $finishDate;
 
-        $this->caseDetails->wlasciciel = $this->getEmployee(
+        $this->caseDetails->wlasciciel = $this->employeeService->getEmployee(
             RodzajPracownika::WLASCICIEL,
             $mainDocumentUid
         );
-        $this->caseDetails->utworzyl = $this->getEmployee(
+        $this->caseDetails->utworzyl = $this->employeeService->getEmployee(
             RodzajPracownika::TWORCA,
             $mainDocumentUid
         );
@@ -103,40 +109,19 @@ class CaseService {
         $this->caseDetails->opis = $caseTitleAndDesc->opis_sprawy;
         $this->caseDetails->tytul = $caseTitleAndDesc->tytul_sprawy;
         $this->caseDetails->dokumenty = $this->documentService->getDocumentsListByCaseUID($this->caseUid);
-        $this->caseDetails->udostepniona = $employee->getEmployeesWhoSharedCase($mainDocumentUid);
-        $this->caseDetails->strony = $this->getSidesOfCase();
+        $this->caseDetails->dane_formularza = $this->formService->getFormValues($mainDocumentUid, $normalizedProcessName);
+        $this->caseDetails->historia_obiegu = $this->caseHistoryService->getHistory($mainDocumentUid);
+//        $this->caseDetails->udostepniona = $employee->getEmployeesWhoSharedCase($mainDocumentUid);
+//        $this->caseDetails->strony = $this->getSidesOfCase();
 
 
-        $esbServiceQueue = new ESBServiceQueue();
-        $this->caseDetails->blad = $esbServiceQueue->checkDocumentLog($this->caseUid, TypZapytania::CASE_REQUEST);
 
-        return $opisSprawy;
+        return $this->caseDetails;
     }
 
     public function getList(): array
     {
-        $rows = DB::select(<<<SQL
-            SELECT
-            DISTINCT ON (id_sprawy)
-            et.teczka_uid          AS id_sprawy,
-            et.teczka_znak_sprawy  AS znak,
-            et.sprawa_uid          AS main_document_uid,
-            gp.name                AS nazwa_procesu,
-            gp."pId"               AS id_procesu,
-            ess.opis               AS status_procesu,
-            et.teczka_createdate   AS rejestracja
-            FROM eurzad_teczka et
-            INNER JOIN eurzad_sprawa          es  ON es.sprawa_uid        = et.sprawa_uid
-            INNER JOIN galaxia_processes      gp  ON gp.normalized_name   = es.form_name
-            INNER JOIN eurzad_obieg           eo  ON eo.sprawa_uid        = es.sprawa_uid
-            INNER JOIN eurzad_slownik_status  ess ON ess.symbol           = eo.status
-            INNER JOIN galaxia_instances      gi  ON gi."instanceId"      = eo."instanceId"
-                                                AND max_status_sprawy_id > 0
-            INNER JOIN eurzad_sprawa_przedluzanie sp ON sp.sprawa_uid     = es.sprawa_uid
-            ORDER BY id_sprawy ASC, eo.status_sprawy_id DESC
-        SQL);
-
-        return array_map(fn ($r) => (array) $r, $rows);
+        return $this->caseQuery->getList();
     }
 
     /**
@@ -152,7 +137,7 @@ class CaseService {
         switch ($employeeType) {
             case RodzajPracownika::TWORCA:
                 if ($processType == TypDokumentu::DOKUMENT) {
-                    $row = $this->documentService->getFirstRowFromHistory($id);
+                    $row = $this->documentHistoryService->getFirstRowFromHistory($id);
                     if (empty($row->uugid_from)) {
                         throw new Exception(
                             "Wpis dla pisma nie zawiera informacji o stanowisku (od) dla '{$id}'"
@@ -176,7 +161,7 @@ class CaseService {
                     $mainDocument = $this->caseQuery->getSprawaUidByTeczkaZawartoscUid($id, 'o.sprawa_uid');
                     $id = $mainDocument->sprawa_uid;
                 }
-                $workstationId = $this->getCaseOwnerByCaseUid($id);
+                $workstationId = $this->caseQuery->getCaseOwnerByCaseUid($id);
                 if (empty($workstationId)) {
                     $info = "Dokument numer '{$id}' nie posiada właściciela sprawy dla bieżącej instancji";
                     throw new Exception($info);
@@ -185,7 +170,7 @@ class CaseService {
 
                 break;
             case (RodzajPracownika::ZATWIERDZAJACY && $processType == TypDokumentu::DOKUMENT):
-                $uugid = $this->documentService->getLastRowFromHistory($id);
+                $uugid = $this->documentHistoryService->getLastRowFromHistory($id);
                 if (empty($uugid)) {
                     throw new Exception(
                         "Wpis nie zawiera informacji o osobie zatwierdzającej dla '{$id}'"
@@ -198,61 +183,7 @@ class CaseService {
                 );
         }
 
-        return $this->getEmployeeInfoByUUgId($uugid);
-    }
-
-    public function getInstanceIdByCaseUid($caseUid): int
-    {
-        $row = $this->caseQuery->getFirstRowFromHistory($caseUid);
-        return $row->instanceId;
-    }
-
-    public function getCaseOwnerByCaseUid($mainDocumentUid)
-    {
-        return $this->caseQuery->getCaseOwnerByInstanceId(
-            $this->getInstanceIdByCaseUid($mainDocumentUid)
-        );
-    }
-
-    public function getEmployeeInfoByUUgId($uugid)
-    {
-        $uugInfo = $this->UugQuery->getInfo($uugid);
-        if (empty($uugInfo)) {
-            throw new Exception(
-                "Brak informacji o pracowniku na podstawie identyfikatora powiązania '{$uugid}'"
-            );
-        }
-
-        $employee = new TypPracownik();
-        $employee->id_uzytkownika = $uugInfo->login;
-        $employee->imie = $uugInfo->forename;
-        $employee->nazwisko = $this->getFullSurnameString($uugInfo);
-        $employee->id_stanowiska = $uugInfo->workstation_id;
-        $employee->nazwa_stanowiska = $uugInfo->workstation_description;
-
-        return $employee;
-    }
-
-    private function getFullSurnameString($user)
-    {
-        $surname = '';
-        if (!empty($user->surname)) {
-            $surname .= $user->surname;
-        }
-        if (!empty($user->surname2)) {
-            if (!empty($surname)) {
-                $surname .= '-';
-            }
-            $surname .= $user->surname2;
-        }
-        if (!empty($user->surname3)) {
-            if (!empty($surname)) {
-                $surname .= '-';
-            }
-            $surname .= $user->surname3;
-        }
-
-        return $surname;
+        return $this->employeeService->getEmployeeInfoByUUgId($uugid);
     }
 
     private function getDetailsOfCaseSign($mainDocumentUid): TypZnakSprawy

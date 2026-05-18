@@ -5,11 +5,14 @@ namespace App\Source\V1\Services\Document;
 use App\Shared\Functions;
 use App\Source\V1\DTO\TypPozycjaDokumentu;
 use App\Source\V1\Enum\DocumentQueryContext;
+use App\Source\V1\Enum\RodzajPracownika;
 use App\Source\V1\Enum\TypDokumentu;
 use App\Source\V1\Queries\CaseQuery;
 use App\Source\V1\Queries\Document\DocumentQuery;
 use App\Source\V1\Queries\Document\QueryBuilder;
+use App\Source\V1\Queries\Form\FormQuery;
 use App\Source\V1\Services\Form\FormService;
+use App\Source\V1\Services\Structure\EmployeeService;
 use Exception;
 use Illuminate\Support\Facades\DB;
 use stdClass;
@@ -21,43 +24,16 @@ class DocumentService
 
     public function __construct(
         private readonly DocumentQuery $documentQuery,
-        private QueryBuilder $documentListQueryBuilder,
-        private FormService $formService,
         private readonly CaseQuery $caseQuery,
+        private readonly EmployeeService $employeeService,
+        private readonly FormQuery $formQuery
     )
     {
     }
 
-    public function getLastRowFromHistory(
-        $documentUid,
-        array $statuses = [],
-        string $sortDirection = 'DESC'
-    ): stdClass
-    {
-        return $this->documentQuery->getRowFromHistory(
-            $documentUid,
-            $statuses,
-            'DESC'
-        );
-    }
-
-    public function getFirstRowFromHistory(
-        $documentUid,
-        array $statuses = []
-    ): stdClass
-    {
-        return $this->documentQuery->getRowFromHistory(
-            $documentUid,
-            $statuses,
-            'ASC'
-        );
-    }
-
     public function getDocumentsListByCaseUID($caseUID)
     {
-        $sql = $this->prepareSQLForDataFromCase($caseUID);
-        $data = (array)DB::Select($sql['query'], $sql['params']);
-
+        $data = $this->documentQuery->getDocumentList($caseUID);
         $documentList = $this->hydrateDataToObjects(
             $this->fillDocumentsWithRemainingData(
                 $data
@@ -69,20 +45,18 @@ class DocumentService
 
     private function fillDocumentsWithRemainingData($documentList)
     {
-        $rejestrObieg = new rejestrObieg();
+//        $rejestrObieg = new rejestrObieg();
         foreach ($documentList as &$document) {
-            $document['data_i_czas'] = Functions::convertToISO8601(
-                $this->getDocumentDateTime($document['id_dokumentu'], $document['typ'])
-            );
-            $document['przesylka'] =
-                $this->documentElements->getDeliveryType($document['id_dokumentu'], $document['typ']);
+            $dateTime = $this->getDocumentDateTime($document['id_dokumentu'], $document['typ']);
+            $document['data_i_czas'] = Functions::convertToISO8601($dateTime);
+//            $document['przesylka'] =
+//                $this->documentElements->getDeliveryType($document['id_dokumentu'], $document['typ']);
 
-            if ($rejestrObieg->sprawdzZwrot($document['id_dokumentu'])) {
-                $document['przesylka'] = RodzajPrzesylki::ZWROTKA;
-            }
+//            if ($rejestrObieg->sprawdzZwrot($document['id_dokumentu'])) {
+//                $document['przesylka'] = RodzajPrzesylki::ZWROTKA;
+//            }
 
-            $employee = new Employee();
-            $document['wlasciciel'] = $employee->getEmployee(
+            $document['wlasciciel'] = $this->employeeService->getEmployee(
                 RodzajPracownika::WLASCICIEL,
                 $document['id_dokumentu'],
                 $document['typ']
@@ -93,7 +67,7 @@ class DocumentService
         return $documentList;
     }
 
-    public function getDocumentDateTime($documentId, $processType)
+    public function getDocumentDateTime($documentId, $processType): string
     {
         switch ($processType) {
             case TypDokumentu::DOKUMENT:
@@ -107,34 +81,37 @@ class DocumentService
                 break;
             case TypDokumentu::AUTHENTICATION:
             case TypDokumentu::PISMO:
-                $formName = $this->caseQuery->getFormNameByMainDocumentUid($documentId);
-                $formValues = $this->formService->getFormValues($documentId, $formName);
-                $sprawy = new sprawy();
-                $data = $sprawy->getDataFromSprawa($documentId, '', '', '', $formValues);
-                if (!count($data) || !isset($data['data'])) {
-                    $date = sprawaPrzedluzanie::getInstance()->getDataZarejestrowania($documentId);
+//                $formName = $this->caseQuery->getFormNameByMainDocumentUid($documentId);
+//                $formValues = $this->formService->getFormValues($documentId, $formName);
+                $value = $this->formQuery->getValueFromFormDane('data', $documentId);
+                if (empty($value)) {
+                    $date = $this->caseQuery->getSprawaPrzedluzanie($documentId, 'sprawa_createdate');
                     if ($date === false) {
                         throw new Exception(
                             "Brak daty zarejestrowania pisma '{$documentId}'"
                         );
                     }
                 } else {
-                    $date = $data['data'];
+                    $date = $value;
                 }
 
 
-                $tmpDate = $sprawy->getSprawaCreateDate($documentId);
+                $tmpDate = $this->caseQuery->getSprawaCreateDate($documentId);
                 $date = ($tmpDate) ? $tmpDate : $date;
 
                 break;
             default:
-                throw new WebserviceException("ID: '{$documentId}'", ErrorCode::PROCESS_INCORRECT_TYPE);
+                throw new Exception("ID: '{$documentId}'");
         }
 
         return $date;
     }
 
-    private function hydrateDataToObjects($rawDocuments): TypPozycjaDokumentu
+    /**
+     * @param $rawDocuments
+     * @return TypPozycjaDokumentu[]
+     */
+    private function hydrateDataToObjects($rawDocuments): array
     {
         $documents = [];
         foreach ($rawDocuments as $rawDocument) {
@@ -145,49 +122,15 @@ class DocumentService
             $document->status_procesu = $rawDocument['status_procesu'];
             $document->data_i_czas = $rawDocument['data_i_czas'];
             $document->wersja = $rawDocument['wersja'];
-            $document->przesylka = $rawDocument['przesylka'];
+            $document->przesylka = $rawDocument['przesylka']??'';
             $document->wlasciciel = $rawDocument['wlasciciel'];
-            $document->blad = $rawDocument['blad'];
+            $document->blad = $rawDocument['blad']??'';
 
             $documents[] = $document;
         }
         return $documents;
     }
 
-    private function prepareSQLForDataFromCase($caseUID)
-    {
-        $sql = [
-            'query'  =>
-                '(' . $this->documentListQueryBuilder->buildSQLQuery(
-                    DocumentQueryContext::CASE_UID,
-                    TypDokumentu::PISMO
-                ) . ')
-                UNION
-                (' .
-                $this->documentListQueryBuilder->buildSQLQuery(
-                    DocumentQueryContext::CASE_UID,
-                    TypDokumentu::DOKUMENT
-                ) . ')
-                UNION
-                (' .
-                $this->documentListQueryBuilder->buildSQLQuery(
-                    DocumentQueryContext::CASE_UID_MAIN_DOCUMENT_ATTACHED_TO_CASE,
-                    TypDokumentu::PISMO
-                ) . ')
-                UNION
-                (' .
-                $this->documentListQueryBuilder->buildSQLQuery(
-                    DocumentQueryContext::CASE_UID_MAIN_DOCUMENT_ATTACHED_TO_DOCUMENT,
-                    TypDokumentu::PISMO
-                ) . ')' .
-                $this->documentListQueryBuilder->addDocumentGroupOrder(),
-            'params' => [],
-        ];
 
-        // prepare params
-        $sql['params'] = [$caseUID, $caseUID, $caseUID, $caseUID];
-
-        return $sql;
-    }
 
 }

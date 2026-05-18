@@ -54,12 +54,13 @@ FROM (
 ORDER BY
     form_dane_id ASC
 SQL;
-        $hnd = DB::select($query, $params);
-        return $hnd ? (array) $hnd : [];
-
+        $data = collect(DB::select($query, $params))
+            ->map(fn($item) => (array) $item)
+            ->toArray();
+        return $data;
     }
 
-    public function getFormStructure($formName)
+    public function getFormStructure(string $formName): array
     {
         $params = [$formName];
         $query = <<<SQL
@@ -84,7 +85,17 @@ WHERE
 ORDER BY
     form_struktura_id
 SQL;
-        $hnd = DB::select($query, $params);
-        return $hnd ? (array) $hnd : [];
+        return collect(DB::select($query, $params))
+            ->map(fn($item) => (array) $item)
+            ->toArray();
+    }
+
+
+
+    public function getValueFromFormDane($key, $documentId) {
+        return DB::table('eurzad_form_dane')
+            ->where('sprawa_uid', $documentId)
+            ->where('form_dane_pole', $key)
+            ->value('form_dane_wartosc');
     }
 }

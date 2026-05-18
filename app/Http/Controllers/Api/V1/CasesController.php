@@ -4,41 +4,40 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Http\Controllers\Controller;
+use App\Http\Controllers\Api\BaseApiController;
+use App\Http\Response\ApiResponseRenderer;
 use App\Source\V1\Services\Case\CaseService;
-use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 
-class CasesController extends Controller
+final class CasesController extends BaseApiController
 {
-    public function __construct(private readonly CaseService $caseService) {}
+    public function __construct(
+        private readonly CaseService $caseService,
+        ApiResponseRenderer $renderer,
+    ) {
+        parent::__construct($renderer);
+    }
 
-    public function list(): JsonResponse
+    public function list(Request $request): Response
     {
         $data = $this->caseService->getList();
 
-        if ($data === null) {
-            return response()->json([
-                'error'   => 'not_found',
-                'message' => "Case list not found.",
-            ], 404);
+        if (empty($data)) {
+            return $this->renderNotFound($request, 'Case list not found.');
         }
 
-        return response()->json(['data' => $data]);
+        return $this->renderResponse($request, $data);
     }
 
-    public function show(int $id): JsonResponse
+    public function show(Request $request, int $id): Response
     {
-        $data = $this->caseService->getCaseDetails(
-            $id
-        );
+        $data = $this->caseService->getCaseDetails($id);
 
         if ($data === null) {
-            return response()->json([
-                'error'   => 'not_found',
-                'message' => "Case list not found.",
-            ], 404);
+            return $this->renderNotFound($request, "Case '{$id}' not found.");
         }
 
-        return response()->json(['data' => $data]);
+        return $this->renderResponse($request, $data);
     }
 }
