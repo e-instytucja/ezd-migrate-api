@@ -52,5 +52,5 @@ Route::prefix('v1')
             [AttachmentController::class, 'show']
         )
             ->whereNumber('token')
-            ->name('documents.show');
+            ->name('attachment.show');
     });
