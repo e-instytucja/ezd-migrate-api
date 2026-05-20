@@ -38,7 +38,7 @@ Route::prefix('v1')
             '/documents',
             [DocumentsController::class, 'list']
         )
-            ->name('cases.list');
+            ->name('document.list');
 
         Route::get(
             '/documents/{id}',
