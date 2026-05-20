@@ -11,9 +11,9 @@ use Illuminate\Http\Response;
 
 final class ApiResponseRenderer
 {
-    public const string DEFAULT_FORMAT = 'json';
+    public const  DEFAULT_FORMAT = 'json';
 
-    public const string QUERY_PARAM = 'format';
+    public const  QUERY_PARAM = 'format';
 
     public function __construct(private readonly FormatterFactory $factory) {}
 
