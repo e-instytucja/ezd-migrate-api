@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\DB;
 class CaseQuery
 {
 
-    public function getList()
+    public function getList(int $offset = 0, int $limit = 50)
     {
         $rows = DB::select(<<<SQL
             SELECT
@@ -30,6 +30,7 @@ class CaseQuery
                                                 AND max_status_sprawy_id > 0
             INNER JOIN eurzad_sprawa_przedluzanie sp ON sp.sprawa_uid     = es.sprawa_uid
             ORDER BY id_sprawy ASC, eo.status_sprawy_id DESC
+            LIMIT $limit OFFSET $offset
         SQL);
 
         return array_map(fn ($r) => (array) $r, $rows);
@@ -178,7 +179,7 @@ class CaseQuery
             return $ret;
         }
 
-        return [
+        return (object) [
             'opis_sprawy' => '',
             'opis_zbioru' => '',
         ];

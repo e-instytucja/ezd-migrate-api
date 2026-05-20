@@ -52,9 +52,12 @@ final class HtmlFormatter extends AbstractFormatter
             $msgHtml = '<div class="msg">' . $errPrefix . $message . '</div>';
         }
 
-        $dataHtml = $data !== null
+        $dataHtml   = $data !== null
             ? $this->renderAny($data, 'root')
             : '<p class="empty">Brak danych</p>';
+
+        $meta       = isset($payload['meta']) && is_array($payload['meta']) ? $payload['meta'] : null;
+        $pagerHtml  = $meta !== null && isset($meta['page']) ? $this->renderPagination($meta) : '';
 
         $css = $this->css();
         $js  = $this->js();
@@ -75,11 +78,43 @@ final class HtmlFormatter extends AbstractFormatter
           </header>
           <main class="wrap">
             {$msgHtml}
+            {$pagerHtml}
             {$dataHtml}
+            {$pagerHtml}
           </main>
           <script>{$js}</script>
         </body>
         </html>
+        HTML;
+    }
+
+    // ── Pagination ────────────────────────────────────────────────────────────
+
+    private function renderPagination(array $meta): string
+    {
+        $page     = (int) ($meta['page']     ?? 1);
+        $limit    = (int) ($meta['limit']    ?? 50);
+        $count    = (int) ($meta['count']    ?? 0);
+        $hasPrev  = (bool) ($meta['has_prev'] ?? false);
+        $hasNext  = (bool) ($meta['has_next'] ?? false);
+
+        $prevDisabled = $hasPrev  ? '' : ' disabled';
+        $nextDisabled = $hasNext  ? '' : ' disabled';
+        $prevPage     = $page - 1;
+        $nextPage     = $page + 1;
+        $showing      = $this->esc("Strona {$page} · {$count} rekordów");
+
+        return <<<HTML
+        <nav class="pager" aria-label="Paginacja">
+          <button class="pager__btn"{$prevDisabled} onclick="pgGo({$prevPage})">&#8592; Poprzednia</button>
+          <form class="pager__form" onsubmit="pgSubmit(event)">
+            <label class="pager__label" for="pg-input">Strona</label>
+            <input  class="pager__input" id="pg-input" type="number" min="1" value="{$page}" aria-label="Numer strony">
+            <button class="pager__btn pager__btn--go" type="submit">Przejdź</button>
+          </form>
+          <button class="pager__btn"{$nextDisabled} onclick="pgGo({$nextPage})">Następna &#8594;</button>
+          <span class="pager__info">{$showing}</span>
+        </nav>
         HTML;
     }
 
@@ -98,7 +133,10 @@ final class HtmlFormatter extends AbstractFormatter
         }
 
         if (is_scalar($val)) {
-            return '<span class="scalar">' . $this->esc((string) $val) . '</span>';
+            $str = (string) $val;
+            return $this->isHtml($str)
+                ? $str
+                : '<span class="scalar">' . $this->esc($str) . '</span>';
         }
 
         if (!is_array($val)) {
@@ -144,8 +182,8 @@ final class HtmlFormatter extends AbstractFormatter
             $id     = 'sec-' . $this->esc((string) $k) . '-' . substr(md5($parentKey . $k), 0, 6);
             $count  = is_array($v) ? ' <span class="sec__count">(' . count($v) . ')</span>' : '';
             $html  .= <<<SECTION
-            <section class="sec" id="{$id}">
-              <button class="sec__hdr" onclick="tog('{$id}')" aria-expanded="true">
+            <section class="sec closed" id="{$id}">
+              <button class="sec__hdr" onclick="tog('{$id}')" aria-expanded="false">
                 <svg class="sec__chev" viewBox="0 0 16 16"><path d="M4 6l4 4 4-4"/></svg>
                 <span class="sec__title">{$label}{$count}</span>
               </button>
@@ -224,6 +262,9 @@ final class HtmlFormatter extends AbstractFormatter
 
         if (is_scalar($val)) {
             $str = (string) $val;
+            if ($this->isHtml($str)) {
+                return $str;
+            }
             $display = $this->esc($this->truncate($str, 120));
             $full    = $this->esc($str);
             return '<span title="' . $full . '">' . $display . '</span>';
@@ -237,14 +278,19 @@ final class HtmlFormatter extends AbstractFormatter
                     if (is_scalar($v) && $v !== null && $v !== '') {
                         $parts[] = '<b>' . $this->esc($this->label((string) $k)) . ':</b> ' . $this->esc($this->truncate((string) $v, 40));
                     }
-                    if (count($parts) >= 3) {
+                    if (count($parts) >= 10) {
                         break;
                     }
                 }
                 return implode('<br>', $parts);
             }
 
-            return '<span class="count">' . count($val) . ' ' . (count($val) === 1 ? 'element' : 'elementów') . '</span>';
+            // Indexed list — render values without keys
+            $items = array_map(
+                fn($v) => '<span class="cell-item">' . $this->esc($this->truncate((string) $v, 60)) . '</span>',
+                array_filter($val, fn($v) => is_scalar($v) && $v !== null && $v !== ''),
+            );
+            return $items ? implode(' ', $items) : '<span class="null">—</span>';
         }
 
         return '';
@@ -269,6 +315,11 @@ final class HtmlFormatter extends AbstractFormatter
         }
 
         return true;
+    }
+
+    private function isHtml(string $s): bool
+    {
+        return $s !== strip_tags($s);
     }
 
     private function label(string $key): string
@@ -375,7 +426,8 @@ final class HtmlFormatter extends AbstractFormatter
         .null   { color: var(--null); font-style: italic; }
         .bool-t { color: var(--bool-t); font-weight: 600; }
         .bool-f { color: var(--bool-f); font-weight: 600; }
-        .count  { color: var(--muted); font-style: italic; font-size: .85em; }
+        .count     { color: var(--muted); font-style: italic; font-size: .85em; }
+        .cell-item { display: inline-block; background: #f1f5f9; border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px; font-size: .82em; white-space: nowrap; }
 
         /* ── Key-value grid ── */
         .kv {
@@ -492,10 +544,61 @@ final class HtmlFormatter extends AbstractFormatter
             font-size: .9em;
         }
 
+        /* ── Pagination ── */
+        .pager {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            padding: 10px 14px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--r);
+        }
+        .pager__btn {
+            padding: 5px 14px;
+            font-size: 13px;
+            font-family: var(--font);
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            cursor: pointer;
+            color: var(--text);
+            transition: background .12s;
+        }
+        .pager__btn:hover:not(:disabled) { background: #f1f5f9; }
+        .pager__btn:disabled { opacity: .38; cursor: default; }
+        .pager__btn--go {
+            background: var(--accent);
+            color: #fff;
+            border-color: var(--accent);
+        }
+        .pager__btn--go:hover { background: #1e3a8a; border-color: #1e3a8a; }
+        .pager__form {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .pager__label { font-size: 13px; color: var(--muted); }
+        .pager__input {
+            width: 62px;
+            padding: 4px 8px;
+            font-size: 13px;
+            font-family: var(--font);
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            text-align: center;
+            color: var(--text);
+            background: var(--surface);
+        }
+        .pager__input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+        .pager__info { font-size: 12px; color: var(--muted); margin-left: auto; }
+
         @media (max-width: 600px) {
             .kv { grid-template-columns: 1fr; }
             .kv dt { padding-top: 8px; }
             .kv dt:first-child { padding-top: 0; }
+            .pager__info { display: none; }
         }
         CSS;
     }
@@ -513,6 +616,19 @@ final class HtmlFormatter extends AbstractFormatter
                 const btn = el.querySelector('.sec__hdr');
                 if (btn) btn.setAttribute('aria-expanded', String(!expanded));
             }
+        }
+
+        function pgGo(page) {
+            if (page < 1) return;
+            const url = new URL(window.location.href);
+            url.searchParams.set('page', page);
+            window.location.href = url.toString();
+        }
+
+        function pgSubmit(e) {
+            e.preventDefault();
+            const val = parseInt(document.getElementById('pg-input').value, 10);
+            if (!isNaN(val) && val >= 1) pgGo(val);
         }
         JS;
     }

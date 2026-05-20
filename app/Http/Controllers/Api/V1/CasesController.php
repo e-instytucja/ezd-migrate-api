@@ -21,13 +21,23 @@ final class CasesController extends BaseApiController
 
     public function list(Request $request): Response
     {
-        $data = $this->caseService->getList();
+        $limit  = max(1, min(200, (int) $request->query('limit', '50')));
+        $page   = max(1, (int) $request->query('page', '1'));
+        $offset = ($page - 1) * $limit;
+
+        $data = $this->caseService->getList($offset, $limit);
 
         if (empty($data)) {
             return $this->renderNotFound($request, 'Case list not found.');
         }
 
-        return $this->renderResponse($request, $data);
+        return $this->renderResponse($request, $data, meta: [
+            'page'     => $page,
+            'limit'    => $limit,
+            'count'    => count($data),
+            'has_prev' => $page > 1,
+            'has_next' => count($data) === $limit,
+        ]);
     }
 
     public function show(Request $request, int $id): Response

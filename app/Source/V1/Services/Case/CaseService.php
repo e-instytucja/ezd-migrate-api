@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Source\V1\Services\Case;
 
 use App\Shared\Functions;
@@ -18,25 +19,27 @@ use App\Source\V1\Services\Structure\EmployeeService;
 use Exception;
 use Illuminate\Support\Facades\DB;
 
-class CaseService {
+class CaseService
+{
 
     //idetntfikator sprawy (eurzad_teczka.tekczaUid)
     private $caseUid;
 
     public function __construct(
-        private TypOpisSprawy $caseDetails,
-        private readonly CaseQuery $caseQuery,
-        private readonly ProcessQuery $processQuery,
-        private readonly DocumentService $documentService,
-        private readonly WorkstationQuery $workstationQuery,
+        private TypOpisSprawy                   $caseDetails,
+        private readonly CaseQuery              $caseQuery,
+        private readonly ProcessQuery           $processQuery,
+        private readonly DocumentService        $documentService,
+        private readonly WorkstationQuery       $workstationQuery,
         private readonly DocumentHistoryService $documentHistoryService,
-        private readonly EmployeeService $employeeService,
-        private readonly FormService $formService,
-        private readonly CaseHistoryService $caseHistoryService
-    ) 
+        private readonly EmployeeService        $employeeService,
+        private readonly FormService            $formService,
+        private readonly CaseHistoryService     $caseHistoryService
+    )
     {
 
     }
+
     /**
      * Pobranie opisu sprawy
      *
@@ -115,13 +118,22 @@ class CaseService {
 //        $this->caseDetails->strony = $this->getSidesOfCase();
 
 
-
         return $this->caseDetails;
     }
 
-    public function getList(): array
+    public function getList(int $offset = 0, int $limit = 50): array
     {
-        return $this->caseQuery->getList();
+        $list = $this->caseQuery->getList($offset, $limit);
+        foreach ($list as &$row) {
+            $url = '/api/v1/cases/' . $row['main_document_uid'] . '?format=html';
+
+            $row['url'] = sprintf(
+                '<a href="%s" target="_blank">Podgląd sprawy</a>',
+                $url
+            );
+        }
+
+        return $list;
     }
 
     /**
@@ -226,8 +238,6 @@ class CaseService {
 
         return (empty($sygnaturaTmp)) ? $sygnatura : $sygnaturaTmp;
     }
-
-
 
 
 }
