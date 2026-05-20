@@ -5,6 +5,7 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     working_dir: /var/www/html
+    user: "${UID}:${GID}"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     environment:
