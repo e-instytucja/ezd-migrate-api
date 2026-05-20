@@ -25,18 +25,18 @@ final class CasesController extends BaseApiController
         $page   = max(1, (int) $request->query('page', '1'));
         $offset = ($page - 1) * $limit;
 
-        $data = $this->caseService->getList($offset, $limit);
+        $result = $this->caseService->getList($offset, $limit);
 
-        if (empty($data)) {
+        if (empty($result['data'])) {
             return $this->renderNotFound($request, 'Case list not found.');
         }
 
-        return $this->renderResponse($request, $data, meta: [
+        return $this->renderResponse($request, $result['data'], meta: [
             'page'     => $page,
             'limit'    => $limit,
-            'count'    => count($data),
+            'count'    => $result['count'],
             'has_prev' => $page > 1,
-            'has_next' => count($data) === $limit,
+            'has_next' => count($result['data']) === $limit,
         ]);
     }
 

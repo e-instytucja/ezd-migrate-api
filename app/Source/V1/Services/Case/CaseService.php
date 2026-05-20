@@ -123,6 +123,13 @@ class CaseService
 
     public function getList(int $offset = 0, int $limit = 50): array
     {
+        $count = $this->caseQuery->getListCount();
+        if(empty($count)) {
+            return [
+                'data' => [],
+                'limit' => $limit,
+            ];
+        }
         $list = $this->caseQuery->getList($offset, $limit);
         foreach ($list as &$row) {
             $url = '/api/v1/cases/' . $row['main_document_uid'] . '?format=html';
@@ -132,8 +139,10 @@ class CaseService
                 $url
             );
         }
-
-        return $list;
+        return [
+            'data'  => $list,
+            'count' => $count,
+        ];
     }
 
     /**

@@ -12,7 +12,25 @@ class CaseQuery
     public function getList(int $offset = 0, int $limit = 50)
     {
         $rows = DB::select(<<<SQL
-            SELECT
+            {$this->getListSQL()}
+            ORDER BY id_sprawy ASC, eo.status_sprawy_id DESC
+            LIMIT $limit OFFSET $offset
+        SQL);
+
+        return array_map(fn ($r) => (array) $r, $rows);
+    }
+    public function getListCount()
+    {
+        $count = DB::select(<<<SQL
+            SELECT COUNT(*) FROM ({$this->getListSQL()}) as t
+        SQL);
+        return $count[0]->count;
+    }
+
+    private function getListSQL()
+    {
+        return <<<SQL
+        SELECT
             DISTINCT ON (id_sprawy)
             et.teczka_uid          AS id_sprawy,
             et.teczka_znak_sprawy  AS znak,
@@ -29,11 +47,7 @@ class CaseQuery
             INNER JOIN galaxia_instances      gi  ON gi."instanceId"      = eo."instanceId"
                                                 AND max_status_sprawy_id > 0
             INNER JOIN eurzad_sprawa_przedluzanie sp ON sp.sprawa_uid     = es.sprawa_uid
-            ORDER BY id_sprawy ASC, eo.status_sprawy_id DESC
-            LIMIT $limit OFFSET $offset
-        SQL);
-
-        return array_map(fn ($r) => (array) $r, $rows);
+        SQL;
     }
     public function getTeczkaSyg($uid, $dntas = 0)
     {
