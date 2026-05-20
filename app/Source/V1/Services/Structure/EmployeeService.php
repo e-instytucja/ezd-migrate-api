@@ -13,6 +13,7 @@ use Exception;
 
 class EmployeeService
 {
+    use StructureHelpers;
 
     public function __construct(
         private CaseQuery $caseQuery,
@@ -103,7 +104,7 @@ class EmployeeService
         $employee = new TypPracownik();
         $employee->id_uzytkownika = $uugInfo->user_id;
         $employee->imie = $uugInfo->forename;
-        $employee->nazwisko = $this->getFullSurnameString($uugInfo);
+        $employee->nazwisko = $this->concatSurnames($uugInfo);
         $employee->id_stanowiska = $uugInfo->workstation_id;
         $employee->nazwa_stanowiska = $uugInfo->workstation_description;
         $employee->login = $uugInfo->login;
@@ -113,26 +114,6 @@ class EmployeeService
         return $employee;
     }
 
-    private function getFullSurnameString($user)
-    {
-        $surname = '';
-        if (!empty($user->surname)) {
-            $surname .= $user->surname;
-        }
-        if (!empty($user->surname2)) {
-            if (!empty($surname)) {
-                $surname .= '-';
-            }
-            $surname .= $user->surname2;
-        }
-        if (!empty($user->surname3)) {
-            if (!empty($surname)) {
-                $surname .= '-';
-            }
-            $surname .= $user->surname3;
-        }
 
-        return $surname;
-    }
 
 }

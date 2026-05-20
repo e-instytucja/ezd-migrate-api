@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Http\Controllers\Api\V1\AttachmentController;
 use App\Http\Controllers\Api\V1\CasesController;
 use App\Http\Controllers\Api\V1\DocumentsController;
+use App\Http\Controllers\Api\V1\WorkstationsController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -53,4 +54,10 @@ Route::prefix('v1')
         )
             ->whereNumber('token')
             ->name('attachment.show');
+
+        Route::get(
+            '/workstations',
+            [WorkstationsController::class, 'list']
+        )
+            ->name('workstations.list');
     });
