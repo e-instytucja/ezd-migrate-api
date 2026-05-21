@@ -24,6 +24,7 @@ class CaseService
 
     //idetntfikator sprawy (eurzad_teczka.tekczaUid)
     private $caseUid;
+    private $mainDocumentUid;
 
     public function __construct(
         private TypOpisSprawy                   $caseDetails,
@@ -48,15 +49,16 @@ class CaseService
      * @throws Exception
      * @throws \ReflectionException
      */
-    public function getCaseDetails($mainDocumentUid)
+    public function getCaseDetails($caseUid)
     {
-        $this->caseUid = $this->caseQuery->getCaseUidByMainDocumentUid($mainDocumentUid);
-        $this->caseDetails->znak = $this->caseQuery->getTeczkaSyg($mainDocumentUid);
+        $this->caseUid = $caseUid;
+        $this->mainDocumentUid = $this->caseQuery->getMainDocumentUidByCaseUid($caseUid);
+        $this->caseDetails->znak = $this->caseQuery->getTeczkaSyg($caseUid);
 
-        $processId = $this->processQuery->getBySprawaUid($mainDocumentUid);
+        $processId = $this->processQuery->getBySprawaUid($this->mainDocumentUid);
         if (empty($processId)) {
             throw new Exception(
-                "Brak identyfikatora procesu dla '{$mainDocumentUid}'"
+                "Brak identyfikatora procesu dla '{$this->mainDocumentUid}'"
             );
         }
         $this->caseDetails->id_procesu = $processId;
@@ -66,26 +68,26 @@ class CaseService
 
         $this->caseDetails->nazwa_procesu = $processName;
 
-        $status = $this->caseQuery->getStatus($mainDocumentUid);
+        $status = $this->caseQuery->getStatus($this->mainDocumentUid);
 
         $this->caseDetails->status_procesu = $status;
 
-        $registerDate = $this->caseQuery->getSprawaPrzedluzanie($mainDocumentUid, 'sprawa_createdate');
+        $registerDate = $this->caseQuery->getSprawaPrzedluzanie($this->mainDocumentUid, 'sprawa_createdate');
         if (empty($registerDate)) {
             throw new Exception(
-                "Brak daty rejestracji dla ID: '{$mainDocumentUid}'"
+                "Brak daty rejestracji dla ID: '{$this->mainDocumentUid}'"
             );
         }
 
-        $registerDateToReturn = $this->caseQuery->getTeczkaCreateDateByCaseId($mainDocumentUid);
+        $registerDateToReturn = $this->caseQuery->getMainDocumentCreateDateByCaseUid($this->mainDocumentUid);
         $this->caseDetails->rejestracja = Functions::convertToISO8601($registerDateToReturn);
 
-        $realizationTime = $this->caseQuery->getSprawaPrzedluzanie($mainDocumentUid, 'czas_realizacji');
+        $realizationTime = $this->caseQuery->getSprawaPrzedluzanie($this->mainDocumentUid, 'czas_realizacji');
         if ($realizationTime >= 0) {
             $finishDate = Functions::extendDateByDays($registerDate, $realizationTime);
             if (empty($finishDate)) {
                 throw new Exception(
-                    "Brak daty zakończenia dla ID: '{$mainDocumentUid}'"
+                    "Brak daty zakończenia dla ID: '{$this->mainDocumentUid}'"
                 );
             }
             $finishDate = Functions::convertToISO8601($finishDate);
@@ -97,24 +99,24 @@ class CaseService
 
         $this->caseDetails->wlasciciel = $this->employeeService->getEmployee(
             RodzajPracownika::WLASCICIEL,
-            $mainDocumentUid
+            $this->mainDocumentUid
         );
         $this->caseDetails->utworzyl = $this->employeeService->getEmployee(
             RodzajPracownika::TWORCA,
-            $mainDocumentUid
+            $this->mainDocumentUid
         );
 
-        $this->caseDetails->znak_szczegolowy = $this->getDetailsOfCaseSign($mainDocumentUid);
+        $this->caseDetails->znak_szczegolowy = $this->getDetailsOfCaseSign($caseUid);
         if (empty($this->caseDetails->znak_szczegolowy->komorka_symbol)) {
             $this->caseDetails->znak_szczegolowy->komorka_symbol = $this->caseDetails->wlasciciel->nazwa_stanowiska;
         }
 
-        $caseTitleAndDesc = $this->caseQuery->getTitleAndDescription($mainDocumentUid);
+        $caseTitleAndDesc = $this->caseQuery->getTitleAndDescription($caseUid);
         $this->caseDetails->opis = $caseTitleAndDesc->opis_sprawy;
         $this->caseDetails->tytul = $caseTitleAndDesc->tytul_sprawy;
         $this->caseDetails->dokumenty = $this->documentService->getDocumentsListByCaseUID($this->caseUid);
-        $this->caseDetails->dane_formularza = $this->formService->getFormValues($mainDocumentUid, $normalizedProcessName);
-        $this->caseDetails->historia_obiegu = $this->caseHistoryService->getHistory($mainDocumentUid);
+        $this->caseDetails->dane_formularza = $this->formService->getFormValues($this->mainDocumentUid, $normalizedProcessName);
+        $this->caseDetails->historia_obiegu = $this->caseHistoryService->getHistory($this->mainDocumentUid);
 //        $this->caseDetails->udostepniona = $employee->getEmployeesWhoSharedCase($mainDocumentUid);
 //        $this->caseDetails->strony = $this->getSidesOfCase();
 
@@ -133,7 +135,7 @@ class CaseService
         }
         $list = $this->caseQuery->getList($offset, $limit);
         foreach ($list as &$row) {
-            $url = '/api/v1/cases/' . $row['main_document_uid'] . '?format=html';
+            $url = '/api/v1/cases/' . $row['id_sprawy'] . '?format=html';
 
             $row['url'] = sprintf(
                 '<a href="%s" target="_blank">Podgląd sprawy</a>',
@@ -214,15 +216,15 @@ class CaseService
         return $this->employeeService->getEmployeeInfoByUUgId($uugid);
     }
 
-    private function getDetailsOfCaseSign($mainDocumentUid): TypZnakSprawy
+    private function getDetailsOfCaseSign(string $caseUid): TypZnakSprawy
     {
-        $caseData = $this->caseQuery->getAllFromTeczkaBySprawaUid($mainDocumentUid);
+        $caseData = $this->caseQuery->getAllFromTeczkaBySprawaUid($caseUid);
 
         $typZnakSprawy = new TypZnakSprawy();
 
         if (empty($caseData->teczka_sygnatura)) {
             throw new Exception(
-                "Brak JRWA dla ID: '{$mainDocumentUid}'"
+                "Brak JRWA dla ID: '{$caseUid}'"
             );
         }
         $jrwa = $this->parseSymbolFromSygnatura($caseData->teczka_sygnatura);

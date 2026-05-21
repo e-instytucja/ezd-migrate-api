@@ -29,10 +29,10 @@ Route::prefix('v1')
             ->name('cases.list');
 
         Route::get(
-            '/cases/{id}',
+            '/cases/{caseUid}',
             [CasesController::class, 'show']
         )
-            ->whereNumber('id')
+            ->where('caseUid', '[a-f0-9]{13}')
             ->name('cases.show');
 
         Route::get(

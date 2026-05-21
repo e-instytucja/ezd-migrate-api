@@ -175,20 +175,20 @@ WHERE eo.status_sprawy_id = r.status_sprawy_id;
         SQL;
 
     }
-    public function getTeczkaSyg($uid, $dntas = 0)
+    public function getTeczkaSyg($caseUid, $dntas = 0)
     {
         return DB::table('eurzad_teczka')
-            ->where('sprawa_uid', $uid)
+            ->where('teczka_uid', $caseUid)
             ->where('dntas', $dntas)
             ->value('teczka_znak_sprawy');
     }
 
-    public function getCaseUidByMainDocumentUid($mainDocumentUid)
+    public function getMainDocumentUidByCaseUid($caseUid)
     {
         return DB::table('eurzad_teczka')
-            ->where('sprawa_uid', $mainDocumentUid)
+            ->where('teczka_uid', $caseUid)
             ->where('dntas', 0)
-            ->value('teczka_uid');
+            ->value('sprawa_uid');
     }
     public function getStatus($uid)
     {
@@ -230,13 +230,13 @@ WHERE eo.status_sprawy_id = r.status_sprawy_id;
         return $createdate;
     }
 
-    public function getTeczkaCreateDateByCaseId($caseId = '')
+    public function getMainDocumentCreateDateByCaseUid($mainDocumentUid)
     {
         $createdate = DB::table('eurzad_sprawa')
-            ->where('sprawa_uid', $caseId)
+            ->where('sprawa_uid', $mainDocumentUid)
             ->value('sprawa_createdate');
         if(empty($createdate)) {
-            throw new \Exception("Brak danych dla sprawy {$caseId}");
+            throw new \Exception("Brak danych dla sprawy {$mainDocumentUid}");
         }
         return $createdate;
     }
@@ -299,7 +299,7 @@ WHERE eo.status_sprawy_id = r.status_sprawy_id;
     }
 
     public function getAllFromTeczkaBySprawaUid(
-        $uid
+        $caseUid
     ): object {
         $ret = DB::table('eurzad_teczka as t')
             ->leftJoin(
@@ -308,7 +308,7 @@ WHERE eo.status_sprawy_id = r.status_sprawy_id;
                 '=',
                 'tp.id'
             )
-            ->where('t.sprawa_uid', $uid)
+            ->where('t.teczka_uid', $caseUid)
             ->select(
                 't.*',
                 'tp.opis as opis_zbioru'
@@ -328,7 +328,7 @@ WHERE eo.status_sprawy_id = r.status_sprawy_id;
     public function getTitleAndDescription($caseUid): ?object
     {
         return DB::table('eurzad_teczka')
-            ->where('sprawa_uid', $caseUid)
+            ->where('teczka_uid', $caseUid)
             ->first([
                 'tytul_sprawy',
                 'opis_sprawy',

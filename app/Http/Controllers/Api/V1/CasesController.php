@@ -40,9 +40,9 @@ final class CasesController extends BaseApiController
         ]);
     }
 
-    public function show(Request $request, int $id): Response
+    public function show(Request $request, string $caseUid): Response
     {
-        $data = $this->caseService->getCaseDetails($id);
+        $data = $this->caseService->getCaseDetails($caseUid);
 
         if ($data === null) {
             return $this->renderNotFound($request, "Case '{$id}' not found.");
