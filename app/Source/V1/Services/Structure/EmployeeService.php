@@ -5,7 +5,7 @@ namespace App\Source\V1\Services\Structure;
 use App\Source\V1\DTO\TypPracownik;
 use App\Source\V1\Enum\RodzajPracownika;
 use App\Source\V1\Enum\TypDokumentu;
-use App\Source\V1\Queries\CaseQuery;
+use App\Source\V1\Queries\Case\CaseQuery;
 use App\Source\V1\Queries\Structure\UugQuery;
 use App\Source\V1\Queries\Structure\WorkstationQuery;
 use App\Source\V1\Services\Document\HistoryService;

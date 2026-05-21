@@ -3,7 +3,7 @@ declare(strict_types=1);
 namespace App\Source\V1\Services\Case;
 
 use App\Source\V1\DTO\TypHistoriaObiegu;
-use App\Source\V1\Queries\CaseQuery;
+use App\Source\V1\Queries\Case\CaseQuery;
 use App\Source\V1\Services\Structure\EmployeeService;
 
 class HistoryService

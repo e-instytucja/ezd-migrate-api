@@ -39,6 +39,8 @@ services:
   db:
     image: postgres:16
     restart: unless-stopped
+    ports:
+      - "5434:5432"
     environment:
       POSTGRES_DB: ezd_chojnice
       POSTGRES_USER: laravel

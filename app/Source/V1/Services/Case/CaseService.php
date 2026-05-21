@@ -8,16 +8,16 @@ use App\Source\V1\DTO\TypPracownik;
 use App\Source\V1\DTO\TypZnakSprawy;
 use App\Source\V1\Enum\RodzajPracownika;
 use App\Source\V1\Enum\TypDokumentu;
-use App\Source\V1\Queries\CaseQuery;
+use App\Source\V1\Queries\Case\CaseQuery;
 use App\Source\V1\Queries\ProcessQuery;
 use App\Source\V1\Queries\Structure\WorkstationQuery;
+use App\Source\V1\Services\Case\HistoryService as CaseHistoryService;
 use App\Source\V1\Services\Document\DocumentService;
 use App\Source\V1\Services\Document\HistoryService as DocumentHistoryService;
-use App\Source\V1\Services\Case\HistoryService as CaseHistoryService;
 use App\Source\V1\Services\Form\FormService;
 use App\Source\V1\Services\Structure\EmployeeService;
+use App\Source\V1\Services\Suppliant\SupliantService;
 use Exception;
-use Illuminate\Support\Facades\DB;
 
 class CaseService
 {
@@ -34,7 +34,8 @@ class CaseService
         private readonly DocumentHistoryService $documentHistoryService,
         private readonly EmployeeService        $employeeService,
         private readonly FormService            $formService,
-        private readonly CaseHistoryService     $caseHistoryService
+        private readonly CaseHistoryService     $caseHistoryService,
+        private readonly SupliantService        $supliantService
     )
     {
 
@@ -138,6 +139,12 @@ class CaseService
                 '<a href="%s" target="_blank">Podgląd sprawy</a>',
                 $url
             );
+            if($row['has_pozostali_interesanci'] === true) {
+                $row['pozostali_interesanci'] = $this->supliantService->getAdditionalSuppliants(
+                    $row['main_document_uid']
+                );
+            }
+
         }
         return [
             'data'  => $list,

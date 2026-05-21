@@ -4,18 +4,13 @@ namespace App\Source\V1\Services\Document;
 
 use App\Shared\Functions;
 use App\Source\V1\DTO\TypPozycjaDokumentu;
-use App\Source\V1\Enum\DocumentQueryContext;
 use App\Source\V1\Enum\RodzajPracownika;
 use App\Source\V1\Enum\TypDokumentu;
-use App\Source\V1\Queries\CaseQuery;
+use App\Source\V1\Queries\Case\CaseQuery;
 use App\Source\V1\Queries\Document\DocumentQuery;
-use App\Source\V1\Queries\Document\QueryBuilder;
 use App\Source\V1\Queries\Form\FormQuery;
-use App\Source\V1\Services\Form\FormService;
 use App\Source\V1\Services\Structure\EmployeeService;
 use Exception;
-use Illuminate\Support\Facades\DB;
-use stdClass;
 
 class DocumentService
 {
