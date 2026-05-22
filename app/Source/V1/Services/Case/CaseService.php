@@ -145,7 +145,7 @@ class CaseService
             $row['interesant'] = Functions::normalizeText($row['interesant']);
             $row['interesant_adres'] = Functions::normalizeText($row['interesant_adres']);
             $row['interesant_meta'] = [
-                'interesant_type' => $row['interesant_type'],
+                'interesant_type' => $row['interesant_type']==='firma' ? 'instytucja' : 'osoba',
             ];
 
             if ($row['has_pozostali_interesanci'] === true) {
