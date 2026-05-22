@@ -36,17 +36,31 @@ Route::prefix('v1')
             ->name('cases.show');
 
         Route::get(
+            '/cases/{caseUid}/attachments',
+            [AttachmentController::class, 'caseAttachments']
+        )
+            ->where('caseUid', '[a-f0-9]{13}')
+            ->name('cases.attachments');
+
+        Route::get(
             '/documents',
             [DocumentsController::class, 'list']
         )
             ->name('document.list');
 
         Route::get(
-            '/documents/{id}',
+            '/documents/{documentId}',
             [DocumentsController::class, 'show']
         )
-            ->whereNumber('id')
+            ->whereNumber('documentId')
             ->name('documents.show');
+
+        Route::get(
+            '/documents/{documentId}/attachments',
+            [AttachmentController::class, 'documentAttachments']
+        )
+            ->whereNumber('documentId')
+            ->name('documents.attachments');
 
         Route::get(
             '/attachment/{token}',
@@ -54,11 +68,6 @@ Route::prefix('v1')
         )
             ->whereNumber('token')
             ->name('attachment.show');
-
-        Route::post(
-            '/attachments/details',
-            [AttachmentController::class, 'details']
-        )->name('attachments.details');
 
         Route::get(
             '/workstations',

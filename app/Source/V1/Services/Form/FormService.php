@@ -28,9 +28,9 @@ class FormService {
     /**
      * @throws \JsonException
      */
-    public function getFormValues($documentId, $formName)
+    public function getFormValues($mainDocumentUid, $formName)
     {
-        $formFromDb = $this->formQuery->getValuesFromFormDane($documentId);
+        $formFromDb = $this->formQuery->getValuesFromFormDane($mainDocumentUid);
         $formStruct = $this->formStruct($formName);
         $clientsCount = 0;
         foreach ($formFromDb as $val) {

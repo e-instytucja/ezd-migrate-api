@@ -24,16 +24,12 @@ class AttachmentController
         return response()->json(['data' => $data]);
     }
 
-    public function details(Request $request): JsonResponse
+    /**
+     * @throws \JsonException
+     */
+    public function caseAttachments(string $caseUid): JsonResponse
     {
-        $validated = $request->validate([
-            'uids' => ['required', 'array'],
-            'uids.*' => ['string'],
-        ]);
-
-        $data = $this->service->getAttachmentDetails(
-            $validated['uids']
-        );
+        $data = $this->service->getCaseAttachments($caseUid);
 
         return response()->json([
             'data' => $data,

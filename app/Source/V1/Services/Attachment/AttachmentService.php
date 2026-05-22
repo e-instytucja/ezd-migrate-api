@@ -4,11 +4,17 @@ namespace App\Source\V1\Services\Attachment;
 use App\Source\V1\DTO\TypHistoriaObiegu;
 use App\Source\V1\DTO\TypZalacznik;
 use App\Source\V1\Queries\Attachment\AttachmentQuery;
+use App\Source\V1\Queries\Case\CaseQuery;
+use App\Source\V1\Queries\Form\FormQuery;
 
 class AttachmentService
 {
+
+
     public function __construct(
         private readonly AttachmentQuery $attachmentQuery,
+        private readonly CaseQuery $caseQuery,
+        private readonly FormQuery $formQuery
     )
     {
 
@@ -16,12 +22,11 @@ class AttachmentService
 
     /**
      * @param $attachmentUids
-     * @return TypHistoriaObiegu[]
+     * @return TypZalacznik[]
      * @throws \JsonException
      */
     public function getAttachmentDetails(string $attachmentUids): array
     {
-
         $attachmentUids = array_values(array_filter(explode(';', $attachmentUids)));
         if(empty($attachmentUids)) {
             return [];
@@ -62,5 +67,21 @@ class AttachmentService
         header('Content-Length: ' . strlen($content));
 
         return $content;
+    }
+
+    /**
+     * @param $caseUid
+     * @return array|TypZalacznik[]
+     * @throws \JsonException
+     */
+    public function getCaseAttachments($caseUid): array
+    {
+        $mainDocumentUid = $this->caseQuery->getMainDocumentUidByCaseUid($caseUid);
+        $attachments = $this->formQuery->getValuesFromFormDane($mainDocumentUid, 'pliki');
+        if(empty($attachments)) {
+            return [];
+        }
+        $attachments = implode(';', array_column($attachments, 'form_dane_wartosc'));
+        return $this->getAttachmentDetails($attachments);
     }
 }
