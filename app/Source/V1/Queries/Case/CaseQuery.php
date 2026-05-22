@@ -97,6 +97,7 @@ SQL;
                 fd_pliki.form_dane_wartosc                                    AS zalaczniki,
                 ps_petent.view_podmiot as interesant,
                 ps_petent.view_adres_korespondencyjny as interesant_adres,
+                pd_petent.typ_osoby as interesant_type,
                 EXISTS (
                     SELECT 1
                     FROM eurzad_form_dane fd
@@ -169,6 +170,7 @@ WHERE eo.status_sprawy_id = r.status_sprawy_id;
                 --         ON (fd_tytul.sprawa_uid = es.sprawa_uid AND fd_tytul.form_dane_pole = 'dokument_tytul')
                 LEFT JOIN eurzad_form_dane fd_petent
                        ON (fd_petent.sprawa_uid = es.sprawa_uid AND fd_petent.form_dane_pole = 'petent_uid')
+                LEFT JOIN eurzad_petent_dane pd_petent ON (pd_petent.main_petent_uid = fd_petent.form_dane_wartosc)
                 LEFT JOIN eurzad_petent_search ps_petent ON (ps_petent.main_petent_uid = fd_petent.form_dane_wartosc)
                 LEFT JOIN eurzad_form_dane fd_pliki
                        ON (fd_pliki.sprawa_uid = es.sprawa_uid AND fd_pliki.form_dane_pole = 'pliki')
