@@ -6,11 +6,14 @@ readonly class TypZalacznik
 {
 
     public function __construct(
+        public string $filename,
         public string $nazwa,
         public int $rozmiar,
         public string $url,
         public string $md5,
         public string $opis,
+        public string $mime,
+        public string $extension
     )
     {
     }

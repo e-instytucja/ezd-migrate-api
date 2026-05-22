@@ -63,10 +63,10 @@ Route::prefix('v1')
             ->name('documents.attachments');
 
         Route::get(
-            '/attachment/{token}',
+            '/attachment/{attachmentUid}',
             [AttachmentController::class, 'show']
         )
-            ->whereNumber('token')
+            ->where('caseUid', '[a-f0-9]{13}')
             ->name('attachment.show');
 
         Route::get(
