@@ -153,12 +153,13 @@ class CaseService
                     );
                 $row['pozostali_interesanci_tooltip_count'] = count($row['pozostali_interesanci']);
                 $pozostaliInteresanciTooltip = [];
-                foreach ($row['pozostali_interesanci'] as $i =>  &$interesant) {
+                foreach ($row['pozostali_interesanci'] as &$interesant) {
                     $interesant['interesant'] = Functions::normalizeText($interesant['interesant']);
                     $interesant['interesant_adres'] = Functions::normalizeText($interesant['interesant_adres']);
 
                     $pozostaliInteresanciTooltip[] = $interesant['interesant'];
                 }
+                unset($interesant);
                 $row['pozostali_interesanci_tooltip'] = implode(', ', $pozostaliInteresanciTooltip);
             }
 
