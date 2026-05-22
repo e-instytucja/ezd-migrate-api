@@ -55,6 +55,11 @@ Route::prefix('v1')
             ->whereNumber('token')
             ->name('attachment.show');
 
+        Route::post(
+            '/attachments/details',
+            [AttachmentController::class, 'details']
+        )->name('attachments.details');
+
         Route::get(
             '/workstations',
             [WorkstationsController::class, 'list']

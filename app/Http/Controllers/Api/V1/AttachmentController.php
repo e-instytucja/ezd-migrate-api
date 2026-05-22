@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Source\V1\Services\Attachment\AttachmentService;
+use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
 class AttachmentController
@@ -20,6 +21,24 @@ class AttachmentController
             ], 404);
         }
 
-    return response()->json(['data' => $data]);
+        return response()->json(['data' => $data]);
     }
+
+    public function details(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'uids' => ['required', 'array'],
+            'uids.*' => ['string'],
+        ]);
+
+        $data = $this->service->getAttachmentDetails(
+            $validated['uids']
+        );
+
+        return response()->json([
+            'data' => $data,
+        ]);
+    }
+
+
 }
