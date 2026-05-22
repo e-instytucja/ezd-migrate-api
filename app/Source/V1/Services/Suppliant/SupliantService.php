@@ -1,6 +1,7 @@
 <?php
 namespace App\Source\V1\Services\Suppliant;
 
+use App\Shared\Functions;
 use App\Source\V1\Queries\Suppliant\SuppliantQuery;
 use Illuminate\Support\Facades\DB;
 

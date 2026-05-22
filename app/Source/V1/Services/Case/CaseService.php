@@ -141,10 +141,21 @@ class CaseService
                 '<a href="%s" target="_blank">Podgląd sprawy</a>',
                 $url
             );
-            if($row['has_pozostali_interesanci'] === true) {
-                $row['pozostali_interesanci'] = $this->supliantService->getAdditionalSuppliants(
-                    $row['main_document_uid']
-                );
+
+            $row['interesant'] = Functions::normalizeText($row['interesant']);
+            $row['interesant_adres'] = Functions::normalizeText($row['interesant_adres']);
+
+            if ($row['has_pozostali_interesanci'] === true) {
+
+                $row['pozostali_interesanci'] =
+                    $this->supliantService->getAdditionalSuppliants(
+                        $row['main_document_uid']
+                    );
+
+                foreach ($row['pozostali_interesanci'] as &$interesant) {
+                    $interesant['interesant'] = Functions::normalizeText($interesant['interesant']);
+                    $interesant['interesant_adres'] = Functions::normalizeText($interesant['interesant_adres']);
+                }
             }
 
         }

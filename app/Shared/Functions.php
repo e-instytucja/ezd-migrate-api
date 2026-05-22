@@ -35,6 +35,21 @@ class Functions {
         return $filteredDateTime;
     }
 
+    public static function normalizeText(?string $text): string
+    {
+        if (empty($text)) {
+            return '';
+        }
+
+        $text = preg_replace('/<br\s*\/?>/i', "\n", $text);
+
+        return html_entity_decode(
+            strip_tags($text),
+            ENT_QUOTES | ENT_HTML5,
+            'UTF-8'
+        );
+    }
+
 
 
     /**
