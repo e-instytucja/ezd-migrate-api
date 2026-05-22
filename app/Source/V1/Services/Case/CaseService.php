@@ -156,12 +156,12 @@ class CaseService
                     $interesant['interesant'] = Functions::normalizeText($interesant['interesant']);
                     $interesant['interesant_adres'] = Functions::normalizeText($interesant['interesant_adres']);
                     $row['pozostali_interesanci_tooltip'][] =
-                        $interesant['interesant']
+                        Functions::normalizeText($interesant['interesant']
                         . (
                         !empty($interesant['interesant_adres'])
                             ? '<br>' . $interesant['interesant_adres']
                             : ''
-                        );
+                        ));
                 }
             }
 
