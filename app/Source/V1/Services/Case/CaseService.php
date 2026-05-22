@@ -156,6 +156,7 @@ class CaseService
                 foreach ($row['pozostali_interesanci'] as $i =>  &$interesant) {
                     $interesant['interesant'] = Functions::normalizeText($interesant['interesant']);
                     $interesant['interesant_adres'] = Functions::normalizeText($interesant['interesant_adres']);
+
                     $pozostaliInteresanciTooltip[] = $interesant['interesant'];
                 }
                 $row['pozostali_interesanci_tooltip'] = implode(', ', $pozostaliInteresanciTooltip);
