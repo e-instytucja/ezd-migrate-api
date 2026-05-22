@@ -56,8 +56,8 @@ AND EXISTS (
     SELECT 1
     FROM eurzad_form_dane fd
     WHERE fd.sprawa_uid = es.sprawa_uid
-      AND fd.form_dane_pole = 'interesanci'
-      AND NULLIF(TRIM(fd.form_dane_wartosc), '') IS NOT NULL
+      AND fd.form_dane_pole = 'pliki'
+      AND LENGTH(fd.form_dane_wartosc) > 13
 )
 SQL;
         return $where;
