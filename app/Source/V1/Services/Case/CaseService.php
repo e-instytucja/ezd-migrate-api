@@ -135,13 +135,6 @@ class CaseService
         }
         $list = $this->caseQuery->getList($offset, $limit);
         foreach ($list as &$row) {
-            $url = '/api/v1/cases/' . $row['id_sprawy'] . '?format=html';
-
-            $row['url'] = sprintf(
-                '<a href="%s" target="_blank">Podgląd sprawy</a>',
-                $url
-            );
-
             $row['interesant'] = Functions::normalizeText($row['interesant']);
             $row['interesant_adres'] = Functions::normalizeText($row['interesant_adres']);
             $row['interesant_meta'] = [

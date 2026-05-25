@@ -222,9 +222,9 @@ final class HtmlFormatter extends AbstractFormatter
         $tbody = '';
         foreach ($list as $row) {
             $tbody .= '<tr>';
-            foreach (array_keys($keys) as $k) {
-                $cell   = is_array($row) ? ($row[$k] ?? null) : null;
-                $tbody .= '<td>' . $this->renderCell($cell) . '</td>';
+            foreach (array_keys($keys) as $keyName) {
+                $cell   = is_array($row) ? ($row[$keyName] ?? null) : null;
+                $tbody .= '<td>' . $this->renderCell($cell, $keyName) . '</td>';
             }
             $tbody .= '</tr>';
         }
@@ -250,8 +250,20 @@ final class HtmlFormatter extends AbstractFormatter
 
     // ── Table cell renderer ───────────────────────────────────────────────────
 
-    private function renderCell(mixed $val): string
+    private function renderCell(mixed $val, $keyName = ''): string
     {
+        if($keyName === 'zalaczniki') {
+            $valArr = explode(';', $val);
+            foreach ($valArr as &$item) {
+                $item = "<a href='attachment/" . $item . "' target='_blank'>" . $item . "</a>";
+
+            }
+            $val = implode('<br>', $valArr);
+        }
+
+        if($keyName === 'id_sprawy') {
+            $val = "<a href='cases/" . $val . "' target='_blank'>" . $val . "</a>";
+        }
         if (is_null($val)) {
             return '<span class="null">—</span>';
         }

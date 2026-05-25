@@ -80,7 +80,7 @@ class FormService {
                         $ret[$val["form_struktura_pole"]] = $departamentInfo['groupName'];
                         break;
                     case 'attachment':
-                        $ret[$val["form_struktura_pole"]] = $this->attachmentService->getAttachmentDetails($val["form_dane_wartosc"]);
+                        $ret[$val["form_struktura_pole"]] = $this->attachmentService->getAttachmentsDetails($val["form_dane_wartosc"]);
                         break;
                     case 'slownik':
                         $ret[$val["form_struktura_pole"]] = $this->dictionaryService->getDictionaryValue($val["form_dane_wartosc"]);

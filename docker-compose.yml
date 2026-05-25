@@ -18,6 +18,7 @@ services:
       IMPORT_DB_PASSWORD: "${IMPORT_DB_PASSWORD:-postgres}"
     volumes:
       - .:/var/www/html
+      - ../../chojnice:/var/www/files:ro
     networks:
       - laravel
     depends_on:

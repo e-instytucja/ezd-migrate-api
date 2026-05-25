@@ -6,6 +6,9 @@ use App\Source\V1\DTO\TypZalacznik;
 use App\Source\V1\Queries\Attachment\AttachmentQuery;
 use App\Source\V1\Queries\Case\CaseQuery;
 use App\Source\V1\Queries\Form\FormQuery;
+use DateTime;
+use Exception;
+use RuntimeException;
 
 class AttachmentService
 {
@@ -20,12 +23,20 @@ class AttachmentService
 
     }
 
+    private function getAttachmentDetails(string $attachmentUid): ?TypZalacznik
+    {
+        $attachmentDetails = $this->getAttachmentsDetails($attachmentUid);
+        if(!empty($attachmentDetails)) {
+            return $attachmentDetails[0];
+        }
+        return null;
+    }
     /**
      * @param $attachmentUids
      * @return TypZalacznik[]
      * @throws \JsonException
      */
-    public function getAttachmentDetails(string $attachmentUids): array
+    public function getAttachmentsDetails(string $attachmentUids): array
     {
         $attachmentUids = array_values(array_filter(explode(';', $attachmentUids)));
         if(empty($attachmentUids)) {
@@ -38,19 +49,153 @@ class AttachmentService
             $fileInfo = $this->resolveFileInfo($item->zalacznik_original_filename);
 
             $typZalacznik = new TypZalacznik(
-                filename:  $item->zalacznik_filename,
-                nazwa:     $item->zalacznik_original_filename,
-                rozmiar:   $item->zalacznik_filesize,
-                url:       $url,
-                md5:       $item->zalacznik_md5_sum,
-                opis:      $item->zalacznik_opis,
-                mime:      $fileInfo['mime'],
-                extension: $fileInfo['extension']
+                filename: $item->zalacznik_filename,
+                nazwa: $item->zalacznik_original_filename,
+                zalacznik_obcy_uid: $item->zalacznik_obcy_uid,
+                rozmiar: $item->zalacznik_filesize,
+                url: $url,
+                md5: $item->zalacznik_md5_sum,
+                opis: $item->zalacznik_opis,
+                mime: $fileInfo['mime'],
+                data_utworzenia: $item->zalacznik_createdate,
+                extension: $fileInfo['extension'],
             );
             $attachmentDetails[] = $typZalacznik;
 
         }
         return $attachmentDetails;
+    }
+
+
+
+    private function createUrl(object $item): string
+    {
+        return base64_encode(
+            json_encode([
+                'attachmentUid' => $item->zalacznik_uid,
+                'md5' => $item->zalacznik_md5_sum
+            ], JSON_THROW_ON_ERROR)
+        );
+    }
+
+    /**
+     * @return array{
+     *     path: string,
+     *     mime: string,
+     *     filename: string,
+     *     content_length: int,
+     *     extension: string,
+     *     md5: string
+     * }
+     */
+    public function getAttachmentContent(string $token): array
+    {
+        $attachmentDetails = $this->getAttachmentDetails($token);
+        if ($attachmentDetails === null) {
+            throw new RuntimeException('Attachment details not found');
+        }
+
+        $path = $this->buildAttachmentPath(
+            basePath: (string) env('FILES_URL'),
+            createdAt: $attachmentDetails->data_utworzenia,
+            foreignUid: $attachmentDetails->zalacznik_obcy_uid,
+            storedFilename: $attachmentDetails->filename
+        );
+
+        if (!is_file($path) || !is_readable($path)) {
+            throw new RuntimeException('File not found or not readable');
+        }
+
+        $fileSize = filesize($path);
+        if ($fileSize === false) {
+            throw new RuntimeException('Cannot resolve file size');
+        }
+
+        $downloadFilename = $this->resolveDownloadFilename(
+            originalName: $attachmentDetails->nazwa,
+            storedFilename: $attachmentDetails->filename,
+            extension: $attachmentDetails->extension
+        );
+
+        return [
+            'path' => $path,
+            'mime' => $attachmentDetails->mime !== '' ? $attachmentDetails->mime : 'application/octet-stream',
+            'filename' => $downloadFilename,
+            'content_length' => $fileSize,
+            'extension' => $attachmentDetails->extension,
+            'md5' => $attachmentDetails->md5,
+        ];
+    }
+
+    private function buildAttachmentPath(
+        string $basePath,
+        string $createdAt,
+        string $foreignUid,
+        string $storedFilename
+    ): string {
+        $basePath = rtrim($basePath, "\\/ ");
+        $foreignUid = basename($foreignUid);
+        $storedFilename = basename($storedFilename);
+        $datePath = trim($this->buildPathFromDate($createdAt), "\\/");
+
+        if ($basePath === '' || $datePath === '' || $foreignUid === '' || $storedFilename === '') {
+            throw new RuntimeException('Invalid attachment path data');
+        }
+
+        return $basePath
+            . DIRECTORY_SEPARATOR . $datePath
+            . DIRECTORY_SEPARATOR . $foreignUid
+            . DIRECTORY_SEPARATOR . $storedFilename;
+    }
+
+    private function resolveDownloadFilename(
+        string $originalName,
+        string $storedFilename,
+        string $extension
+    ): string {
+        $downloadFilename = trim($originalName) !== ''
+            ? $originalName
+            : $storedFilename;
+
+        if (pathinfo($downloadFilename, PATHINFO_EXTENSION) === '' && $extension !== '') {
+            $downloadFilename .= '.' . $extension;
+        }
+
+        return $downloadFilename;
+    }
+
+    private function buildPathFromDate(string $dataUtworzenia): string
+    {
+        // usuń apostrofy z DB timestamp (np. '2024-01-25 12:00:00')
+        $dataUtworzenia = trim($dataUtworzenia, "' ");
+
+        try {
+            $date = new DateTime($dataUtworzenia);
+        } catch (Exception $e) {
+            return '';
+        }
+
+        return sprintf(
+            '/%s/%s/%s/',
+            $date->format('Y'),
+            $date->format('m'),
+            $date->format('d')
+        );
+    }
+    /**
+     * @param $caseUid
+     * @return array|TypZalacznik[]
+     * @throws \JsonException
+     */
+    public function getCaseAttachments(string $caseUid): array
+    {
+        $mainDocumentUid = $this->caseQuery->getMainDocumentUidByCaseUid($caseUid);
+        $attachments = $this->formQuery->getValuesFromFormDane($mainDocumentUid, 'pliki');
+        if(empty($attachments)) {
+            return [];
+        }
+        $attachments = implode(';', array_column($attachments, 'form_dane_wartosc'));
+        return $this->getAttachmentsDetails($attachments);
     }
 
     private function resolveFileInfo(string $filename): array
@@ -134,42 +279,5 @@ class AttachmentService
             'mime'      => $map[$ext] ?? 'application/octet-stream',
             'extension' => $ext,
         ];
-    }
-
-    private function createUrl($item): string
-    {
-        return base64_encode(
-            json_encode([
-                'attachmentUid' => $item->zalacznik_uid,
-                'md5' => $item->zalacznik_md5_sum
-            ], JSON_THROW_ON_ERROR)
-        );
-    }
-
-    public function getAttachmentContent($token): string
-    {
-        $content = "%PDF-1.4\nPrzykłądowy plik pdf dla token:  {$token}\n%%EOF";
-
-        header('Content-Type: application/pdf');
-        header('Content-Disposition: attachment; filename="dokument.pdf"');
-        header('Content-Length: ' . strlen($content));
-
-        return $content;
-    }
-
-    /**
-     * @param $caseUid
-     * @return array|TypZalacznik[]
-     * @throws \JsonException
-     */
-    public function getCaseAttachments($caseUid): array
-    {
-        $mainDocumentUid = $this->caseQuery->getMainDocumentUidByCaseUid($caseUid);
-        $attachments = $this->formQuery->getValuesFromFormDane($mainDocumentUid, 'pliki');
-        if(empty($attachments)) {
-            return [];
-        }
-        $attachments = implode(';', array_column($attachments, 'form_dane_wartosc'));
-        return $this->getAttachmentDetails($attachments);
     }
 }

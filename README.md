@@ -25,6 +25,8 @@ Aplikacja HTTP: [http://localhost:8080](http://localhost:8080)
 git clone https://github.com/e-instytucja/ezd-migrate-api.git .
 
 mkdir -p storage/framework/{views,cache,sessions}
+mkdir -p storage/logs
+mkdir -p storage/files/{attachments}
 mkdir -p bootstrap/cache
 mkdir -p resources/views
 chmod -R 775 storage bootstrap/cache
@@ -45,6 +47,12 @@ DB_USERNAME=ezd
 DB_PASSWORD=<nasze_standardowe>
 ```
 
+oraz link do repozytorium z załącznikami:
+```dotenv
+FILES_URL="/var/www/files"
+```
+
+wykonaj polecenia:
 ```bash
 php artisan key:generate
 php artisan migrate
