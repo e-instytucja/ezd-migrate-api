@@ -141,8 +141,8 @@ class CaseService
         foreach ($list as &$row) {
             $row['zalaczniki_details'] = $this->attachmentService->getAttachmentsDetails($row['zalaczniki']);
 
-//            $row['interesant'] = Functions::normalizeText($row['interesant']);
-//            $row['interesant_adres'] = Functions::normalizeText($row['interesant_adres']);
+            $row['interesant'] = Functions::normalizeText($row['interesant']);
+            $row['interesant_adres'] = Functions::normalizeText($row['interesant_adres']);
             $row['interesant_meta'] = [
                 'interesant_type' => $row['interesant_type'] === 'firma' ? 'instytucja' : 'osoba',
             ];

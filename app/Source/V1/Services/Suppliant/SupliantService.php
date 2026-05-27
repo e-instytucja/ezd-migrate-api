@@ -19,6 +19,18 @@ class SupliantService {
         return $this->normalizeSuppliants($suppliants);
     }
 
+    public function getSupliantById($suppliantUid)
+    {
+        $suppliant = $this->suppliantQuery->getSupliantById($suppliantUid);
+
+        return $this->normalizeSuppliants($suppliant);
+    }
+
+    public function getPetentRoleById($suppliantUid)
+    {
+        return $this->suppliantQuery->getPetentRoleById($suppliantUid);
+    }
+
     private function normalizeSuppliants($data): array
     {
         $data = json_decode(json_encode($data), true);
@@ -29,8 +41,7 @@ class SupliantService {
 
         array_walk_recursive($data, static function (&$value): void {
             if (is_string($value) && $value !== '') {
-//                $value = Functions::normalizeText($value);
-                $value = 'bob';
+                $value = Functions::normalizeText($value);
             }
         });
 

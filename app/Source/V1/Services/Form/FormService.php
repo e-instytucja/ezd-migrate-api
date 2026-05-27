@@ -5,9 +5,9 @@ use App\Source\V1\DTO\TypPozycjaInteresanta;
 use App\Source\V1\Queries\Form\FormQuery;
 use App\Source\V1\Queries\Structure\UugQuery;
 use App\Source\V1\Queries\Structure\WorkstationQuery;
-use App\Source\V1\Queries\Suppliant\SuppliantQuery;
 use App\Source\V1\Services\Attachment\AttachmentService;
 use App\Source\V1\Services\Dictionary\DictionaryService;
+use App\Source\V1\Services\Suppliant\SupliantService;
 use Illuminate\Support\Facades\DB;
 
 class FormService {
@@ -20,7 +20,7 @@ class FormService {
         private readonly UugQuery          $uugQuery,
         private readonly AttachmentService $attachmentService,
         private readonly DictionaryService $dictionaryService,
-        private readonly SuppliantQuery    $SuppliantQuery
+        private readonly SupliantService    $SuppliantService
     )
     {
 
@@ -108,8 +108,8 @@ class FormService {
 
     private function getSuppliantToForm($suppliantId, $formDaneId, $isMain)
     {
-        $suppliantData = $this->SuppliantQuery->getSupliantById($suppliantId);
-        $suppliantRole = $this->SuppliantQuery->getPetentRoleById($formDaneId);
+        $suppliantData = $this->SuppliantService->getSupliantById($suppliantId);
+        $suppliantRole = $this->SuppliantService->getPetentRoleById($formDaneId);
         return new TypPozycjaInteresanta(
             interesantDane:  $suppliantData,
             interesantRole:  $suppliantRole,
