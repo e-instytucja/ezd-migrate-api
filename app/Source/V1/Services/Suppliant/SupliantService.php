@@ -29,7 +29,8 @@ class SupliantService {
 
         array_walk_recursive($data, static function (&$value): void {
             if (is_string($value) && $value !== '') {
-                $value = Functions::normalizeText($value);
+//                $value = Functions::normalizeText($value);
+                $value = 'bob';
             }
         });
 
