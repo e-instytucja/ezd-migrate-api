@@ -16,12 +16,23 @@ class SupliantService {
     {
         $suppliants = $this->suppliantQuery->getAdditionalSuppliants($mainDocumentUid);
 
-        array_walk_recursive($suppliants, static function (&$value): void {
+        return $this->normalizeSuppliants($suppliants);
+    }
+
+    private function normalizeSuppliants($data): array
+    {
+        $data = json_decode(json_encode($data), true);
+
+        if (!is_array($data)) {
+            return [];
+        }
+
+        array_walk_recursive($data, static function (&$value): void {
             if (is_string($value) && $value !== '') {
                 $value = Functions::normalizeText($value);
             }
         });
 
-        return $suppliants;
+        return $data;
     }
 }
