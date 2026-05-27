@@ -98,4 +98,54 @@ SQL;
             ->where('form_dane_pole', $key)
             ->value('form_dane_wartosc');
     }
+
+    public function getAllValuesByKey(string $key, int $limit = 0, int $offset = 0): array
+    {
+        $query = DB::table('eurzad_form_dane')
+            ->where('form_dane_pole', $key);
+
+        if ($offset > 0) {
+            $query->offset($offset);
+        }
+        if ($limit > 0) {
+            $query->limit($limit);
+        }
+
+        return $query
+            ->get()
+            ->map(fn($item) => (array) $item)
+            ->toArray();
+    }
+
+    public function streamAllValuesByKey(string $key, int $limit = 0, int $offset = 0): \Generator
+    {
+        $query = DB::table('eurzad_form_dane')
+            ->where('form_dane_pole', $key)
+            ->orderBy('form_dane_id');
+
+        if ($offset > 0) {
+            $query->offset($offset);
+        }
+        if ($limit > 0) {
+            $query->limit($limit);
+        }
+
+        foreach ($query->cursor() as $item) {
+            yield (array) $item;
+        }
+    }
+
+    public function countAllValuesByKey(string $key, int $limit = 0, int $offset = 0): int
+    {
+        $total = (int) DB::table('eurzad_form_dane')
+            ->where('form_dane_pole', $key)
+            ->count();
+
+        $effectiveTotal = max(0, $total - max(0, $offset));
+        if ($limit > 0) {
+            $effectiveTotal = min($effectiveTotal, $limit);
+        }
+
+        return $effectiveTotal;
+    }
 }

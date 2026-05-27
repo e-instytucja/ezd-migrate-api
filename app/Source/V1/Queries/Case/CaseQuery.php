@@ -8,6 +8,16 @@ use Illuminate\Support\Facades\DB;
 
 class CaseQuery
 {
+    /**
+     * Placeholder pod audyt zalacznikow pism wiodacych.
+     * Docelowo dodaj tutaj zapytanie SQL do pobrania danych testowych.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function getMainDocumentAttachmentsAuditCandidates(int $limit = 0, int $offset = 0): array
+    {
+        return [];
+    }
 
     public function getList(int $offset = 0, int $limit = 50)
     {
@@ -40,7 +50,7 @@ class CaseQuery
             FROM eurzad_teczka et
                 {$this->getInnerJoinSql()}
             WHERE
-                {$this->getWhereSql()}
+                {$this->getWhereSql(true)}
         SQL;
 
         $result = DB::select($sql);
@@ -48,18 +58,35 @@ class CaseQuery
         return (int) $result[0]->count;
     }
 
-    private function getWhereSql(): string
+    private function getWhereSql($count = false): string
     {
+
         $where = '1 = 1 ';
+        if($count) {
+            return $where;
+        }
         $where .= <<<SQL
 AND EXISTS (
     SELECT 1
-    FROM eurzad_form_dane fd
-    WHERE fd.sprawa_uid = es.sprawa_uid
-      AND fd.form_dane_pole = 'pliki'
-      AND LENGTH(fd.form_dane_wartosc) > 13
+    FROM eurzad_zalacznik z
+    WHERE z.parent_uid = ANY(
+        string_to_array(
+            regexp_replace(COALESCE(fd_pliki.form_dane_wartosc, ''), '\s+', '', 'g'),
+            ';'
+        )
+    )
 )
 SQL;
+
+//        $where .= <<<SQL
+//AND EXISTS (
+//    SELECT 1
+//    FROM eurzad_form_dane fd
+//    WHERE fd.sprawa_uid = es.sprawa_uid
+//      AND fd.form_dane_pole = 'pliki'
+//      AND LENGTH(fd.form_dane_wartosc) > 13
+//)
+//SQL;
         return $where;
 
 

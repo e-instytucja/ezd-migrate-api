@@ -50,6 +50,7 @@ class AttachmentService
 
             $typZalacznik = new TypZalacznik(
                 filename: $item->zalacznik_filename,
+                uid: $item->zalacznik_uid,
                 nazwa: $item->zalacznik_original_filename,
                 zalacznik_obcy_uid: $item->zalacznik_obcy_uid,
                 rozmiar: $item->zalacznik_filesize,
@@ -127,7 +128,7 @@ class AttachmentService
         ];
     }
 
-    private function buildAttachmentPath(
+    public function buildAttachmentPath(
         string $basePath,
         string $createdAt,
         string $foreignUid,

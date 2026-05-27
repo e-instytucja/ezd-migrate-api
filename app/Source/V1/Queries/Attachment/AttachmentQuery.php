@@ -12,7 +12,9 @@ final class AttachmentQuery {
     {
         $rows = DB::table($this->tableName)
             ->whereIn('zalacznik_uid', $attachmentUids)
+            ->orWhereIn('parent_uid', $attachmentUids)
             ->get();
+
         return $rows;
     }
 }

@@ -17,6 +17,20 @@ docker compose exec app php artisan migrate
 
 Aplikacja HTTP: [http://localhost:8080](http://localhost:8080)
 
+Jeśli używasz debugowania Xdebug w układzie Windows -> WSL -> Docker, ustaw w `.env`:
+
+```dotenv
+XDEBUG_CLIENT_HOST=192.168.0.6
+XDEBUG_CLIENT_PORT=9003
+XDEBUG_IDEKEY=PHPSTORM
+```
+
+Po zmianie wykonaj:
+
+```bash
+docker compose up -d --build app
+```
+
 ---
 
 ### Opcja B — Host (bez Dockera)
@@ -73,6 +87,32 @@ GET /api/v1/documents
 GET /api/v1/documents/{id}
 GET /api/v1/attachment/{token}
 ```
+
+---
+
+## Testy commandline
+
+W projekcie jest dostępna komenda testowa do weryfikacji załączników pism wiodących:
+
+```bash
+php artisan attachments:test-main-document-attachments-exists
+```
+
+Opcjonalne parametry:
+
+```bash
+php artisan attachments:test-main-document-attachments-exists --limit=1000 --offset=0
+```
+
+Komenda uruchamia `testMainDocumentAttachmentsExists()` i raportuje:
+- liczbę sprawdzonych rekordów,
+- brakujące wpisy w `eurzad_zalacznik`,
+- brakujące pliki na dysku,
+- rekordy niepoprawne.
+
+Przed użyciem produkcyjnym uzupełnij w `CaseService` metody:
+- `getMainDocumentAttachmentsAuditCandidates()`,
+- `existsInEurzadZalacznik()`.
 
 ---
 

@@ -7,6 +7,7 @@ readonly class TypZalacznik
 
     public function __construct(
         public string $filename,
+        public string $uid,
         public string $nazwa,
         public string $zalacznik_obcy_uid,
         public int $rozmiar,

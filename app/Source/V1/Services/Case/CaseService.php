@@ -11,6 +11,7 @@ use App\Source\V1\Enum\TypDokumentu;
 use App\Source\V1\Queries\Case\CaseQuery;
 use App\Source\V1\Queries\ProcessQuery;
 use App\Source\V1\Queries\Structure\WorkstationQuery;
+use App\Source\V1\Services\Attachment\AttachmentService;
 use App\Source\V1\Services\Case\HistoryService as CaseHistoryService;
 use App\Source\V1\Services\Document\DocumentService;
 use App\Source\V1\Services\Document\HistoryService as DocumentHistoryService;
@@ -18,6 +19,7 @@ use App\Source\V1\Services\Form\FormService;
 use App\Source\V1\Services\Structure\EmployeeService;
 use App\Source\V1\Services\Suppliant\SupliantService;
 use Exception;
+use App\Source\V1\Queries\Form\FormQuery;
 
 class CaseService
 {
@@ -36,7 +38,9 @@ class CaseService
         private readonly EmployeeService        $employeeService,
         private readonly FormService            $formService,
         private readonly CaseHistoryService     $caseHistoryService,
-        private readonly SupliantService        $supliantService
+        private readonly SupliantService        $supliantService,
+        private readonly FormQuery              $formQuery,
+        private readonly AttachmentService      $attachmentService
     )
     {
 
@@ -127,7 +131,7 @@ class CaseService
     public function getList(int $offset = 0, int $limit = 50): array
     {
         $count = $this->caseQuery->getListCount();
-        if(empty($count)) {
+        if (empty($count)) {
             return [
                 'data' => [],
                 'limit' => $limit,
@@ -135,10 +139,12 @@ class CaseService
         }
         $list = $this->caseQuery->getList($offset, $limit);
         foreach ($list as &$row) {
-            $row['interesant'] = Functions::normalizeText($row['interesant']);
-            $row['interesant_adres'] = Functions::normalizeText($row['interesant_adres']);
+            $row['zalaczniki_details'] = $this->attachmentService->getAttachmentsDetails($row['zalaczniki']);
+
+//            $row['interesant'] = Functions::normalizeText($row['interesant']);
+//            $row['interesant_adres'] = Functions::normalizeText($row['interesant_adres']);
             $row['interesant_meta'] = [
-                'interesant_type' => $row['interesant_type']==='firma' ? 'instytucja' : 'osoba',
+                'interesant_type' => $row['interesant_type'] === 'firma' ? 'instytucja' : 'osoba',
             ];
 
             if ($row['has_pozostali_interesanci'] === true) {
@@ -150,8 +156,8 @@ class CaseService
                 $row['pozostali_interesanci_tooltip_count'] = count($row['pozostali_interesanci']);
                 $pozostaliInteresanciTooltip = [];
                 foreach ($row['pozostali_interesanci'] as &$interesant) {
-                    $interesant['interesant'] = Functions::normalizeText($interesant['interesant']);
-                    $interesant['interesant_adres'] = Functions::normalizeText($interesant['interesant_adres']);
+//                    $interesant['interesant'] = Functions::normalizeText($interesant['interesant']);
+//                    $interesant['interesant_adres'] = Functions::normalizeText($interesant['interesant_adres']);
 
                     $pozostaliInteresanciTooltip[] = $interesant['interesant'];
                 }
@@ -161,9 +167,35 @@ class CaseService
 
         }
         return [
-            'data'  => $list,
+            'data' => $list,
             'count' => $count,
         ];
+    }
+
+    /**
+     * Szkielet danych dla audytu załączników pism wiodących.
+     * Tu docelowo dodasz zapytanie do DB.
+     *
+     * Oczekiwane klucze pojedynczego wiersza:
+     * - main_document_uid
+     * - attachment_uid
+     * - filename
+     * - attachment_createdate
+     * - attachment_foreign_uid
+     */
+    public function getMainDocumentAttachmentsAuditCandidates(int $limit = 0, int $offset = 0): array
+    {
+        return $this->formQuery->getAllValuesByKey('pliki', $limit, $offset);
+    }
+
+    public function streamMainDocumentAttachmentsAuditCandidates(int $limit = 0, int $offset = 0): \Generator
+    {
+        yield from $this->formQuery->streamAllValuesByKey('pliki', $limit, $offset);
+    }
+
+    public function countMainDocumentAttachmentsAuditCandidates(int $limit = 0, int $offset = 0): int
+    {
+        return $this->formQuery->countAllValuesByKey('pliki', $limit, $offset);
     }
 
     /**
