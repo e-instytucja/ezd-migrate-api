@@ -36,7 +36,7 @@ final class CasesController extends BaseApiController
             'limit'    => $limit,
             'count'    => $result['count'],
             'has_prev' => $page > 1,
-            'has_next' => count($result['data']) === $limit,
+            'has_next' => count($result['data']) >= $limit*$page,
         ]);
     }
 
