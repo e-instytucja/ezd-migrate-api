@@ -139,13 +139,19 @@ class CaseService
         }
         $list = $this->caseQuery->getList($offset, $limit);
         foreach ($list as &$row) {
-            $row['zalaczniki_details'] = $this->attachmentService->getAttachmentsDetails($row['zalaczniki']);
+            $row['zalaczniki_details'] = !empty($row['zalaczniki'])
+                ? $this->attachmentService->getAttachmentsDetails($row['zalaczniki'])
+                : [];
 
-            $row['interesant'] = Functions::normalizeText($row['interesant']);
-            $row['interesant_adres'] = Functions::normalizeText($row['interesant_adres']);
-            $row['interesant_meta'] = [
-                'interesant_type' => $row['interesant_type'] === 'firma' ? 'instytucja' : 'osoba',
-            ];
+            if (isset($row['interesant'])) {
+                $row['interesant'] = Functions::normalizeText($row['interesant']);
+                $row['interesant_adres'] = Functions::normalizeText($row['interesant_adres']);
+                $row['interesant_meta'] = [
+                    'interesant_type' => ($row['interesant_type'] ?? null) === 'firma'
+                        ? 'instytucja'
+                        : 'osoba',
+                ];
+            }
 
             if ($row['has_pozostali_interesanci'] === true) {
 

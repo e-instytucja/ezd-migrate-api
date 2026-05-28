@@ -65,18 +65,6 @@ class CaseQuery
         if($count) {
             return $where;
         }
-        $where .= <<<SQL
-AND EXISTS (
-    SELECT 1
-    FROM eurzad_zalacznik z
-    WHERE z.parent_uid = ANY(
-        string_to_array(
-            regexp_replace(COALESCE(fd_pliki.form_dane_wartosc, ''), '\s+', '', 'g'),
-            ';'
-        )
-    )
-)
-SQL;
 
 //        $where .= <<<SQL
 //AND EXISTS (

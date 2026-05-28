@@ -31,6 +31,8 @@ Po zmianie wykonaj:
 docker compose up -d --build app
 ```
 
+
+
 ---
 
 ### Opcja B — Host (bez Dockera)
@@ -135,6 +137,19 @@ app/
     └── Services/                 ← logika biznesowa (Case, Document, Attachment, Structure, …)
 ```
 
+##  Logi błędów 
+
+Logi błędów aplikacji Laravel (np. wyjątki 500) zapisywane są w:
+
+```text
+storage/logs/laravel.log
+```
+
+Przy domyślnej konfiguracji:
+- `LOG_CHANNEL=stack`
+- `LOG_STACK=single` (domyślnie z `config/logging.php`)
+
+oznacza to zapis do kanału `single`, czyli właśnie do `storage/logs/laravel.log`.
 
 ## Przyszłe wersje API (V2/V3)
 
