@@ -31,9 +31,9 @@ class ApiAccessLogMiddleware
             }
         }
 
-        $query = $request->query();
-        if (count($query) > 5) {
-            $query = array_slice($query, 0, 5) + ['_truncated' => true];
+        $payload = $request->query();
+        if (count($payload) > 5) {
+            $payload = array_slice($payload, 0, 5) + ['_truncated' => true];
         }
 
         Log::info('[' . $durationMs . 'ms] ' . self::LOG_KEY, [
@@ -43,7 +43,7 @@ class ApiAccessLogMiddleware
             'path' => $request->path(),
             'ip' => $request->ip(),
             'route_params' => $routeParams,
-            'query' => $query,
+            'payload' => $payload,
             'status' => $response->getStatusCode(),
         ]);
 
