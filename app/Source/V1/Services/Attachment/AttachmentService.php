@@ -6,8 +6,10 @@ use App\Source\V1\DTO\TypZalacznik;
 use App\Source\V1\Queries\Attachment\AttachmentQuery;
 use App\Source\V1\Queries\Case\CaseQuery;
 use App\Source\V1\Queries\Form\FormQuery;
+use App\Shared\Functions;
 use DateTime;
 use Exception;
+use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
 class AttachmentService
@@ -91,8 +93,12 @@ class AttachmentService
      */
     public function getAttachmentContent(string $token): array
     {
+        Log::notice('ATTACHMENT.start', ['token_prefix' => substr($token, 0, 8)]);
+        $startedAt = Functions::startTimer();
+
         $attachmentDetails = $this->getAttachmentDetails($token);
         if ($attachmentDetails === null) {
+            Log::error('ATTACHMENT.error', ['token_prefix' => substr($token, 0, 8), 'error' => 'details_not_found']);
             throw new RuntimeException('Attachment details not found');
         }
 
@@ -104,11 +110,17 @@ class AttachmentService
         );
 
         if (!is_file($path) || !is_readable($path)) {
+            Log::error('ATTACHMENT.error', [
+                'token_prefix' => substr($token, 0, 8),
+                'uid' => $attachmentDetails->uid,
+                'error' => 'file_not_found_or_unreadable',
+            ]);
             throw new RuntimeException('File not found or not readable');
         }
 
         $fileSize = filesize($path);
         if ($fileSize === false) {
+            Log::error('ATTACHMENT.error', ['uid' => $attachmentDetails->uid, 'error' => 'cannot_resolve_filesize']);
             throw new RuntimeException('Cannot resolve file size');
         }
 
@@ -117,6 +129,12 @@ class AttachmentService
             storedFilename: $attachmentDetails->filename,
             extension: $attachmentDetails->extension
         );
+        Log::info('['.Functions::elapsedMs($startedAt).'] ATTACHMENT.ok', [
+            'uid' => $attachmentDetails->uid,
+            'filename' => $downloadFilename,
+            'mime' => $attachmentDetails->mime,
+            'size_bytes' => $fileSize
+        ]);
 
         return [
             'path' => $path,
@@ -190,13 +208,25 @@ class AttachmentService
      */
     public function getCaseAttachments(string $caseUid): array
     {
+        Log::notice('CASE_ATTACHMENTS.start', ['case_uid' => $caseUid]);
+        $startedAt = Functions::startTimer();
+
         $mainDocumentUid = $this->caseQuery->getMainDocumentUidByCaseUid($caseUid);
         $attachments = $this->formQuery->getValuesFromFormDane($mainDocumentUid, 'pliki');
-        if(empty($attachments)) {
+        if (empty($attachments)) {
+            Log::info('CASE_ATTACHMENTS.empty', ['case_uid' => $caseUid, 'main_document_uid' => $mainDocumentUid]);
             return [];
         }
         $attachments = implode(';', array_column($attachments, 'form_dane_wartosc'));
-        return $this->getAttachmentsDetails($attachments);
+        $result = $this->getAttachmentsDetails($attachments);
+
+        Log::info('[' . Functions::elapsedMs($startedAt) . 'ms] CASE_ATTACHMENTS.ok', [
+            'case_uid' => $caseUid,
+            'main_document_uid' => $mainDocumentUid,
+            'count' => count($result),
+        ]);
+
+        return $result;
     }
 
     private function resolveFileInfo(string $filename): array

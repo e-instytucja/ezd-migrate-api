@@ -119,4 +119,5 @@ abstract class BaseApiController extends Controller
     ): Response {
         return $this->renderError($request, 'server_error', $message, 500);
     }
+
 }

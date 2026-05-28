@@ -13,15 +13,16 @@ return [
 
         'stack' => [
             'driver'            => 'stack',
-            'channels'          => explode(',', env('LOG_STACK', 'single')),
+            'channels'          => explode(',', env('LOG_STACK', 'daily')),
             'ignore_exceptions' => false,
         ],
 
-        'single' => [
-            'driver'               => 'single',
+        'daily' => [
+            'driver'               => 'daily',
             'path'                 => storage_path('logs/laravel.log'),
             'level'                => env('LOG_LEVEL', 'debug'),
             'replace_placeholders' => true,
+            'days' => 90,
         ],
 
         'stderr' => [
@@ -31,7 +32,6 @@ return [
             'formatter' => env('LOG_STDERR_FORMATTER'),
             'with'      => ['stream' => 'php://stderr'],
         ],
-
         'null' => [
             'driver'  => 'monolog',
             'handler' => Monolog\Handler\NullHandler::class,

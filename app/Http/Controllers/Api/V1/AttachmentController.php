@@ -2,17 +2,25 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Http\Controllers\Api\BaseApiController;
+use App\Http\Response\ApiResponseRenderer;
 use App\Source\V1\Services\Attachment\AttachmentService;
+use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use RuntimeException;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
 
-class AttachmentController
+class AttachmentController extends BaseApiController
 {
-    public function __construct(private readonly AttachmentService $service) {}
+    public function __construct(
+        private readonly AttachmentService $service,
+        ApiResponseRenderer $renderer
+    ) {
+        parent::__construct($renderer);
+    }
 
-    public function show(string $token): Response
+    public function show(Request $request, string $token): Response
     {
         try {
             $file = $this->service->getAttachmentContent($token);
@@ -72,7 +80,7 @@ class AttachmentController
     /**
      * @throws \JsonException
      */
-    public function caseAttachments(string $caseUid): JsonResponse
+    public function caseAttachments(Request $request, string $caseUid): JsonResponse
     {
         $data = $this->service->getCaseAttachments($caseUid);
 

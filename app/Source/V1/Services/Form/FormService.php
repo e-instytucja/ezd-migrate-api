@@ -1,6 +1,8 @@
 <?php
 namespace App\Source\V1\Services\Form;
 
+use App\Shared\Functions;
+
 use App\Source\V1\DTO\TypPozycjaInteresanta;
 use App\Source\V1\Queries\Form\FormQuery;
 use App\Source\V1\Queries\Structure\UugQuery;
@@ -9,6 +11,7 @@ use App\Source\V1\Services\Attachment\AttachmentService;
 use App\Source\V1\Services\Dictionary\DictionaryService;
 use App\Source\V1\Services\Suppliant\SupliantService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class FormService {
 
@@ -31,6 +34,9 @@ class FormService {
      */
     public function getFormValues($mainDocumentUid, $formName)
     {
+        Log::notice('FORM_VALUES.start', ['main_document_uid' => $mainDocumentUid, 'form_name' => $formName]);
+        $startedAt = Functions::startTimer();
+
         $formFromDb = $this->formQuery->getValuesFromFormDane($mainDocumentUid);
         $formStruct = $this->formStruct($formName);
         $clientsCount = 0;
@@ -103,6 +109,12 @@ class FormService {
                 }
             }
         }
+        Log::info('[' . Functions::elapsedMs($startedAt) . 'ms] FORM_VALUES.ok', [
+            'main_document_uid' => $mainDocumentUid,
+            'form_name' => $formName,
+            'fields_count' => count($ret),
+        ]);
+
         return $ret;
     }
 

@@ -10,6 +10,7 @@ use App\Source\V1\Queries\Structure\UugQuery;
 use App\Source\V1\Queries\Structure\WorkstationQuery;
 use App\Source\V1\Services\Document\HistoryService;
 use Exception;
+use Illuminate\Support\Facades\Log;
 
 class EmployeeService
 {
@@ -96,6 +97,7 @@ class EmployeeService
     {
         $uugInfo = $this->uugQuery->getInfo($uugid);
         if (empty($uugInfo)) {
+            Log::error('EMPLOYEE_INFO.error', ['uugid' => $uugid, 'error' => 'not_found_in_uug']);
             throw new Exception(
                 "Brak informacji o pracowniku na podstawie identyfikatora powiązania '{$uugid}'"
             );

@@ -52,6 +52,31 @@ class Functions {
 
 
 
+    public static function startTimer(): float
+    {
+        return microtime(true);
+    }
+
+    public static function elapsedMs(float $startedAt): string
+    {
+        $ms = (microtime(true) - $startedAt) * 1000;
+
+//        if ($ms < 1000) {
+//            return round($ms) . ' ms';
+//        }
+
+        $seconds = $ms / 1000;
+
+        if ($seconds < 60) {
+            return round($seconds, 6) . ' s';
+        }
+
+        $minutes = floor($seconds / 60);
+        $remainingSeconds = round($seconds % 60);
+
+        return sprintf('%d min %d s', $minutes, $remainingSeconds);
+    }
+
     /**
      * dodanie do datey liczby dni
      *

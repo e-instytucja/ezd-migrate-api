@@ -45,7 +45,7 @@ final class CasesController extends BaseApiController
         $data = $this->caseService->getCaseDetails($caseUid);
 
         if ($data === null) {
-            return $this->renderNotFound($request, "Case '{$id}' not found.");
+            return $this->renderNotFound($request, "Case '{$caseUid}' not found.");
         }
 
         return $this->renderResponse($request, $data);

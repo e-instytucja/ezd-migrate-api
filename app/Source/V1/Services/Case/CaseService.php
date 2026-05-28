@@ -20,6 +20,7 @@ use App\Source\V1\Services\Structure\EmployeeService;
 use App\Source\V1\Services\Suppliant\SupliantService;
 use Exception;
 use App\Source\V1\Queries\Form\FormQuery;
+use Illuminate\Support\Facades\Log;
 
 class CaseService
 {
@@ -55,12 +56,20 @@ class CaseService
      */
     public function getCaseDetails($caseUid)
     {
+        Log::notice('CASE_DETAILS.start', ['case_uid' => $caseUid]);
+        $startedAt = Functions::startTimer();
+
         $this->caseUid = $caseUid;
         $this->mainDocumentUid = $this->caseQuery->getMainDocumentUidByCaseUid($caseUid);
         $this->caseDetails->znak = $this->caseQuery->getTeczkaSyg($caseUid);
 
         $processId = $this->processQuery->getBySprawaUid($this->mainDocumentUid);
         if (empty($processId)) {
+            Log::error('CASE_DETAILS.error', [
+                'case_uid' => $caseUid,
+                'main_document_uid' => $this->mainDocumentUid,
+                'error' => 'missing_process_id',
+            ]);
             throw new Exception(
                 "Brak identyfikatora procesu dla '{$this->mainDocumentUid}'"
             );
@@ -78,6 +87,11 @@ class CaseService
 
         $registerDate = $this->caseQuery->getSprawaPrzedluzanie($this->mainDocumentUid, 'sprawa_createdate');
         if (empty($registerDate)) {
+            Log::error('CASE_DETAILS.error', [
+                'case_uid' => $caseUid,
+                'main_document_uid' => $this->mainDocumentUid,
+                'error' => 'missing_register_date',
+            ]);
             throw new Exception(
                 "Brak daty rejestracji dla ID: '{$this->mainDocumentUid}'"
             );
@@ -90,6 +104,11 @@ class CaseService
         if ($realizationTime >= 0) {
             $finishDate = Functions::extendDateByDays($registerDate, $realizationTime);
             if (empty($finishDate)) {
+                Log::error('CASE_DETAILS.error', [
+                    'case_uid' => $caseUid,
+                    'main_document_uid' => $this->mainDocumentUid,
+                    'error' => 'missing_finish_date',
+                ]);
                 throw new Exception(
                     "Brak daty zakończenia dla ID: '{$this->mainDocumentUid}'"
                 );
@@ -125,16 +144,27 @@ class CaseService
 //        $this->caseDetails->strony = $this->getSidesOfCase();
 
 
+        Log::info('[' . Functions::elapsedMs($startedAt) . 'ms] CASE_DETAILS.ok', [
+            'case_uid' => $caseUid,
+            'main_document_uid' => $this->mainDocumentUid,
+            'process_id' => $this->caseDetails->id_procesu,
+            'documents_count' => count($this->caseDetails->dokumenty ?? []),
+        ]);
+
         return $this->caseDetails;
     }
 
     public function getList(int $offset = 0, int $limit = 50): array
     {
+        Log::notice('CASE_LIST.start', ['offset' => $offset, 'limit' => $limit]);
+        $startedAt = Functions::startTimer();
+
         $count = $this->caseQuery->getListCount();
         if (empty($count)) {
+            Log::info('CASE_LIST.empty', ['offset' => $offset, 'limit' => $limit]);
             return [
                 'data' => [],
-                'limit' => $limit,
+                'count' => $count,
             ];
         }
         $list = $this->caseQuery->getList($offset, $limit);
@@ -172,6 +202,13 @@ class CaseService
             }
 
         }
+        Log::info('[' . Functions::elapsedMs($startedAt) . 'ms] CASE_LIST.ok', [
+            'total_count' => $count,
+            'returned_count' => count($list),
+            'offset' => $offset,
+            'limit' => $limit,
+        ]);
+
         return [
             'data' => $list,
             'count' => $count,
@@ -219,6 +256,7 @@ class CaseService
                 if ($processType == TypDokumentu::DOKUMENT) {
                     $row = $this->documentHistoryService->getFirstRowFromHistory($id);
                     if (empty($row->uugid_from)) {
+                        Log::error('EMPLOYEE.error', ['document_id' => $id, 'employee_type' => $employeeType, 'error' => 'missing_uugid_pismo']);
                         throw new Exception(
                             "Wpis dla pisma nie zawiera informacji o stanowisku (od) dla '{$id}'"
                         );
@@ -227,6 +265,7 @@ class CaseService
                 } else { //pismo wiodące, sprawa
                     $row = $this->caseQuery->getFirstRowFromHistory($id);
                     if (empty($row->uugid_from)) {
+                        Log::error('EMPLOYEE.error', ['document_id' => $id, 'employee_type' => $employeeType, 'error' => 'missing_uugid_sprawa']);
                         throw new Exception(
                             "Wpis dla sprawy nie zawiera informacji o stanowisku (od) dla '{$id}'"
                         );
@@ -244,6 +283,7 @@ class CaseService
                 $workstationId = $this->caseQuery->getCaseOwnerByCaseUid($id);
                 if (empty($workstationId)) {
                     $info = "Dokument numer '{$id}' nie posiada właściciela sprawy dla bieżącej instancji";
+                    Log::error('EMPLOYEE.error', ['document_id' => $id, 'employee_type' => $employeeType, 'error' => 'missing_workstation_owner']);
                     throw new Exception($info);
                 }
                 $uugid = $this->workstationQuery->getUugId($workstationId);
@@ -252,12 +292,14 @@ class CaseService
             case (RodzajPracownika::ZATWIERDZAJACY && $processType == TypDokumentu::DOKUMENT):
                 $uugid = $this->documentHistoryService->getLastRowFromHistory($id);
                 if (empty($uugid)) {
+                    Log::error('EMPLOYEE.error', ['document_id' => $id, 'employee_type' => $employeeType, 'error' => 'missing_zatwierdzajacy']);
                     throw new Exception(
                         "Wpis nie zawiera informacji o osobie zatwierdzającej dla '{$id}'"
                     );
                 }
                 break;
             default:
+                Log::error('EMPLOYEE.error', ['document_id' => $id, 'employee_type' => $employeeType, 'error' => 'unsupported_employee_type']);
                 throw new Exception(
                     "Nieprawidłowy rodzaj pracownika '{$employeeType}' dla '{$id}'"
                 );

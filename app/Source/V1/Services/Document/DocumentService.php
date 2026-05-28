@@ -11,6 +11,7 @@ use App\Source\V1\Queries\Document\DocumentQuery;
 use App\Source\V1\Queries\Form\FormQuery;
 use App\Source\V1\Services\Structure\EmployeeService;
 use Exception;
+use Illuminate\Support\Facades\Log;
 
 class DocumentService
 {
@@ -28,12 +29,20 @@ class DocumentService
 
     public function getDocumentsListByCaseUID($caseUID)
     {
+        Log::notice('DOCUMENT_LIST.start', ['case_uid' => $caseUID]);
+        $startedAt = Functions::startTimer();
+
         $data = $this->documentQuery->getDocumentList($caseUID);
         $documentList = $this->hydrateDataToObjects(
             $this->fillDocumentsWithRemainingData(
                 $data
             )
         );
+
+        Log::info('[' . Functions::elapsedMs($startedAt) . 'ms] DOCUMENT_LIST.ok', [
+            'case_uid' => $caseUID,
+            'count' => count($documentList),
+        ]);
 
         return $documentList;
     }
@@ -68,6 +77,7 @@ class DocumentService
             case TypDokumentu::DOKUMENT:
                 $pismoData = $this->documentQuery->getLastInsertedToPismo($documentId, 'pismo_uid');
                 if (empty($pismoData) || !isset($pismoData->pismo_createdate)) {
+                    Log::error('DOCUMENT_DATETIME.error', ['document_id' => $documentId, 'process_type' => $processType, 'error' => 'missing_pismo_date']);
                     throw new Exception(
                         "Brak daty ostatniego pisma '{$documentId}'"
                     );
@@ -82,6 +92,7 @@ class DocumentService
                 if (empty($value)) {
                     $date = $this->caseQuery->getSprawaPrzedluzanie($documentId, 'sprawa_createdate');
                     if ($date === false) {
+                        Log::error('DOCUMENT_DATETIME.error', ['document_id' => $documentId, 'process_type' => $processType, 'error' => 'missing_registration_date']);
                         throw new Exception(
                             "Brak daty zarejestrowania pisma '{$documentId}'"
                         );
@@ -96,6 +107,7 @@ class DocumentService
 
                 break;
             default:
+                Log::error('DOCUMENT_DATETIME.error', ['document_id' => $documentId, 'process_type' => $processType, 'error' => 'unsupported_process_type']);
                 throw new Exception("ID: '{$documentId}'");
         }
 
