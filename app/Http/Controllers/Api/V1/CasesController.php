@@ -50,4 +50,17 @@ final class CasesController extends BaseApiController
 
         return $this->renderResponse($request, $data);
     }
+
+    public function statuses(Request $request): Response
+    {
+        $data = $this->caseService->getStatuses();
+
+        if (empty($data)) {
+            return $this->renderNotFound($request, 'Case statuses not found.');
+        }
+
+        return $this->renderResponse($request, $data, meta: [
+            'count' => count($data),
+        ]);
+    }
 }

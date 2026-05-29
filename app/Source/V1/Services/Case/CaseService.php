@@ -216,6 +216,14 @@ class CaseService
     }
 
     /**
+     * @return array<int, array{status: string, opis: string}>
+     */
+    public function getStatuses(): array
+    {
+        return $this->caseQuery->getStatuses();
+    }
+
+    /**
      * Szkielet danych dla audytu załączników pism wiodących.
      * Tu docelowo dodasz zapytanie do DB.
      *

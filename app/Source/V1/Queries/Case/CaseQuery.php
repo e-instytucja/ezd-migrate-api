@@ -418,4 +418,27 @@ WHERE eo.status_sprawy_id = r.status_sprawy_id;
             ->orderBy('o.status_sprawy_id', 'DESC')
             ->get();
     }
+
+    /**
+     * @return array<int, array{status: string, opis: string}>
+     */
+    public function getStatuses(): array
+    {
+        return DB::table('eurzad_teczka as t')
+            ->join('eurzad_obieg as o', function ($join) {
+                $join->on('t.sprawa_uid', '=', 'o.sprawa_uid')
+                    ->where('o.max_status_sprawy_id', '>', 0);
+            })
+            ->join('eurzad_slownik_status as s', 's.symbol', '=', 'o.status')
+            ->where('t.dntas', 0)
+            ->select('o.status', 's.opis')
+            ->groupBy('o.status', 's.opis')
+            ->orderBy('s.opis')
+            ->get()
+            ->map(static fn ($row) => [
+                'status' => $row->status,
+                'opis' => $row->opis,
+            ])
+            ->all();
+    }
 }

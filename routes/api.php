@@ -22,56 +22,62 @@ Route::prefix('v1')
     ->name('api.v1.')
     ->group(function () {
 
-        Route::get(
-            '/cases',
-            [CasesController::class, 'list']
-        )
+        /*
+        |--------------------------------------------------------------------------
+        | Cases
+        |--------------------------------------------------------------------------
+        */
+
+        Route::get('/cases', [CasesController::class, 'list'])
             ->name('cases.list');
 
-        Route::get(
-            '/cases/{caseUid}',
-            [CasesController::class, 'show']
-        )
+        Route::get('/cases/statuses', [CasesController::class, 'statuses'])
+            ->name('cases.statuses');
+
+        Route::get('/cases/{caseUid}', [CasesController::class, 'show'])
             ->where('caseUid', '[a-f0-9]{13}')
             ->name('cases.show');
 
-        Route::get(
-            '/cases/{caseUid}/attachments',
-            [AttachmentController::class, 'caseAttachments']
-        )
+        Route::get('/cases/{caseUid}/attachments', [AttachmentController::class, 'caseAttachments'])
             ->where('caseUid', '[a-f0-9]{13}')
             ->name('cases.attachments');
 
-        Route::get(
-            '/documents',
-            [DocumentsController::class, 'list']
-        )
-            ->name('document.list');
 
-        Route::get(
-            '/documents/{documentId}',
-            [DocumentsController::class, 'show']
-        )
+        /*
+        |--------------------------------------------------------------------------
+        | Documents
+        |--------------------------------------------------------------------------
+        */
+
+        Route::get('/documents', [DocumentsController::class, 'list'])
+            ->name('documents.list');
+
+        Route::get('/documents/{documentId}', [DocumentsController::class, 'show'])
             ->whereNumber('documentId')
             ->name('documents.show');
 
-        Route::get(
-            '/documents/{documentId}/attachments',
-            [AttachmentController::class, 'documentAttachments']
-        )
+        Route::get('/documents/{documentId}/attachments', [AttachmentController::class, 'documentAttachments'])
             ->whereNumber('documentId')
             ->name('documents.attachments');
 
-        Route::get(
-            '/attachment/{attachmentUid}',
-            [AttachmentController::class, 'show']
-        )
-            ->where('caseUid', '[a-f0-9]{13}')
-            ->name('attachment.show');
 
-        Route::get(
-            '/workstations',
-            [WorkstationsController::class, 'list']
-        )
+        /*
+        |--------------------------------------------------------------------------
+        | Attachments
+        |--------------------------------------------------------------------------
+        */
+
+        Route::get('/attachments/{attachmentUid}', [AttachmentController::class, 'show'])
+            ->where('attachmentUid', '[a-f0-9]{13}')
+            ->name('attachments.show');
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Workstations
+        |--------------------------------------------------------------------------
+        */
+
+        Route::get('/workstations', [WorkstationsController::class, 'list'])
             ->name('workstations.list');
     });

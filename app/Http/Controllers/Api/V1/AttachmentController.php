@@ -20,10 +20,10 @@ class AttachmentController extends BaseApiController
         parent::__construct($renderer);
     }
 
-    public function show(Request $request, string $token): Response
+    public function show(Request $request, string $attachmentUid): Response
     {
         try {
-            $file = $this->service->getAttachmentContent($token);
+            $file = $this->service->getAttachmentContent($attachmentUid);
         } catch (RuntimeException $e) {
             return response()->json([
                 'error'   => 'not_found',
