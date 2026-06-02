@@ -3,12 +3,15 @@
 namespace App\Source\V1\Services\Case;
 
 use App\Shared\Functions;
+use App\Source\V1\DTO\Request\KryteriaWyszukiwania;
 use App\Source\V1\DTO\TypOpisSprawy;
 use App\Source\V1\DTO\TypPracownik;
 use App\Source\V1\DTO\TypZnakSprawy;
 use App\Source\V1\Enum\RodzajPracownika;
 use App\Source\V1\Enum\TypDokumentu;
+use App\Source\V1\Queries\Case\CaseListQuery;
 use App\Source\V1\Queries\Case\CaseQuery;
+use App\Source\V1\Queries\Form\FormQuery;
 use App\Source\V1\Queries\ProcessQuery;
 use App\Source\V1\Queries\Structure\WorkstationQuery;
 use App\Source\V1\Services\Attachment\AttachmentService;
@@ -19,7 +22,6 @@ use App\Source\V1\Services\Form\FormService;
 use App\Source\V1\Services\Structure\EmployeeService;
 use App\Source\V1\Services\Suppliant\SupliantService;
 use Exception;
-use App\Source\V1\Queries\Form\FormQuery;
 use Illuminate\Support\Facades\Log;
 
 class CaseService
@@ -32,6 +34,7 @@ class CaseService
     public function __construct(
         private TypOpisSprawy                   $caseDetails,
         private readonly CaseQuery              $caseQuery,
+        private readonly CaseListQuery          $caseListQuery,
         private readonly ProcessQuery           $processQuery,
         private readonly DocumentService        $documentService,
         private readonly WorkstationQuery       $workstationQuery,
@@ -154,20 +157,29 @@ class CaseService
         return $this->caseDetails;
     }
 
-    public function getList(int $offset = 0, int $limit = 50): array
+    public function getList(KryteriaWyszukiwania $kryteriaWyszukiwania): array
     {
-        Log::notice('CASE_LIST.start', ['offset' => $offset, 'limit' => $limit]);
+        Log::notice('CASE_LIST.start', [
+            'offset' => $kryteriaWyszukiwania->paginacja->offset,
+            'limit' => $kryteriaWyszukiwania->paginacja->limit,
+            'page' => $kryteriaWyszukiwania->paginacja->page,
+            'sort_field' => $kryteriaWyszukiwania->sortowanie->field,
+            'sort_direction' => $kryteriaWyszukiwania->sortowanie->direction,
+        ]);
         $startedAt = Functions::startTimer();
 
-        $count = $this->caseQuery->getListCount();
+        $count = $this->caseListQuery->getListCount($kryteriaWyszukiwania);
         if (empty($count)) {
-            Log::info('CASE_LIST.empty', ['offset' => $offset, 'limit' => $limit]);
+            Log::info('CASE_LIST.empty', [
+                'offset' => $kryteriaWyszukiwania->paginacja->offset,
+                'limit' => $kryteriaWyszukiwania->paginacja->limit,
+            ]);
             return [
                 'data' => [],
                 'count' => $count,
             ];
         }
-        $list = $this->caseQuery->getList($offset, $limit);
+        $list = $this->caseListQuery->getList($kryteriaWyszukiwania);
         foreach ($list as &$row) {
             $row['zalaczniki_details'] = !empty($row['zalaczniki'])
                 ? $this->attachmentService->getAttachmentsDetails($row['zalaczniki'])
@@ -202,11 +214,12 @@ class CaseService
             }
 
         }
+        unset($row);
         Log::info('[' . Functions::elapsedMs($startedAt) . 'ms] CASE_LIST.ok', [
             'total_count' => $count,
             'returned_count' => count($list),
-            'offset' => $offset,
-            'limit' => $limit,
+            'offset' => $kryteriaWyszukiwania->paginacja->offset,
+            'limit' => $kryteriaWyszukiwania->paginacja->limit,
         ]);
 
         return [

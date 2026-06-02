@@ -93,7 +93,7 @@ final class HtmlFormatter extends AbstractFormatter
     private function renderPagination(array $meta): string
     {
         $page     = (int) ($meta['page']     ?? 1);
-        $limit    = (int) ($meta['limit']    ?? 50);
+        $limit    = (int) ($meta['limit']    ?? 10);
         $count    = (int) ($meta['count']    ?? 0);
         $hasPrev  = (bool) ($meta['has_prev'] ?? false);
         $hasNext  = (bool) ($meta['has_next'] ?? false);

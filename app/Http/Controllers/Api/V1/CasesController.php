@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Api\BaseApiController;
 use App\Http\Response\ApiResponseRenderer;
+use App\Source\V1\DTO\Request\KryteriaWyszukiwania;
 use App\Source\V1\Services\Case\CaseService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -21,22 +22,21 @@ final class CasesController extends BaseApiController
 
     public function list(Request $request): Response
     {
-        $limit  = max(1, min(200, (int) $request->query('limit', '50')));
-        $page   = max(1, (int) $request->query('page', '1'));
-        $offset = ($page - 1) * $limit;
+        $payload = $request->json()->all();
+        $kryteriaWyszukiwania = KryteriaWyszukiwania::fromPayload($payload);
 
-        $result = $this->caseService->getList($offset, $limit);
+        $result = $this->caseService->getList($kryteriaWyszukiwania);
 
-        if (empty($result['data'])) {
-            return $this->renderNotFound($request, 'Case list not found.');
-        }
+//        if (empty($result['data'])) {
+//            return $this->renderNotFound($request, 'Case list not found.');
+//        }
 
         return $this->renderResponse($request, $result['data'], meta: [
-            'page'     => $page,
-            'limit'    => $limit,
+            'page'     => $kryteriaWyszukiwania->paginacja->page,
+            'limit'    => $kryteriaWyszukiwania->paginacja->limit,
             'count'    => $result['count'],
-            'has_prev' => $page > 1,
-            'has_next' => count($result['data']) >= $limit*$page,
+            'has_prev' => $kryteriaWyszukiwania->paginacja->page > 1,
+            'has_next' => count($result['data']) >= $kryteriaWyszukiwania->paginacja->limit,
         ]);
     }
 

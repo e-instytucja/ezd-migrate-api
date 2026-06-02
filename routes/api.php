@@ -28,17 +28,20 @@ Route::prefix('v1')
         |--------------------------------------------------------------------------
         */
 
-        Route::get('/cases', [CasesController::class, 'list'])
+        Route::match(['get', 'post'], '/cases', [CasesController::class, 'list'])
+//        Route::get('/cases', [CasesController::class, 'list'])
             ->name('cases.list');
 
         Route::get('/cases/statuses', [CasesController::class, 'statuses'])
             ->name('cases.statuses');
 
-        Route::get('/cases/{caseUid}', [CasesController::class, 'show'])
+//        Route::get('/cases/{caseUid}', [CasesController::class, 'show'])
+        Route::match(['get', 'post'], '/cases/{caseUid}', [CasesController::class, 'show'])
             ->where('caseUid', '[a-f0-9]{13}')
             ->name('cases.show');
 
-        Route::get('/cases/{caseUid}/attachments', [AttachmentController::class, 'caseAttachments'])
+//        Route::get('/cases/{caseUid}/attachments', [AttachmentController::class, 'caseAttachments'])
+        Route::match(['get', 'post'], '/cases/{caseUid}/attachments', [AttachmentController::class, 'caseAttachments'])
             ->where('caseUid', '[a-f0-9]{13}')
             ->name('cases.attachments');
 
@@ -49,7 +52,8 @@ Route::prefix('v1')
         |--------------------------------------------------------------------------
         */
 
-        Route::get('/documents', [DocumentsController::class, 'list'])
+        Route::match(['get', 'post'], '/documents', [CasesController::class, 'list'])
+//        Route::get('/documents', [DocumentsController::class, 'list'])
             ->name('documents.list');
 
         Route::get('/documents/{documentId}', [DocumentsController::class, 'show'])
@@ -67,7 +71,8 @@ Route::prefix('v1')
         |--------------------------------------------------------------------------
         */
 
-        Route::get('/attachments/{attachmentUid}', [AttachmentController::class, 'show'])
+//        Route::get('/attachments/{attachmentUid}', [AttachmentController::class, 'show'])
+        Route::match(['get', 'post'], '/attachments/{attachmentUid}', [AttachmentController::class, 'show'])
             ->where('attachmentUid', '[a-f0-9]{13}')
             ->name('attachments.show');
 
