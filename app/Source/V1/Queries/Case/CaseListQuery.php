@@ -73,6 +73,10 @@ class CaseListQuery
             $conditions[] = 'et.teczka_znak_sprawy ILIKE ' . $this->bind('%' . $filtry->znak . '%');
         }
 
+        if ($filtry->oznaczenieDntas !== null) {
+            $conditions[] = 'et.oznaczenie_dntas ILIKE ' . $this->bind('%' . $filtry->oznaczenieDntas . '%');
+        }
+
         if ($filtry->statusProcesu !== null) {
             $conditions[] = 'eo.status = ' . $this->bind($filtry->statusProcesu);
         }

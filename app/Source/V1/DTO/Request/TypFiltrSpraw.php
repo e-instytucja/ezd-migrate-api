@@ -9,6 +9,7 @@ readonly class TypFiltrSpraw
     public function __construct(
         public ?int $rok = null,
         public ?string $znak = null,
+        public ?string $oznaczenieDntas = null,
         public ?string $statusProcesu = null,
         public ?int $wlascicielStanowisko = null,
         public ?string $tytulSprawy = null,
@@ -24,6 +25,7 @@ readonly class TypFiltrSpraw
         return new self(
             rok: isset($data['rok']) ? (int) $data['rok'] : null,
             znak: self::nullableString($data['znak'] ?? null),
+            oznaczenieDntas: self::nullableString($data['oznaczenie_dntas'] ?? null),
             statusProcesu: self::nullableString($data['status_procesu'] ?? null),
             wlascicielStanowisko: isset($data['wlasciciel_stanowisko']) ? (int) $data['wlasciciel_stanowisko'] : null,
             tytulSprawy: self::nullableString($data['tytu_sprawy'] ?? null),
