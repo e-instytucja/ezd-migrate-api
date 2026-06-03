@@ -26,7 +26,7 @@ class CaseListQuery
                     {$this->getInnerJoinSql()}
                     {$this->getLeftJoinSql()}
                 WHERE
-                    {$this->getWhereSql($criteria->konfiguracja, $criteria->filtry)}
+                    {$this->getWhereSql($criteria->konfiguracja, $criteria->filtry, $criteria->dntas)}
                 ORDER BY
                     {$this->getOrderSql($criteria->sortowanie)}
                 LIMIT
@@ -51,7 +51,7 @@ class CaseListQuery
                 {$this->getInnerJoinSql()}
                 {$this->getFilterJoinSql($criteria->filtry)}
             WHERE
-                {$this->getWhereSql($criteria->konfiguracja, $criteria->filtry)}
+                {$this->getWhereSql($criteria->konfiguracja, $criteria->filtry, $criteria->dntas)}
         SQL;
 
         $result = DB::select($sql, $this->bindings);
@@ -59,9 +59,9 @@ class CaseListQuery
         return (int) $result[0]->count;
     }
 
-    private function getWhereSql(ApiKonfiguracja $konfiguracja, TypFiltrSpraw $filtry): string
+    private function getWhereSql(ApiKonfiguracja $konfiguracja, TypFiltrSpraw $filtry, int $dntas): string
     {
-        $conditions = ['et.dntas = 0'];
+        $conditions = ['et.dntas = ' . $dntas];
 
         $this->appendWorkstationScope($conditions, $konfiguracja, $filtry);
 

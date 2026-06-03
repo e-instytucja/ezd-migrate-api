@@ -57,14 +57,14 @@ class CaseService
      * @throws Exception
      * @throws \ReflectionException
      */
-    public function getCaseDetails($caseUid)
+    public function getCaseDetails($caseUid, int $dntas = 0)
     {
-        Log::notice('CASE_DETAILS.start', ['case_uid' => $caseUid]);
+        Log::notice('CASE_DETAILS.start', ['case_uid' => $caseUid, 'dntas' => $dntas]);
         $startedAt = Functions::startTimer();
 
         $this->caseUid = $caseUid;
-        $this->mainDocumentUid = $this->caseQuery->getMainDocumentUidByCaseUid($caseUid);
-        $this->caseDetails->znak = $this->caseQuery->getTeczkaSyg($caseUid);
+        $this->mainDocumentUid = $this->caseQuery->getMainDocumentUidByCaseUid($caseUid, $dntas);
+        $this->caseDetails->znak = $this->caseQuery->getTeczkaSyg($caseUid, $dntas);
 
         $processId = $this->processQuery->getBySprawaUid($this->mainDocumentUid);
         if (empty($processId)) {
@@ -132,12 +132,12 @@ class CaseService
             $this->mainDocumentUid
         );
 
-        $this->caseDetails->znak_szczegolowy = $this->getDetailsOfCaseSign($caseUid);
+        $this->caseDetails->znak_szczegolowy = $this->getDetailsOfCaseSign($caseUid, $dntas);
         if (empty($this->caseDetails->znak_szczegolowy->komorka_symbol)) {
             $this->caseDetails->znak_szczegolowy->komorka_symbol = $this->caseDetails->wlasciciel->nazwa_stanowiska;
         }
 
-        $caseTitleAndDesc = $this->caseQuery->getTitleAndDescription($caseUid);
+        $caseTitleAndDesc = $this->caseQuery->getTitleAndDescription($caseUid, $dntas);
         $this->caseDetails->opis = $caseTitleAndDesc->opis_sprawy;
         $this->caseDetails->tytul = $caseTitleAndDesc->tytul_sprawy;
         $this->caseDetails->dokumenty = $this->documentService->getDocumentsListByCaseUID($this->caseUid);
@@ -165,6 +165,7 @@ class CaseService
             'page' => $kryteriaWyszukiwania->paginacja->page,
             'sort_field' => $kryteriaWyszukiwania->sortowanie->field,
             'sort_direction' => $kryteriaWyszukiwania->sortowanie->direction,
+            'dntas' => $kryteriaWyszukiwania->dntas,
         ]);
         $startedAt = Functions::startTimer();
 
@@ -231,9 +232,9 @@ class CaseService
     /**
      * @return array<int, array{status: string, opis: string}>
      */
-    public function getStatuses(): array
+    public function getStatuses(int $dntas = 0): array
     {
-        return $this->caseQuery->getStatuses();
+        return $this->caseQuery->getStatuses($dntas);
     }
 
     /**
@@ -279,7 +280,7 @@ class CaseService
                     if (empty($row->uugid_from)) {
                         Log::error('EMPLOYEE.error', ['document_id' => $id, 'employee_type' => $employeeType, 'error' => 'missing_uugid_pismo']);
                         throw new Exception(
-                            "Wpis dla pisma nie zawiera informacji o stanowisku (od) dla '{$id}'"
+                            "Wpis dla dokumentu nie zawiera informacji o stanowisku (od) dla '{$id}'"
                         );
                     }
                     $uugid = $row->uugid_from;;
@@ -329,9 +330,9 @@ class CaseService
         return $this->employeeService->getEmployeeInfoByUUgId($uugid);
     }
 
-    private function getDetailsOfCaseSign(string $caseUid): TypZnakSprawy
+    private function getDetailsOfCaseSign(string $caseUid, int $dntas = 0): TypZnakSprawy
     {
-        $caseData = $this->caseQuery->getAllFromTeczkaBySprawaUid($caseUid);
+        $caseData = $this->caseQuery->getAllFromTeczkaBySprawaUid($caseUid, $dntas);
 
         $typZnakSprawy = new TypZnakSprawy();
 

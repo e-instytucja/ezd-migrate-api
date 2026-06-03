@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
-final class CasesController extends AbstractCaseController
+final class DntasController extends AbstractCaseController
 {
     protected function dntas(): int
     {
-        return 0;
+        return 1;
     }
 }

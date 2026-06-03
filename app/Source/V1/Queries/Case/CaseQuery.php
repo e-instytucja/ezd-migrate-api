@@ -27,11 +27,11 @@ class CaseQuery
             ->value('teczka_znak_sprawy');
     }
 
-    public function getMainDocumentUidByCaseUid($caseUid)
+    public function getMainDocumentUidByCaseUid($caseUid, int $dntas = 0)
     {
         return DB::table('eurzad_teczka')
             ->where('teczka_uid', $caseUid)
-            ->where('dntas', 0)
+            ->where('dntas', $dntas)
             ->value('sprawa_uid');
     }
     public function getStatus($uid)
@@ -143,7 +143,8 @@ class CaseQuery
     }
 
     public function getAllFromTeczkaBySprawaUid(
-        $caseUid
+        $caseUid,
+        int $dntas = 0,
     ): object {
         $ret = DB::table('eurzad_teczka as t')
             ->leftJoin(
@@ -153,6 +154,7 @@ class CaseQuery
                 'tp.id'
             )
             ->where('t.teczka_uid', $caseUid)
+            ->where('t.dntas', $dntas)
             ->select(
                 't.*',
                 'tp.opis as opis_zbioru'
@@ -169,10 +171,11 @@ class CaseQuery
         ];
     }
 
-    public function getTitleAndDescription($caseUid): ?object
+    public function getTitleAndDescription($caseUid, int $dntas = 0): ?object
     {
         return DB::table('eurzad_teczka')
             ->where('teczka_uid', $caseUid)
+            ->where('dntas', $dntas)
             ->first([
                 'tytul_sprawy',
                 'opis_sprawy',
@@ -246,7 +249,7 @@ class CaseQuery
     /**
      * @return array<int, array{status: string, opis: string}>
      */
-    public function getStatuses(): array
+    public function getStatuses(int $dntas = 0): array
     {
         return DB::table('eurzad_teczka as t')
             ->join('eurzad_obieg as o', function ($join) {
@@ -254,7 +257,7 @@ class CaseQuery
                     ->where('o.max_status_sprawy_id', '>', 0);
             })
             ->join('eurzad_slownik_status as s', 's.symbol', '=', 'o.status')
-            ->where('t.dntas', 0)
+            ->where('t.dntas', $dntas)
             ->select('o.status', 's.opis')
             ->groupBy('o.status', 's.opis')
             ->orderBy('s.opis')

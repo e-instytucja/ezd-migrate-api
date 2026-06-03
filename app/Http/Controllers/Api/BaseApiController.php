@@ -7,8 +7,12 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Response\ApiResponseRenderer;
 use App\Http\Response\Dto\ApiResponse;
+use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use RuntimeException;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
+use Throwable;
 
 abstract class BaseApiController extends Controller
 {
@@ -118,6 +122,33 @@ abstract class BaseApiController extends Controller
         string $message = 'Internal server error.',
     ): Response {
         return $this->renderError($request, 'server_error', $message, 500);
+    }
+
+    /**
+     * @param callable(): SymfonyResponse $action
+     */
+    protected function executeEndpoint(Request $request, callable $action): SymfonyResponse
+    {
+        try {
+            return $action();
+        } catch (RuntimeException $e) {
+            report($e);
+
+            return $this->renderNotFound($request, $e->getMessage());
+        } catch (Exception $e) {
+            report($e);
+
+            return $this->renderError(
+                $request,
+                'request_failed',
+                $e->getMessage(),
+                422,
+            );
+        } catch (Throwable $e) {
+            report($e);
+
+            return $this->renderServerError($request);
+        }
     }
 
 }

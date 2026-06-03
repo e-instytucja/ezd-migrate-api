@@ -33,7 +33,7 @@ class EmployeeService
                     $row = $this->documentHistoryService->getFirstRowFromHistory($id);
                     if (empty($row->uugid_from)) {
                         throw new Exception(
-                            "Wpis dla pisma nie zawiera informacji o stanowisku (od) dla '{$id}'"
+                            "Wpis dla dokumentu nie zawiera informacji o stanowisku (od) dla '{$id}'"
                         );
                     }
                     $uugid = $row->uugid_from;;

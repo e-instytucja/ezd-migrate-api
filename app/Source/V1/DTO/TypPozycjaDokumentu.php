@@ -39,7 +39,7 @@ class TypPozycjaDokumentu
     /**
      * Data i czas wszczęcia postępowania lub wprowadzenia do systemu.
      * To data powstania/utworzenia tej wersji dokumentu, która jest listowana.
-     * W przypadku pisma zarejestrowanego w CRPP to będzie data wpływu (czyli wszczęcia postępowania).
+     * W przypadku dokumentu zarejestrowanego w CRPP to będzie data wpływu (czyli wszczęcia postępowania).
      * W przypadku sprawy wszczętej ze stanowiska (bez wpisu w CRPP) to będzie data powstania/utworzenia.
      * W przypadku dokumentów wystawianych w sprawie to będzie systemowa data powstania/utworzenia wersji.
      *

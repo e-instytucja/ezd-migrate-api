@@ -11,16 +11,23 @@ readonly class KryteriaWyszukiwania
         public TypFiltrSpraw $filtry,
         public Paginacja $paginacja,
         public Sortowanie $sortowanie,
+        public int $dntas = 0,
     ) {
     }
 
-    public static function fromPayload(array $payload): self
+    public static function fromPayload(array $payload, int $dntas = 0): self
     {
         return new self(
             konfiguracja: ApiKonfiguracja::fromArray($payload['konfiguracja'] ?? []),
             filtry: TypFiltrSpraw::fromArray(is_array($payload['filtry'] ?? null) ? $payload['filtry'] : []),
             paginacja: Paginacja::fromPayload($payload),
             sortowanie: Sortowanie::fromPayload($payload),
+            dntas: self::normalizeDntas($dntas),
         );
+    }
+
+    private static function normalizeDntas(int $dntas): int
+    {
+        return $dntas === 1 ? 1 : 0;
     }
 }

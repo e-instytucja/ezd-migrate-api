@@ -79,7 +79,7 @@ class DocumentService
                 if (empty($pismoData) || !isset($pismoData->pismo_createdate)) {
                     Log::error('DOCUMENT_DATETIME.error', ['document_id' => $documentId, 'process_type' => $processType, 'error' => 'missing_pismo_date']);
                     throw new Exception(
-                        "Brak daty ostatniego pisma '{$documentId}'"
+                        "Brak daty ostatniego dokumentu '{$documentId}'"
                     );
                 }
                 $date = $pismoData->pismo_createdate;

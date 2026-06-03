@@ -1,0 +1,72 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Http\Controllers\Api\V1;
+
+use App\Http\Controllers\Api\BaseApiController;
+use App\Http\Response\ApiResponseRenderer;
+use App\Source\V1\DTO\Request\KryteriaWyszukiwania;
+use App\Source\V1\Services\Case\CaseService;
+use Illuminate\Http\Request;
+use Illuminate\Http\Response;
+
+abstract class AbstractCaseController extends BaseApiController
+{
+    public function __construct(
+        protected readonly CaseService $caseService,
+        ApiResponseRenderer $renderer,
+    ) {
+        parent::__construct($renderer);
+    }
+
+    abstract protected function dntas(): int;
+
+    public function list(Request $request): Response
+    {
+        return $this->executeEndpoint($request, function () use ($request): Response {
+            $kryteriaWyszukiwania = KryteriaWyszukiwania::fromPayload(
+                $request->json()->all(),
+                $this->dntas(),
+            );
+
+            $result = $this->caseService->getList($kryteriaWyszukiwania);
+
+            return $this->renderResponse($request, $result['data'], meta: [
+                'page'     => $kryteriaWyszukiwania->paginacja->page,
+                'limit'    => $kryteriaWyszukiwania->paginacja->limit,
+                'count'    => $result['count'],
+                'has_prev' => $kryteriaWyszukiwania->paginacja->page > 1,
+                'has_next' => count($result['data']) >= $kryteriaWyszukiwania->paginacja->limit,
+            ]);
+        });
+    }
+
+    public function show(Request $request, string $caseUid): Response
+    {
+        return $this->executeEndpoint($request, function () use ($request, $caseUid): Response {
+            $data = $this->caseService->getCaseDetails($caseUid, $this->dntas());
+
+            if ($data === null) {
+                return $this->renderNotFound($request, "Case '{$caseUid}' not found.");
+            }
+
+            return $this->renderResponse($request, $data);
+        });
+    }
+
+    public function statuses(Request $request): Response
+    {
+        return $this->executeEndpoint($request, function () use ($request): Response {
+            $data = $this->caseService->getStatuses($this->dntas());
+
+            if (empty($data)) {
+                return $this->renderNotFound($request, 'Case statuses not found.');
+            }
+
+            return $this->renderResponse($request, $data, meta: [
+                'count' => count($data),
+            ]);
+        });
+    }
+}

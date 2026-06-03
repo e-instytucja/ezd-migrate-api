@@ -8,7 +8,7 @@ use App\Http\Controllers\Api\BaseApiController;
 use App\Http\Response\ApiResponseRenderer;
 use App\Source\V1\Services\Document\DocumentService;
 use Illuminate\Http\Request;
-use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Response;
 
 class DocumentsController extends BaseApiController
 {
@@ -19,21 +19,23 @@ class DocumentsController extends BaseApiController
         parent::__construct($renderer);
     }
 
-    public function show(Request $request, int $id): JsonResponse
+    public function show(Request $request, int $id): Response
     {
-//        $data = $this->service->getDocument($id);
+        return $this->executeEndpoint($request, function () use ($request, $id): Response {
+//            $data = $this->service->getDocument($id);
 //
-//        if ($data === null) {
-//            return response()->json([
-//                'error'   => 'not_found',
-//                'message' => "Document #{$id} not found.",
-//            ], 404);
-//        }
+//            if ($data === null) {
+//                return $this->renderNotFound($request, "Document #{$id} not found.");
+//            }
 //
-//        return response()->json(['data' => $data]);
-        return response()->json([
-            'error' => 'not_implemented',
-            'message' => 'DocumentsController::show is not implemented yet.',
-        ], 501);
+//            return $this->renderResponse($request, $data);
+
+            return $this->renderError(
+                $request,
+                'not_implemented',
+                'DocumentsController::show is not implemented yet.',
+                501,
+            );
+        });
     }
 }

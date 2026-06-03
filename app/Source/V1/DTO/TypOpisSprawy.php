@@ -22,13 +22,13 @@ class TypOpisSprawy
      */
     public TypZnakSprawy $znak_szczegolowy;
     /**
-     * Nazwa procesu pisma w SIDAS EZD, które zainicjowało sprawę
+     * Nazwa procesu dokumentu w SIDAS EZD, które zainicjowało sprawę
      *
      * @var string
      */
     public $nazwa_procesu = '';
     /**
-     * Identyfikator procesu pisma w SIDAS EZD, które zainicjowało sprawę
+     * Identyfikator procesu dokumentu w SIDAS EZD, które zainicjowało sprawę
      *
      * @var string
      */
