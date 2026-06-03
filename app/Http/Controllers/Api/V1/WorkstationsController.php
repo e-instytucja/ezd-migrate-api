@@ -21,16 +21,14 @@ final class WorkstationsController extends BaseApiController
 
     public function list(Request $request): Response
     {
-        return $this->executeEndpoint($request, function () use ($request): Response {
-            $data = $this->workstationService->getWorkstations();
+        $data = $this->workstationService->getWorkstations();
 
-            if (empty($data)) {
-                return $this->renderNotFound($request, 'Workstation list not found.');
-            }
+        if (empty($data)) {
+            return $this->renderNotFound($request, 'Workstation list not found.');
+        }
 
-            return $this->renderResponse($request, $data, meta: [
-                'count' => count($data),
-            ]);
-        });
+        return $this->renderResponse($request, $data, meta: [
+            'count' => count($data),
+        ]);
     }
 }

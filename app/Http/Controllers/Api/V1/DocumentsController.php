@@ -21,21 +21,19 @@ class DocumentsController extends BaseApiController
 
     public function show(Request $request, int $id): Response
     {
-        return $this->executeEndpoint($request, function () use ($request, $id): Response {
-//            $data = $this->service->getDocument($id);
+//        $data = $this->service->getDocument($id);
 //
-//            if ($data === null) {
-//                return $this->renderNotFound($request, "Document #{$id} not found.");
-//            }
+//        if ($data === null) {
+//            return $this->renderNotFound($request, "Document #{$id} not found.");
+//        }
 //
-//            return $this->renderResponse($request, $data);
+//        return $this->renderResponse($request, $data);
 
-            return $this->renderError(
-                $request,
-                'not_implemented',
-                'DocumentsController::show is not implemented yet.',
-                501,
-            );
-        });
+        return $this->renderError(
+            $request,
+            'not_implemented',
+            'DocumentsController::show is not implemented yet.',
+            501,
+        );
     }
 }

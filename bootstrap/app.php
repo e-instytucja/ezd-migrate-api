@@ -1,11 +1,12 @@
 <?php
 
+use App\Http\Exceptions\ApiExceptionRenderer;
+use App\Http\Middleware\ApiAccessLogMiddleware;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
-use App\Http\Middleware\ApiAccessLogMiddleware;
-use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Throwable;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -19,13 +20,14 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        $exceptions->render(function (NotFoundHttpException $e, Request $request) {
-            if ($request->is('api/*')) {
-                return response()->json([
-                    'error'   => 'not_found',
-                    'message' => 'The requested resource was not found.',
-                ], 404);
+        $exceptions->render(function (Throwable $e, Request $request) {
+            $handler = app(ApiExceptionRenderer::class);
+
+            if (!$handler->supports($request)) {
+                return null;
             }
+
+            return $handler->render($request, $e);
         });
     })
     ->create();
