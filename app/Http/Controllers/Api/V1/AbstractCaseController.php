@@ -25,7 +25,7 @@ abstract class AbstractCaseController extends BaseApiController
     public function list(Request $request): Response
     {
         $kryteriaWyszukiwania = KryteriaWyszukiwania::fromPayload(
-            $request->json()->all(),
+            $request->all(),
             $this->dntas(),
         );
 

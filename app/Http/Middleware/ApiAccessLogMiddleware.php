@@ -25,16 +25,7 @@ class ApiAccessLogMiddleware
             : sprintf('%s [%s]', $route->getActionMethod(), $route->uri());
 
         $routeParams = $route?->parameters() ?? [];
-        foreach ($routeParams as $key => $value) {
-            if (in_array($key, ['token', 'uid', 'id'], true) && is_string($value) && strlen($value) > 8) {
-                $routeParams[$key] = substr($value, 0, 8) . '***';
-            }
-        }
-
-        $payload = $request->query();
-        if (count($payload) > 5) {
-            $payload = array_slice($payload, 0, 5) + ['_truncated' => true];
-        }
+        $payload = $request->all();
 
         Log::info('[' . $durationMs . 'ms] ' . self::LOG_KEY, [
             'log_key' => self::LOG_KEY,
