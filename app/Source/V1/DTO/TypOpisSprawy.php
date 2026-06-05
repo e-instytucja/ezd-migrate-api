@@ -16,6 +16,7 @@ class TypOpisSprawy
      * @var string
      */
     public $znak = '';
+    public $oznaczenie_dntas = '';
     /**
      * Znak sprawy do której przynależy dokument pismo. Podawany tylko, jeśli dokument/pismo zostało dołączone do
      * sprawy lub pismo utworzyło sprawę.

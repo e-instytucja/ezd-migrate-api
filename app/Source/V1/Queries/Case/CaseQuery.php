@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Source\V1\Queries\Case;
 
 use Illuminate\Support\Facades\DB;
+use stdClass;
 
 class CaseQuery
 {
@@ -19,12 +20,12 @@ class CaseQuery
         return [];
     }
 
-    public function getTeczkaSyg($caseUid, $dntas = 0)
+    public function getTeczkaSyg($caseUid, $columnName = 'teczka_znak_sprawy')
     {
         return DB::table('eurzad_teczka')
             ->where('teczka_uid', $caseUid)
-            ->where('dntas', $dntas)
-            ->value('teczka_znak_sprawy');
+//            ->where('dntas', $dntas)
+            ->value($columnName);
     }
 
     public function getMainDocumentUidByCaseUid($caseUid, int $dntas = 0)
@@ -89,7 +90,7 @@ class CaseQuery
         $mainDocumentUid,
         array $statuses = [],
         string $sortDirection = 'ASC'
-    ) {
+    ): stdClass {
         $sortDirection = strtoupper($sortDirection);
 
         if (!in_array($sortDirection, ['ASC', 'DESC'], true)) {
@@ -111,7 +112,7 @@ class CaseQuery
     public function getSprawaUidByTeczkaZawartoscUid(
         $teczkaZawartoscUid,
         string $returnKeys = 'o."instanceId", o.sprawa_uid'
-    ) {
+    ): object {
         $allowedColumns = [
             'o."instanceId", o.sprawa_uid',
             'o.sprawa_uid',
@@ -171,7 +172,7 @@ class CaseQuery
         ];
     }
 
-    public function getTitleAndDescription($caseUid, int $dntas = 0): ?object
+    public function getTitleAndDescription($caseUid, int $dntas = 0): object
     {
         return DB::table('eurzad_teczka')
             ->where('teczka_uid', $caseUid)
@@ -199,8 +200,7 @@ class CaseQuery
 
     public function getInstanceIdByCaseUid($caseUid): int
     {
-        $row = $this->getFirstRowFromHistory($caseUid);
-        return $row->instanceId;
+        return $this->getFirstRowFromHistory($caseUid)->instanceId;
     }
 
     public function getSprawaCreateDate($documentId = 0)
@@ -213,7 +213,7 @@ class CaseQuery
             ->where('sprawa_uid', $documentId)
             ->first();
 
-        if (empty($caseData) || $caseData['rodzaj_pisma'] != 'internal') {
+        if (empty($caseData) || $caseData['rodzaj_pisma'] !== 'internal') {
             return null;
         }
 

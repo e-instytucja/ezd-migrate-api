@@ -64,7 +64,8 @@ class CaseService
 
         $this->caseUid = $caseUid;
         $this->mainDocumentUid = $this->caseQuery->getMainDocumentUidByCaseUid($caseUid, $dntas);
-        $this->caseDetails->znak = $this->caseQuery->getTeczkaSyg($caseUid, $dntas);
+        $this->caseDetails->znak = $this->caseQuery->getTeczkaSyg($caseUid);
+        $this->caseDetails->oznaczenie_dntas = $this->caseQuery->getTeczkaSyg($caseUid, 'oznaczenie_dntas');
 
         $processId = $this->processQuery->getBySprawaUid($this->mainDocumentUid);
         if (empty($processId)) {
