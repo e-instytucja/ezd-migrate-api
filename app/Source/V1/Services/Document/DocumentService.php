@@ -3,11 +3,13 @@
 namespace App\Source\V1\Services\Document;
 
 use App\Shared\Functions;
+use App\Source\V1\DTO\Request\KryteriaWyszukiwaniaDokumentow;
 use App\Source\V1\DTO\TypPozycjaDokumentu;
 use App\Source\V1\Enum\RodzajPracownika;
 use App\Source\V1\Enum\TypDokumentu;
 use App\Source\V1\Queries\Case\CaseQuery;
 use App\Source\V1\Queries\Document\DocumentQuery;
+use App\Source\V1\Queries\Document\DocumentListQuery;
 use App\Source\V1\Queries\Form\FormQuery;
 use App\Source\V1\Services\Structure\EmployeeService;
 use Exception;
@@ -20,6 +22,7 @@ class DocumentService
 
     public function __construct(
         private readonly DocumentQuery $documentQuery,
+        private readonly DocumentListQuery $documentListQuery,
         private readonly CaseQuery $caseQuery,
         private readonly EmployeeService $employeeService,
         private readonly FormQuery $formQuery
@@ -27,12 +30,48 @@ class DocumentService
     {
     }
 
-    public function getDocumentsListByCaseUID($caseUID)
+    public function getList(KryteriaWyszukiwaniaDokumentow $kryteriaWyszukiwania): array
     {
-        Log::notice('DOCUMENT_LIST.start', ['case_uid' => $caseUID]);
+        Log::notice('DOCUMENT_LIST.start', [
+            'offset' => $kryteriaWyszukiwania->paginacja->offset,
+            'limit' => $kryteriaWyszukiwania->paginacja->limit,
+            'page' => $kryteriaWyszukiwania->paginacja->page,
+            'sort_field' => $kryteriaWyszukiwania->sortowanie->field,
+            'sort_direction' => $kryteriaWyszukiwania->sortowanie->direction,
+            'dntas' => $kryteriaWyszukiwania->dntas,
+        ]);
         $startedAt = Functions::startTimer();
 
-        $data = $this->documentQuery->getDocumentList($caseUID);
+        $count = $this->documentListQuery->getListCount($kryteriaWyszukiwania);
+        if (empty($count)) {
+            Log::info('DOCUMENT_LIST.empty', [
+                'offset' => $kryteriaWyszukiwania->paginacja->offset,
+                'limit' => $kryteriaWyszukiwania->paginacja->limit,
+            ]);
+            return [
+                'data' => [],
+                'count' => $count,
+            ];
+        }
+        $list = $this->documentListQuery->getList($kryteriaWyszukiwania);
+
+        Log::info('[' . Functions::elapsedMs($startedAt) . 'ms] DOCUMENT_LIST.ok', [
+            'count' => $count,
+            'returned' => count($list),
+        ]);
+
+        return [
+            'data' => $list,
+            'count' => $count,
+        ];
+    }
+
+    public function getDocumentsListByCaseUID(string $caseUID, int $dntas = 0): array
+    {
+        Log::notice('DOCUMENT_LIST.start', ['case_uid' => $caseUID, 'dntas' => $dntas]);
+        $startedAt = Functions::startTimer();
+
+        $data = $this->documentListQuery->getListByTeczkaUid($caseUID, $dntas);
         $documentList = $this->hydrateDataToObjects(
             $this->fillDocumentsWithRemainingData(
                 $data

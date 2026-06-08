@@ -79,8 +79,7 @@ Route::prefix('v1')
         |--------------------------------------------------------------------------
         */
 
-        Route::match(['get', 'post'], '/documents', [CasesController::class, 'list'])
-//        Route::get('/documents', [DocumentsController::class, 'list'])
+        Route::match(['get', 'post'], '/documents', [DocumentsController::class, 'list'])
             ->name('documents.list');
 
         Route::get('/documents/{documentId}', [DocumentsController::class, 'show'])

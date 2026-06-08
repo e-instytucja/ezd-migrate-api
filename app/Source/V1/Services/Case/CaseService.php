@@ -141,7 +141,7 @@ class CaseService
         $caseTitleAndDesc = $this->caseQuery->getTitleAndDescription($caseUid, $dntas);
         $this->caseDetails->opis = $caseTitleAndDesc->opis_sprawy;
         $this->caseDetails->tytul = $caseTitleAndDesc->tytul_sprawy;
-        $this->caseDetails->dokumenty = $this->documentService->getDocumentsListByCaseUID($this->caseUid);
+        $this->caseDetails->dokumenty = $this->documentService->getDocumentsListByCaseUID($this->caseUid, $dntas);
         $this->caseDetails->dane_formularza = $this->formService->getFormValues($this->mainDocumentUid, $normalizedProcessName);
         $this->caseDetails->historia_obiegu = $this->caseHistoryService->getHistory($this->mainDocumentUid);
 //        $this->caseDetails->udostepniona = $employee->getEmployeesWhoSharedCase($mainDocumentUid);
