@@ -206,12 +206,12 @@ class AttachmentService
      * @return array|TypZalacznik[]
      * @throws \JsonException
      */
-    public function getCaseAttachments(string $caseUid, int $dntas = 0): array
+    public function getCaseAttachments(string $caseUid): array
     {
-        Log::notice('CASE_ATTACHMENTS.start', ['case_uid' => $caseUid, 'dntas' => $dntas]);
+        Log::notice('CASE_ATTACHMENTS.start', ['case_uid' => $caseUid]);
         $startedAt = Functions::startTimer();
 
-        $mainDocumentUid = $this->caseQuery->getMainDocumentUidByCaseUid($caseUid, $dntas);
+        $mainDocumentUid = $this->caseQuery->getMainDocumentUidByCaseUid($caseUid);
         $attachments = $this->formQuery->getValuesFromFormDane($mainDocumentUid, 'pliki');
         if (empty($attachments)) {
             Log::info('CASE_ATTACHMENTS.empty', ['case_uid' => $caseUid, 'main_document_uid' => $mainDocumentUid]);

@@ -11,7 +11,9 @@ use App\Source\V1\Queries\Case\CaseQuery;
 use App\Source\V1\Queries\Document\DocumentQuery;
 use App\Source\V1\Queries\Document\DocumentListQuery;
 use App\Source\V1\Queries\Form\FormQuery;
+use App\Source\V1\Services\Attachment\AttachmentService;
 use App\Source\V1\Services\Structure\EmployeeService;
+use App\Source\V1\Services\Suppliant\SupliantService;
 use Exception;
 use Illuminate\Support\Facades\Log;
 
@@ -25,11 +27,16 @@ class DocumentService
         private readonly DocumentListQuery $documentListQuery,
         private readonly CaseQuery $caseQuery,
         private readonly EmployeeService $employeeService,
-        private readonly FormQuery $formQuery
+        private readonly FormQuery $formQuery,
+        private readonly SupliantService $supliantService,
+        private readonly AttachmentService $attachmentService
     )
     {
     }
 
+    /**
+     * @throws \JsonException
+     */
     public function getList(KryteriaWyszukiwaniaDokumentow $kryteriaWyszukiwania): array
     {
         Log::notice('DOCUMENT_LIST.start', [
@@ -54,6 +61,13 @@ class DocumentService
             ];
         }
         $list = $this->documentListQuery->getList($kryteriaWyszukiwania);
+        foreach ($list as &$row) {
+            $row['zalaczniki_details'] = !empty($row['zalaczniki'])
+                ? $this->attachmentService->getAttachmentsDetails($row['zalaczniki'])
+                : [];
+            $this->supliantService->hydrateSuppliantData($row, $row['id_dokumentu']);
+        }
+        unset($row);
 
         Log::info('[' . Functions::elapsedMs($startedAt) . 'ms] DOCUMENT_LIST.ok', [
             'count' => $count,

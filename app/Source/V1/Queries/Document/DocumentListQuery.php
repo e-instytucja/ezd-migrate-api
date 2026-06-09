@@ -92,7 +92,7 @@ class DocumentListQuery
             self::PISMA_INICJUJACE_WIODACE => $this->pismaInicjujaceWiodaceSql($criteria),
             self::DOKUMENTY_W_SPRAWIE => $this->dokumentyWSprawieSql($criteria),
             self::PISMA_INICJUJACE_W_SPRAWIE => $this->pismaInicjujaceWSprawieSql($criteria),
-            self::DOKUMENTY_ZWROT => $this->dokumentyZwrotSql($criteria),
+            self::DOKUMENTY_ZWROT => $this->pismaZwrotSql($criteria),
             default => throw new InvalidArgumentException("Nieprawidłowy typ UNION: {$type}"),
         };
     }
@@ -109,13 +109,13 @@ class DocumentListQuery
         return <<<SQL
             SELECT
                 $this->idDokumentuSelect
-                es.sprawa_uid AS id_dokumentu,
-                NULL AS wersja,
-                {$this->getCommonSelectSql()},
+                {$this->commonSelectSql()},
+                {$this->pismoSelectSql()},
                 {$this->documentGroupNumber(self::PISMA_INICJUJACE_WIODACE)} AS document_group_type
             FROM eurzad_sprawa es
-                {$this->pismoObiegJoinsSql()}
-                {$this->getCommonJoinSql()}
+                {$this->pismoInnerJoinsSql()}
+                {$this->commonInnerJoinSql()}
+                {$this->pismoLeftJoinsSql()}
                 {$this->teczkaJoinsSql(self::PISMA_INICJUJACE_WIODACE, $criteria)}
                 {$this->getFilterJoinSql(self::PISMA_INICJUJACE_WIODACE, $criteria->filtry)}
             WHERE
@@ -136,23 +136,13 @@ class DocumentListQuery
         return <<<SQL
             SELECT
                 $this->idDokumentuSelect
-                ep.pismo_uid AS id_dokumentu,
-                ep.pismo_wersja AS wersja,
-                {$this->getCommonSelectSql()},
+                {$this->commonSelectSql()},
+                {$this->dokumentCommonSelectSql()},
                 {$this->documentGroupNumber(self::DOKUMENTY_W_SPRAWIE)} AS document_group_type
             FROM eurzad_pismo ep
-                INNER JOIN galaxia_instances gi ON gi."instanceId" = ep.instance_id
-                INNER JOIN galaxia_processes gp ON gp."pId" = gi."pId"
-                INNER JOIN LATERAL (
-                    SELECT epo.*
-                    FROM eurzad_pismo_obieg epo
-                    WHERE epo.pismo_uid = ep.pismo_uid
-                    ORDER BY epo.pismo_obieg_id DESC
-                    LIMIT 1
-                ) epo ON true
-                INNER JOIN eurzad_slownik_status ess ON ess.symbol = epo.status
-                {$this->getCommonJoinSql()}
-                
+                {$this->dokumentInnerJoinSql()}
+                {$this->commonInnerJoinSql()}
+                {$this->dokumentLeftJoinsSql()}
                 {$this->teczkaJoinsSql(self::DOKUMENTY_W_SPRAWIE, $criteria)}
                 {$this->getFilterJoinSql(self::DOKUMENTY_W_SPRAWIE, $criteria->filtry)}
             WHERE
@@ -176,13 +166,13 @@ class DocumentListQuery
         return <<<SQL
             SELECT
                 $this->idDokumentuSelect
-                es.sprawa_uid AS id_dokumentu,
-                NULL AS wersja,
-                {$this->getCommonSelectSql()},
+                {$this->commonSelectSql()},
+                {$this->pismoSelectSql()},
                 {$this->documentGroupNumber(self::PISMA_INICJUJACE_W_SPRAWIE)} AS document_group_type
             FROM eurzad_sprawa es
-                {$this->pismoObiegJoinsSql()}
-                {$this->getCommonJoinSql()}
+                {$this->pismoInnerJoinsSql()}
+                {$this->pismoLeftJoinsSql()}
+                {$this->commonInnerJoinSql()}
                 {$this->teczkaJoinsSql(self::PISMA_INICJUJACE_W_SPRAWIE, $criteria)}
                 {$this->getFilterJoinSql(self::PISMA_INICJUJACE_W_SPRAWIE, $criteria->filtry)}
             WHERE
@@ -191,7 +181,7 @@ class DocumentListQuery
         SQL;
     }
 
-    private function dokumentyZwrotSql(KryteriaWyszukiwaniaDokumentow $criteria): string
+    private function pismaZwrotSql(KryteriaWyszukiwaniaDokumentow $criteria): string
     {
         $where = $this->getWhereSql(
             self::DOKUMENTY_ZWROT,
@@ -203,13 +193,13 @@ class DocumentListQuery
         return <<<SQL
             SELECT
                 $this->idDokumentuSelect
-                es.sprawa_uid AS id_dokumentu,
-                NULL AS wersja,
-                {$this->getCommonSelectSql()},
+                {$this->commonSelectSql()},
+                {$this->pismoSelectSql()},
                 {$this->documentGroupNumber(self::DOKUMENTY_ZWROT)} AS document_group_type
             FROM eurzad_sprawa es
-                {$this->pismoObiegJoinsSql()}
-                {$this->getCommonJoinSql()}
+                {$this->pismoInnerJoinsSql()}
+                {$this->commonInnerJoinSql()}
+                {$this->pismoLeftJoinsSql()}
                 {$this->teczkaJoinsSql(self::DOKUMENTY_ZWROT, $criteria)}
                 {$this->getFilterJoinSql(self::DOKUMENTY_ZWROT, $criteria->filtry)}
             WHERE
@@ -218,7 +208,7 @@ class DocumentListQuery
         SQL;
     }
 
-    private function getCommonJoinSql()
+    private function commonInnerJoinSql(): string
     {
         return <<<SQL
             INNER JOIN users_groups ug_w ON (ug_w.group_id = gi.workstation)
@@ -228,7 +218,60 @@ class DocumentListQuery
 SQL;
 
     }
-    private function getCommonSelectSql()
+
+    private function pismoSelectSql(): string
+    {
+        return <<<SQL
+                es.sprawa_uid AS id_dokumentu,
+                NULL AS wersja,
+                fd_pliki.form_dane_wartosc AS zalaczniki,
+                fd_tytul.form_dane_wartosc AS tytul,
+                ps_petent.view_podmiot as interesant,
+                ps_petent.view_adres_korespondencyjny as interesant_adres,
+                pd_petent.typ_osoby as interesant_type,
+                EXISTS (
+                    SELECT 1
+                    FROM eurzad_form_dane fd
+                    WHERE fd.sprawa_uid = es.sprawa_uid
+                      AND fd.form_dane_pole = 'interesanci'
+                      AND NULLIF(TRIM(fd.form_dane_wartosc), '') IS NOT NULL
+                ) AS has_pozostali_interesanci
+SQL;
+
+
+    }
+
+    private function dokumentCommonSelectSql(): string
+    {
+        return <<<SQL
+                ep.pismo_uid AS id_dokumentu,
+                ep.pismo_wersja AS wersja,
+                fd_pliki.wartosc AS zalaczniki,
+                fd_tytul.wartosc AS tytul,
+                NULL as interesant,                 --dokumenty (decyzja/korespondencja) dołączane do sprawy - nie mają pola interesanci - dlatego ustawiamy na NULL
+                NULL as interesant_adres,           --dokumenty (decyzja/korespondencja) dołączane do sprawy - nie mają pola interesanci - dlatego ustawiamy na NULL
+                NULL as interesant_type,            --dokumenty (decyzja/korespondencja) dołączane do sprawy - nie mają pola interesanci - dlatego ustawiamy na NULL
+                false AS has_pozostali_interesanci  --dokumenty (decyzja/korespondencja) dołączane do sprawy - nie mają pola interesanci - dlatego ustawiamy na false
+                
+SQL;
+
+}
+    private function dokumentInnerJoinSql(): string
+    {
+        return <<<SQL
+                INNER JOIN galaxia_instances gi ON gi."instanceId" = ep.instance_id
+                INNER JOIN galaxia_processes gp ON gp."pId" = gi."pId"
+                INNER JOIN LATERAL (
+                    SELECT epo.*
+                    FROM eurzad_pismo_obieg epo
+                    WHERE epo.pismo_uid = ep.pismo_uid
+                    ORDER BY epo.pismo_obieg_id DESC
+                    LIMIT 1
+                ) epo ON true
+                INNER JOIN eurzad_slownik_status ess ON ess.symbol = epo.status
+SQL;
+    }
+    private function commonSelectSql(): string
     {
         return <<<SQL
                 gp.name AS nazwa_procesu,
@@ -248,6 +291,7 @@ SQL;
                    NULLIF(uu.surname2, ''),
                    NULLIF(uu.surname3, '')
                 )  as wlasciciel_imie_nazwisko
+                
 SQL;
 
     }
@@ -277,15 +321,44 @@ SQL;
         };
     }
 
-    private function pismoObiegJoinsSql(): string
+    private function pismoInnerJoinsSql(): string
     {
         return <<<SQL
                 INNER JOIN galaxia_processes gp ON gp.normalized_name = es.form_name
-                INNER JOIN eurzad_obieg eo ON eo.sprawa_uid = es.sprawa_uid
+                INNER JOIN eurzad_obieg eo ON (eo.sprawa_uid = es.sprawa_uid AND max_status_sprawy_id > 0)
                 INNER JOIN eurzad_slownik_status ess ON ess.symbol = eo.status
-                INNER JOIN galaxia_instances gi ON gi."instanceId" = eo."instanceId" AND max_status_sprawy_id > 0
+                INNER JOIN galaxia_instances gi ON gi."instanceId" = eo."instanceId" 
                 INNER JOIN eurzad_sprawa_przedluzanie sp ON sp.sprawa_uid = es.sprawa_uid
         SQL;
+    }
+
+    private function pismoLeftJoinsSql(): string
+    {
+        return <<<SQL
+                LEFT JOIN eurzad_form_dane fd_tytul
+                       ON (fd_tytul.sprawa_uid = es.sprawa_uid AND fd_tytul.form_dane_pole = 'dokument_tytul')
+                LEFT JOIN eurzad_form_dane fd_petent
+                       ON (fd_petent.sprawa_uid = es.sprawa_uid AND fd_petent.form_dane_pole = 'petent_uid')
+                LEFT JOIN eurzad_petent_dane pd_petent ON (
+                        pd_petent.main_petent_uid = fd_petent.form_dane_wartosc 
+                        AND pd_petent.petent_uid = pd_petent.main_petent_uid
+                )
+                LEFT JOIN eurzad_petent_search ps_petent ON (ps_petent.main_petent_uid = fd_petent.form_dane_wartosc)
+                LEFT JOIN eurzad_form_dane fd_pliki
+                       ON (fd_pliki.sprawa_uid = es.sprawa_uid AND fd_pliki.form_dane_pole = 'pliki')
+SQL;
+
+    }
+
+    private function dokumentLeftJoinsSql(): string
+    {
+        return <<<SQL
+                LEFT JOIN eurzad_form_pisma_dane fd_tytul
+                       ON (fd_tytul.id = ep.id AND fd_tytul.klucz = 'dokument_tytul')
+                LEFT JOIN eurzad_form_pisma_dane fd_pliki
+                       ON (fd_pliki.id = ep.id AND fd_pliki.klucz = 'pliki')
+SQL;
+
     }
 
     private function getFilterJoinSql(int $unionType, TypFiltrDokument $filtry): string

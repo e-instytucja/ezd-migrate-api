@@ -28,11 +28,10 @@ class CaseQuery
             ->value($columnName);
     }
 
-    public function getMainDocumentUidByCaseUid($caseUid, int $dntas = 0)
+    public function getMainDocumentUidByCaseUid($caseUid)
     {
         return DB::table('eurzad_teczka')
             ->where('teczka_uid', $caseUid)
-            ->where('dntas', $dntas)
             ->value('sprawa_uid');
     }
     public function getStatus($uid)

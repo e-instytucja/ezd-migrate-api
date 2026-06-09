@@ -63,7 +63,7 @@ class CaseService
         $startedAt = Functions::startTimer();
 
         $this->caseUid = $caseUid;
-        $this->mainDocumentUid = $this->caseQuery->getMainDocumentUidByCaseUid($caseUid, $dntas);
+        $this->mainDocumentUid = $this->caseQuery->getMainDocumentUidByCaseUid($caseUid);
         $this->caseDetails->znak = $this->caseQuery->getTeczkaSyg($caseUid);
         $this->caseDetails->oznaczenie_dntas = $this->caseQuery->getTeczkaSyg($caseUid, 'oznaczenie_dntas');
 
@@ -187,33 +187,7 @@ class CaseService
                 ? $this->attachmentService->getAttachmentsDetails($row['zalaczniki'])
                 : [];
 
-            if (isset($row['interesant'])) {
-                $row['interesant'] = Functions::normalizeText($row['interesant']);
-                $row['interesant_adres'] = Functions::normalizeText($row['interesant_adres']);
-                $row['interesant_meta'] = [
-                    'interesant_type' => ($row['interesant_type'] ?? null) === 'firma'
-                        ? 'instytucja'
-                        : 'osoba',
-                ];
-            }
-
-            if ($row['has_pozostali_interesanci'] === true) {
-
-                $row['pozostali_interesanci'] =
-                    $this->supliantService->getAdditionalSuppliants(
-                        $row['main_document_uid']
-                    );
-                $row['pozostali_interesanci_tooltip_count'] = count($row['pozostali_interesanci']);
-                $pozostaliInteresanciTooltip = [];
-                foreach ($row['pozostali_interesanci'] as &$interesant) {
-//                    $interesant['interesant'] = Functions::normalizeText($interesant['interesant']);
-//                    $interesant['interesant_adres'] = Functions::normalizeText($interesant['interesant_adres']);
-
-                    $pozostaliInteresanciTooltip[] = $interesant['interesant'];
-                }
-                unset($interesant);
-                $row['pozostali_interesanci_tooltip'] = implode(', ', $pozostaliInteresanciTooltip);
-            }
+            $this->supliantService->hydrateSuppliantData($row, $row['main_document_uid']);
 
         }
         unset($row);
