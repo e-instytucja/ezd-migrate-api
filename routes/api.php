@@ -86,7 +86,7 @@ Route::prefix('v1')
             ->whereNumber('documentId')
             ->name('documents.show');
 
-        Route::get('/documents/{documentId}/attachments', [AttachmentController::class, 'documentAttachments'])
+        Route::match(['get', 'post'], '/documents/{documentId}/attachments', [AttachmentController::class, 'documentAttachments'])
             ->whereNumber('documentId')
             ->name('documents.attachments');
 

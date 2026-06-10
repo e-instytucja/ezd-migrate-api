@@ -11,6 +11,9 @@ use stdClass;
 
 class DocumentQuery
 {
+    public const DOCUMENT_TYPE_PISMO = 'pismo';
+    public const DOCUMENT_TYPE_DOKUMENT = 'dokument';
+
     public function __construct(
         private QueryBuilder $documentListQueryBuilder,
     )
@@ -66,6 +69,29 @@ class DocumentQuery
             ->map(fn($item) => (array) $item)
             ->toArray();
         return $data;
+
+    }
+
+    public function getDocumentType($documentId)
+    {
+        if (
+            DB::table('eurzad_sprawa')
+                ->where('sprawa_uid', $documentId)
+                ->exists()
+        ) {
+            return self::DOCUMENT_TYPE_PISMO;
+        }
+
+        if (
+            DB::table('eurzad_pismo')
+                ->where('pismo_uid', $documentId)
+                ->exists()
+        ) {
+            return self::DOCUMENT_TYPE_DOKUMENT;
+        }
+
+        return null;
+
 
     }
 

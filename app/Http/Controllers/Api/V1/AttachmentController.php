@@ -66,18 +66,25 @@ class AttachmentController extends BaseApiController
 
     public function caseAttachments(Request $request, string $caseUid): Response
     {
-        return $this->renderCaseAttachments($request, $caseUid, 0);
+        return $this->renderResponse(
+            $request,
+            $this->service->getCaseAttachments($caseUid)
+        );
     }
 
     public function dntasCaseAttachments(Request $request, string $caseUid): Response
     {
-        return $this->renderCaseAttachments($request, $caseUid, 1);
+        return $this->renderResponse(
+            $request,
+            $this->service->getCaseAttachments($caseUid)
+        );
     }
 
-    private function renderCaseAttachments(Request $request, string $caseUid, int $dntas): Response
+    public function documentAttachments(Request $request, string $documentId): Response
     {
-        $data = $this->service->getCaseAttachments($caseUid, $dntas);
-
-        return $this->renderResponse($request, $data);
+        return $this->renderResponse(
+            $request,
+            $this->service->getDocumentAttachments($documentId)
+        );
     }
 }

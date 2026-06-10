@@ -1,10 +1,10 @@
 <?php
 declare(strict_types=1);
 namespace App\Source\V1\Services\Attachment;
-use App\Source\V1\DTO\TypHistoriaObiegu;
 use App\Source\V1\DTO\TypZalacznik;
 use App\Source\V1\Queries\Attachment\AttachmentQuery;
 use App\Source\V1\Queries\Case\CaseQuery;
+use App\Source\V1\Queries\Document\DocumentQuery;
 use App\Source\V1\Queries\Form\FormQuery;
 use App\Shared\Functions;
 use DateTime;
@@ -19,6 +19,7 @@ class AttachmentService
     public function __construct(
         private readonly AttachmentQuery $attachmentQuery,
         private readonly CaseQuery $caseQuery,
+        private readonly DocumentQuery $documentQuery,
         private readonly FormQuery $formQuery
     )
     {
@@ -223,6 +224,45 @@ class AttachmentService
         Log::info('[' . Functions::elapsedMs($startedAt) . 'ms] CASE_ATTACHMENTS.ok', [
             'case_uid' => $caseUid,
             'main_document_uid' => $mainDocumentUid,
+            'count' => count($result),
+        ]);
+
+        return $result;
+    }
+
+    public function getDocumentAttachments(string $documentId): array
+    {
+        Log::notice('DOCUMENT_ATTACHMENTS.start', ['documentId' => $documentId]);
+        $startedAt = Functions::startTimer();
+
+        $documentType = $this->documentQuery->getDocumentType($documentId); //pobiera typ Pismo|Dokument
+        switch($documentType) {
+            case DocumentQuery::DOCUMENT_TYPE_PISMO:
+                $attachments = $this->formQuery->getValuesFromFormDane($documentId, 'pliki');
+                break;
+            case DocumentQuery::DOCUMENT_TYPE_DOKUMENT:
+                $attachments = $this->formQuery->getValuesFromFormPismaDane($documentId, 'pliki');
+                break;
+
+            default:
+                throw new Exception('Nieprawidłowy rodzaj dokumentu: ' . $documentType);
+        }
+
+
+        if (empty($attachments)) {
+            Log::info('[' . Functions::elapsedMs($startedAt) . 'ms] CASE_ATTACHMENTS.empty', [
+                'case_uid' => $documentId,
+                'documentType' => $documentType,
+                'count' => 0,
+            ]);
+            return [];
+        }
+        $attachments = implode(';', array_column($attachments, 'form_dane_wartosc'));
+        $result = $this->getAttachmentsDetails($attachments);
+
+        Log::info('[' . Functions::elapsedMs($startedAt) . 'ms] CASE_ATTACHMENTS.ok', [
+            'case_uid' => $documentId,
+            'documentType' => $documentType,
             'count' => count($result),
         ]);
 

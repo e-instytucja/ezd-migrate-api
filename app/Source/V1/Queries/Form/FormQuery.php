@@ -60,6 +60,74 @@ SQL;
         return $data;
     }
 
+    public function getValuesFromFormPismaDane($documentId, $pole = '')
+    {
+        $formDanePole = '';
+        $params = [$documentId];
+        if (!empty($pole)) {
+            $params[] = $pole;
+            $formDanePole = ' AND fdp.klucz = ?';
+        }
+        $params = array_merge($params, $params);
+        $query = <<<SQL
+SELECT
+    *
+FROM (
+    (
+        SELECT
+            fd.form_dane_id,
+            fs.form_struktura_typ,
+            fs.form_struktura_pole,
+            fd.klucz,
+            fd.wartosc
+        FROM
+            eurzad_form_struktura fs
+        INNER JOIN
+            galaxia_processes gp ON gp ON fs.form_name = gp.normalized_name
+        INNER JOIN 
+            galaxia_instances gi ON (gi."pId" = gp."pId")
+        INNER JOIN 
+            eurzad_pismo p ON (p.instance_id = gi."instanceId" AND p.pismo_wersja = (
+                SELECT MAX(pismo_wersja) FROM eurzad_pismo WHERE instance_id = gi."instanceId")
+            )
+        LEFT JOIN
+            eurzad_form_pisma_dane fdp ON p.id = fdp.id AND fdp.form_dane_pole = fs.form_struktura_pole
+        WHERE
+            p.pismo_uid = ?{$formDanePole}
+    )
+    UNION
+    (
+        SELECT
+            fd.form_dane_id,
+            fs.form_struktura_typ,
+            fs.form_struktura_pole,
+            fd.form_dane_pole,
+            fd.form_dane_wartosc
+        FROM
+            eurzad_form_pisma_dane fdp
+        INNER JOIN 
+            eurzad_pismo p ON (p.id = fdp.id AND p.pismo_wersja = (
+                SELECT MAX(pismo_wersja) FROM eurzad_pismo WHERE instance_id = p."instanceId")
+            )
+        INNER JOIN 
+            galaxia_instances gi ON (gi."instanceId" = p."instanceId")
+        INNER JOIN 
+            galaxia_processes gp ON (gp."pId" = gi."pId")
+        LEFT JOIN
+            eurzad_form_struktura fs ON fs.form_name = gp.normalized_name AND fd.form_dane_pole = fs.form_struktura_pole
+        WHERE
+            p.pismo_uid = ?{$formDanePole}
+    )
+) tmp
+ORDER BY
+    form_dane_id ASC
+SQL;
+        $data = collect(DB::select($query, $params))
+            ->map(fn($item) => (array) $item)
+            ->toArray();
+        return $data;
+    }
+
     public function getFormStructure(string $formName): array
     {
         $params = [$formName];
