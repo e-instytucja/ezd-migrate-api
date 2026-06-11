@@ -29,9 +29,6 @@ class DocumentsController extends BaseApiController
         );
 
         $result = $this->service->getList($kryteriaWyszukiwania);
-        if($result === null) {
-            return $this->renderNotFound($request, 'No documents found.');
-        }
 
         return $this->renderResponse($request, $result['data'], meta: [
             'page'     => $kryteriaWyszukiwania->paginacja->page,
@@ -59,4 +56,49 @@ class DocumentsController extends BaseApiController
             501,
         );
     }
+
+    public function statuses(Request $request): Response
+    {
+        $data = $this->service->getStatuses();
+
+        if (empty($data)) {
+            return $this->renderNotFound($request, 'Case statuses not found.');
+        }
+
+        return $this->renderResponse($request, $data, meta: [
+            'count' => count($data),
+        ]);
+    }
+
+    public function types(Request $request): Response
+    {
+        $data = $this->service->getTypes();
+
+        if (empty($data)) {
+            return $this->renderNotFound($request, 'Nie znaleziono statusów dokumentów i pism.');
+        }
+
+        return $this->renderResponse($request, $data, meta: [
+            'count' => count($data),
+        ]);
+    }
+
+    public function process_names(Request $request): Response
+    {
+        $kryteriaWyszukiwania = KryteriaWyszukiwaniaDokumentow::fromPayload(
+            $request->all()
+        );
+
+        $data = $this->service->getProcessNames($kryteriaWyszukiwania);
+
+        if (empty($data)) {
+            return $this->renderNotFound($request, 'Nie znaleziono nazw procesów dokumentów i pism.');
+        }
+
+        return $this->renderResponse($request, $data, meta: [
+            'count' => count($data),
+        ]);
+    }
+
+
 }

@@ -3,6 +3,7 @@
 namespace App\Source\V1\Services\Document;
 
 use App\Shared\Functions;
+use App\Source\V1\DTO\Request\KryteriaWyszukiwaniaSpraw;
 use App\Source\V1\DTO\Request\KryteriaWyszukiwaniaDokumentow;
 use App\Source\V1\DTO\TypPozycjaDokumentu;
 use App\Source\V1\Enum\RodzajPracownika;
@@ -45,7 +46,6 @@ class DocumentService
             'page' => $kryteriaWyszukiwania->paginacja->page,
             'sort_field' => $kryteriaWyszukiwania->sortowanie->field,
             'sort_direction' => $kryteriaWyszukiwania->sortowanie->direction,
-            'dntas' => $kryteriaWyszukiwania->dntas,
         ]);
         $startedAt = Functions::startTimer();
 
@@ -78,6 +78,28 @@ class DocumentService
             'data' => $list,
             'count' => $count,
         ];
+    }
+
+    public function getTypes(): array
+    {
+        return [
+            ['id' => DocumentListQuery::DOKUMENTY_W_SPRAWIE, 'label' => 'Dokumenty w sprawie'],
+            ['id' => DocumentListQuery::PISMA_INICJUJACE_W_SPRAWIE, 'label' => 'Pisma inicjujące'],
+            ['id' => DocumentListQuery::PISMA_INICJUJACE_WIODACE, 'label' => 'Pisma wiodące w sprawie'],
+            ['id' => DocumentListQuery::PISMA_POTWIERDZENIE_ODBIORU, 'label' => 'potwierdzenia odbioru'],
+        ];
+    }
+
+    public function getStatuses()
+    {
+        return $this->documentQuery->getStatuses();
+    }
+
+
+
+    public function getProcessNames(KryteriaWyszukiwaniaDokumentow $kryteriaWyszukiwania)
+    {
+        return $this->documentQuery->getProcessNames($kryteriaWyszukiwania);
     }
 
     public function getDocumentsListByCaseUID(string $caseUID, int $dntas = 0): array

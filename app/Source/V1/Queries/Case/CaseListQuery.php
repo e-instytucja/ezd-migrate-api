@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Source\V1\Queries\Case;
 
 use App\Source\V1\DTO\Request\ApiKonfiguracja;
-use App\Source\V1\DTO\Request\KryteriaWyszukiwania;
-use App\Source\V1\DTO\Request\Sortowanie;
+use App\Source\V1\DTO\Request\KryteriaWyszukiwaniaSpraw;
+use App\Source\V1\DTO\Request\SortowanieSpraw;
 use App\Source\V1\DTO\Request\TypFiltrSpraw;
 use Illuminate\Support\Facades\DB;
 
@@ -15,7 +15,7 @@ class CaseListQuery
     /** @var array<int, mixed> */
     private array $bindings = [];
 
-    public function getList(KryteriaWyszukiwania $criteria): array
+    public function getList(KryteriaWyszukiwaniaSpraw $criteria): array
     {
         $this->bindings = [];
 
@@ -40,7 +40,7 @@ class CaseListQuery
         return array_map(fn ($r) => (array) $r, $rows);
     }
 
-    public function getListCount(KryteriaWyszukiwania $criteria): int
+    public function getListCount(KryteriaWyszukiwaniaSpraw $criteria): int
     {
         $this->bindings = [];
 
@@ -184,7 +184,7 @@ class CaseListQuery
         return '?';
     }
 
-    private function getOrderSql(Sortowanie $sortowanie): string
+    private function getOrderSql(SortowanieSpraw $sortowanie): string
     {
         return $sortowanie->toOrderBySql();
     }

@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace App\Source\V1\Queries\Document;
 
+use App\Source\V1\DTO\Request\KryteriaWyszukiwaniaDokumentow;
 use App\Source\V1\Enum\DocumentQueryContext;
 use App\Source\V1\Enum\TypDokumentu;
 use Illuminate\Support\Facades\DB;
 use stdClass;
 
-class DocumentQuery
+class DocumentQuery extends AbstractDocumentQuery
 {
     public const DOCUMENT_TYPE_PISMO = 'pismo';
     public const DOCUMENT_TYPE_DOKUMENT = 'dokument';
@@ -129,5 +130,115 @@ class DocumentQuery
         $sql['params'] = [$caseUID, $caseUID, $caseUID, $caseUID];
 
         return $sql;
+    }
+
+    public function getProcessNames(KryteriaWyszukiwaniaDokumentow $criteria): array
+    {
+        $where = $this->getWhereSql(
+            self::PISMA_INICJUJACE_WIODACE,
+            $criteria->konfiguracja,
+            $criteria->filtry
+        );
+        $sql = <<<SQL
+            SELECT normalized_name,
+                   name
+            FROM (SELECT gp.normalized_name,
+                         gp.name
+                  FROM eurzad_sprawa sp
+                           INNER JOIN galaxia_processes gp ON sp.form_name = gp.normalized_name
+                           INNER JOIN eurzad_obieg o ON (o.sprawa_uid = sp.sprawa_uid AND o.max_status_sprawy_id > 0)
+                           INNER JOIN galaxia_instances gi ON (gi."instanceId" = o."instanceId")
+                           INNER JOIN galaxia_instance_users giu ON (giu.instance_id = gi."instanceId")
+                           WHERE
+                  {$where}
+                  GROUP BY gp.normalized_name,
+                           gp.name
+            
+                  UNION
+            
+                  SELECT gp.normalized_name,
+                         gp.name
+                  FROM eurzad_pismo p
+                           INNER JOIN galaxia_instances gi ON p.instance_id = gi."instanceId"
+                           INNER JOIN galaxia_processes gp ON (gp."pId" = gi."pId")
+                           INNER JOIN galaxia_instance_users giu ON (giu.instance_id = gi."instanceId")
+                           WHERE
+                  {$where}
+                  GROUP BY gp.normalized_name,
+                           gp.name
+                  ) processes
+            ORDER BY name
+SQL;
+        $rows = DB::select($sql, array_merge($this->bindings, $this->bindings));
+        return array_map(
+            static fn ($row) => [
+                'name' => $row->normalized_name,
+                'label' => $row->name,
+            ],
+            $rows
+        );
+    }
+
+    public function getStatuses(): array
+    {
+        $rows = DB::select(
+            "
+    SELECT
+        status,
+        opis
+    FROM (
+        SELECT
+            o.status,
+            ss.opis
+        FROM
+            eurzad_sprawa sp
+        INNER JOIN
+            eurzad_obieg o
+                ON sp.sprawa_uid = o.sprawa_uid
+               AND o.max_status_sprawy_id > 0
+        INNER JOIN
+            eurzad_slownik_status ss
+                ON ss.symbol = o.status
+        GROUP BY
+            o.status,
+            ss.opis
+
+        UNION
+
+        SELECT
+            po.status,
+            ss.opis
+        FROM
+            eurzad_pismo p
+        INNER JOIN
+            eurzad_pismo_obieg po
+                ON po.pismo_uid = p.pismo_uid
+               AND po.createdate = (
+                    SELECT
+                        MAX(po2.createdate)
+                    FROM
+                        eurzad_pismo_obieg po2
+                    WHERE
+                        po2.pismo_uid = p.pismo_uid
+                )
+        INNER JOIN
+            eurzad_slownik_status ss
+                ON ss.symbol = po.status
+        GROUP BY
+            po.status,
+            ss.opis
+    ) statuses
+    ORDER BY
+        opis
+    "
+        );
+
+        return array_map(
+            static fn ($row) => [
+                'status' => $row->status,
+                'opis' => $row->opis,
+            ],
+            $rows
+        );
     }
 }

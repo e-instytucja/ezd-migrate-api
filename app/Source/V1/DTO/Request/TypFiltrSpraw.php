@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Source\V1\DTO\Request;
 
-readonly class TypFiltrSpraw
+readonly class TypFiltrSpraw extends \App\Source\V1\DTO\Request\TypFiltrDokument
 {
     public function __construct(
         public ?int $rok = null,

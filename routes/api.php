@@ -56,13 +56,11 @@ Route::prefix('v1')
         */
 
         Route::match(['get', 'post'], '/dntas', [DntasController::class, 'list'])
-//        Route::get('/dntas', [DntasController::class, 'list'])
             ->name('dntas.list');
 
         Route::get('/dntas/statuses', [DntasController::class, 'statuses'])
             ->name('dntas.statuses');
 
-//        Route::get('/cases/{caseUid}', [CasesController::class, 'show'])
         Route::match(['get', 'post'], '/dntas/{caseUid}', [DntasController::class, 'show'])
             ->where('caseUid', '[a-f0-9]{13}')
             ->name('dntas.show');
@@ -89,6 +87,15 @@ Route::prefix('v1')
         Route::match(['get', 'post'], '/documents/{documentId}/attachments', [AttachmentController::class, 'documentAttachments'])
             ->whereNumber('documentId')
             ->name('documents.attachments');
+
+        Route::match(['get', 'post'], '/documents/statuses', [DocumentsController::class, 'statuses'])
+            ->name('documents.statuses');
+
+        Route::match(['get', 'post'], '/documents/types', [DocumentsController::class, 'types'])
+            ->name('documents.types');
+
+        Route::match(['get', 'post'], '/documents/process_names', [DocumentsController::class, 'process_names'])
+            ->name('documents.process_names');
 
 
         /*

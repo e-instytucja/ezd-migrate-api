@@ -8,14 +8,18 @@ readonly class TypFiltrDokument
 {
     public function __construct(
         public ?string $teczkaUid = null,
-        public ?string $idProcesu = null,
+        public ?int $rok = null,
+        public ?int $typProcesu = null,
+        public ?string $nazwaProcesu = null,
         public ?string $statusProcesu = null,
-        public ?string $dataOd = null,
-        public ?string $dataDo = null,
-        public ?string $przesylka = null,
+        public ?string $dataRejestracjiOd = null,
+        public ?string $dataRejestracjiDo = null,
         public ?int $wlascicielStanowisko = null,
         public ?bool $pokazUdostepnione = null,
         public ?string $opisDokumentu = null,
+        public ?string $trescPisma = null,
+        public ?string $oznaczenie = null,
+        public ?string $interesant = null,
     ) {
     }
 
@@ -23,14 +27,18 @@ readonly class TypFiltrDokument
     {
         return new self(
             teczkaUid: self::nullableString($data['teczka_uid'] ?? null),
-            idProcesu: self::nullableString($data['id_procesu'] ?? null),
+            rok: isset($data['rok']) ? (int) $data['rok'] : null,
+            typProcesu: self::parseTypProcesu($data['typ_procesu'] ?? null),
+            nazwaProcesu: self::nullableString($data['nazwa_procesu'] ?? null),
             statusProcesu: self::nullableString($data['status_procesu'] ?? null),
-            dataOd: self::nullableString($data['data_od'] ?? null),
-            dataDo: self::nullableString($data['data_do'] ?? null),
-            przesylka: self::nullableString($data['przesylka'] ?? null),
+            dataRejestracjiOd: self::nullableString($data['data_rejestracji_od'] ?? null),
+            dataRejestracjiDo: self::nullableString($data['data_rejestracji_do'] ?? null),
             wlascicielStanowisko: isset($data['wlasciciel_stanowisko']) ? (int) $data['wlasciciel_stanowisko'] : null,
             pokazUdostepnione: self::nullableBool($data['pokaz_udostepnione'] ?? null),
-            opisDokumentu: self::nullableString($data['opis_dokumentu'] ?? null),
+            opisDokumentu: self::nullableString($data['opis_dokumentu'] ?? $data['dokument_tytul'] ?? null),
+            trescPisma: self::nullableString($data['tresc_pisma'] ?? null),
+            oznaczenie: self::coerceString($data['oznaczenie'] ?? $data['nr_na_pismie'] ?? null),
+            interesant: self::nullableString($data['interesant'] ?? null),
         );
     }
 
@@ -47,6 +55,39 @@ readonly class TypFiltrDokument
     public function requiresOpisJoin(): bool
     {
         return $this->opisDokumentu !== null;
+    }
+
+    public function requiresInteresantJoin(): bool
+    {
+        return $this->interesant !== null;
+    }
+
+    private static function parseTypProcesu(mixed $value): ?int
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        $intValue = (int) $value;
+
+        if ($intValue < 1 || $intValue > 4) {
+            return null;
+        }
+
+        return $intValue;
+    }
+
+    private static function coerceString(mixed $value): ?string
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        if (is_int($value) || is_float($value)) {
+            return (string) $value;
+        }
+
+        return self::nullableString($value);
     }
 
     private static function nullableString(mixed $value): ?string

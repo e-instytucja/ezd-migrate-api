@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Source\V1\DTO\Request;
 
-readonly class Sortowanie
+readonly class SortowanieSpraw
 {
     private const DEFAULT_FIELD = 'data_wszczecia';
 
@@ -18,6 +18,16 @@ readonly class Sortowanie
         'interesant'      => 'ps_petent.view_podmiot',
         'status_procesu'  => 'ess.opis',
         'data_wszczecia'  => 'et.teczka_createdate',
+    ];
+
+    /** @var array<string, list<string>> */
+    private const MULTI_FIELD_COLUMNS = [
+        'wlasciciel_stanowisko' => [
+            'uu.surname',
+            'uu.forename',
+            "NULLIF(uu.surname2, '')",
+            "NULLIF(uu.surname3, '')",
+        ],
     ];
 
     public function __construct(
@@ -35,7 +45,7 @@ readonly class Sortowanie
         }
 
         $field = (string) ($sort['field'] ?? self::DEFAULT_FIELD);
-        if (!isset(self::FIELD_COLUMNS[$field])) {
+        if (!isset(self::FIELD_COLUMNS[$field]) && !isset(self::MULTI_FIELD_COLUMNS[$field])) {
             $field = self::DEFAULT_FIELD;
         }
 
@@ -49,6 +59,15 @@ readonly class Sortowanie
 
     public function toOrderBySql(): string
     {
-        return self::FIELD_COLUMNS[$this->field] . ' ' . strtoupper($this->direction);
+        $dir = strtoupper($this->direction);
+
+        if (isset(self::MULTI_FIELD_COLUMNS[$this->field])) {
+            return implode(', ', array_map(
+                fn (string $column) => "{$column} {$dir}",
+                self::MULTI_FIELD_COLUMNS[$this->field],
+            ));
+        }
+
+        return self::FIELD_COLUMNS[$this->field] . ' ' . $dir;
     }
 }

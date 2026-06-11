@@ -4,29 +4,20 @@ declare(strict_types=1);
 
 namespace App\Source\V1\Queries\Document;
 
-use App\Source\V1\DTO\Request\ApiKonfiguracja;
 use App\Source\V1\DTO\Request\KryteriaWyszukiwaniaDokumentow;
-use App\Source\V1\DTO\Request\Sortowanie;
+use App\Source\V1\DTO\Request\SortowanieDokumentow;
 use App\Source\V1\DTO\Request\TypFiltrDokument;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
-class DocumentListQuery
+class DocumentListQuery extends AbstractDocumentQuery
 {
-    /** @var array<int, mixed> */
-    private array $bindings = [];
-
-    private const PISMA_INICJUJACE_WIODACE = 1;
-    private const DOKUMENTY_W_SPRAWIE = 2;
-    private const PISMA_INICJUJACE_W_SPRAWIE = 3;
-    private const DOKUMENTY_ZWROT = 4;
-
     /** @var list<int> */
     private const UNION_TYPES = [
         self::PISMA_INICJUJACE_WIODACE,
         self::DOKUMENTY_W_SPRAWIE,
         self::PISMA_INICJUJACE_W_SPRAWIE,
-        self::DOKUMENTY_ZWROT,
+        self::PISMA_POTWIERDZENIE_ODBIORU,
     ];
 
     private $idDokumentuSelect = 'DISTINCT ON (id_dokumentu)';
@@ -48,7 +39,7 @@ class DocumentListQuery
 
         $parts = array_map(
             fn (int $type) => '(' . $this->buildUnionPart($type, $criteria) . ')',
-            self::UNION_TYPES,
+            $this->resolveUnionTypes($criteria->filtry),
         );
 
         $sql = <<<SQL
@@ -63,20 +54,25 @@ class DocumentListQuery
         return (int) $result[0]->count;
     }
 
-    public function getListByTeczkaUid(string $teczkaUid, int $dntas = 0): array
+    public function getListByTeczkaUid(string $teczkaUid): array
     {
-        return $this->getList(KryteriaWyszukiwaniaDokumentow::forTeczkaUid($teczkaUid, $dntas));
+        return $this->getList(KryteriaWyszukiwaniaDokumentow::forTeczkaUid($teczkaUid));
     }
 
     private function buildUnionsSql(KryteriaWyszukiwaniaDokumentow $criteria): string
     {
         $parts = array_map(
             fn (int $type) => '(' . $this->buildUnionPart($type, $criteria) . ')',
-            self::UNION_TYPES,
+            $this->resolveUnionTypes($criteria->filtry),
         );
 
-        $sql = $this->implodeUnions($parts);
-        $sql .= "\nORDER BY document_group_type ASC";
+        $sql = <<<SQL
+            SELECT * FROM (
+                {$this->implodeUnions($parts)}
+            ) AS documents
+        SQL;
+        $sql .= "\nORDER BY " . $this->getOrderSql($criteria->sortowanie);
+        $sql .= ", document_group_type ASC, id_dokumentu ASC";
 
         if (!$criteria->filtry->isScopedToTeczka()) {
             $sql .= "\nLIMIT " . $this->getLimitSql($criteria->paginacja->limit);
@@ -92,7 +88,7 @@ class DocumentListQuery
             self::PISMA_INICJUJACE_WIODACE => $this->pismaInicjujaceWiodaceSql($criteria),
             self::DOKUMENTY_W_SPRAWIE => $this->dokumentyWSprawieSql($criteria),
             self::PISMA_INICJUJACE_W_SPRAWIE => $this->pismaInicjujaceWSprawieSql($criteria),
-            self::DOKUMENTY_ZWROT => $this->pismaZwrotSql($criteria),
+            self::PISMA_POTWIERDZENIE_ODBIORU => $this->pismaZwrotSql($criteria),
             default => throw new InvalidArgumentException("Nieprawidłowy typ UNION: {$type}"),
         };
     }
@@ -102,8 +98,7 @@ class DocumentListQuery
         $where = $this->getWhereSql(
             self::PISMA_INICJUJACE_WIODACE,
             $criteria->konfiguracja,
-            $criteria->filtry,
-            $criteria->dntas,
+            $criteria->filtry
         );
 
         return <<<SQL
@@ -117,8 +112,8 @@ class DocumentListQuery
                 {$this->commonInnerJoinSql()}
                 {$this->pismoLeftJoinsSql()}
                 {$this->teczkaJoinsSql(self::PISMA_INICJUJACE_WIODACE, $criteria)}
-                {$this->getFilterJoinSql(self::PISMA_INICJUJACE_WIODACE, $criteria->filtry)}
             WHERE
+                gp.name NOT IN ('zwrot', 'zwrotka') AND
                 {$where}
             ORDER BY id_dokumentu ASC, eo.status_sprawy_id DESC
         SQL;
@@ -129,22 +124,20 @@ class DocumentListQuery
         $where = $this->getWhereSql(
             self::DOKUMENTY_W_SPRAWIE,
             $criteria->konfiguracja,
-            $criteria->filtry,
-            $criteria->dntas,
+            $criteria->filtry
         );
 
         return <<<SQL
             SELECT
                 $this->idDokumentuSelect
                 {$this->commonSelectSql()},
-                {$this->dokumentCommonSelectSql()},
+                {$this->dokumentSelectSql()},
                 {$this->documentGroupNumber(self::DOKUMENTY_W_SPRAWIE)} AS document_group_type
             FROM eurzad_pismo ep
                 {$this->dokumentInnerJoinSql()}
                 {$this->commonInnerJoinSql()}
                 {$this->dokumentLeftJoinsSql()}
                 {$this->teczkaJoinsSql(self::DOKUMENTY_W_SPRAWIE, $criteria)}
-                {$this->getFilterJoinSql(self::DOKUMENTY_W_SPRAWIE, $criteria->filtry)}
             WHERE
                 {$where}
             ORDER BY id_dokumentu ASC, epo.pismo_obieg_id DESC
@@ -159,8 +152,7 @@ class DocumentListQuery
         $where = $this->getWhereSql(
             self::PISMA_INICJUJACE_W_SPRAWIE,
             $criteria->konfiguracja,
-            $criteria->filtry,
-            $criteria->dntas,
+            $criteria->filtry
         );
 
         return <<<SQL
@@ -174,8 +166,8 @@ class DocumentListQuery
                 {$this->pismoLeftJoinsSql()}
                 {$this->commonInnerJoinSql()}
                 {$this->teczkaJoinsSql(self::PISMA_INICJUJACE_W_SPRAWIE, $criteria)}
-                {$this->getFilterJoinSql(self::PISMA_INICJUJACE_W_SPRAWIE, $criteria->filtry)}
             WHERE
+                gp.name NOT IN ('zwrot', 'zwrotka') AND
                 {$where}
             ORDER BY id_dokumentu ASC, eo.status_sprawy_id DESC
         SQL;
@@ -184,10 +176,9 @@ class DocumentListQuery
     private function pismaZwrotSql(KryteriaWyszukiwaniaDokumentow $criteria): string
     {
         $where = $this->getWhereSql(
-            self::DOKUMENTY_ZWROT,
+            self::PISMA_POTWIERDZENIE_ODBIORU,
             $criteria->konfiguracja,
             $criteria->filtry,
-            $criteria->dntas,
         );
 
         return <<<SQL
@@ -195,14 +186,14 @@ class DocumentListQuery
                 $this->idDokumentuSelect
                 {$this->commonSelectSql()},
                 {$this->pismoSelectSql()},
-                {$this->documentGroupNumber(self::DOKUMENTY_ZWROT)} AS document_group_type
+                {$this->documentGroupNumber(self::PISMA_POTWIERDZENIE_ODBIORU)} AS document_group_type
             FROM eurzad_sprawa es
                 {$this->pismoInnerJoinsSql()}
                 {$this->commonInnerJoinSql()}
                 {$this->pismoLeftJoinsSql()}
-                {$this->teczkaJoinsSql(self::DOKUMENTY_ZWROT, $criteria)}
-                {$this->getFilterJoinSql(self::DOKUMENTY_ZWROT, $criteria->filtry)}
+                {$this->teczkaJoinsSql(self::PISMA_POTWIERDZENIE_ODBIORU, $criteria)}
             WHERE
+                gp.name IN ('zwrot', 'zwrotka') AND
                 {$where}
             ORDER BY id_dokumentu ASC, eo.status_sprawy_id DESC
         SQL;
@@ -223,12 +214,17 @@ SQL;
     {
         return <<<SQL
                 es.sprawa_uid AS id_dokumentu,
+                fd_nr_na_pismie.form_dane_wartosc AS nr_na_pismie,
                 NULL AS wersja,
+                COALESCE(
+                    NULLIF(TRIM(fd_data_rej.form_dane_wartosc), '')::timestamp,
+                    esp.sprawa_createdate
+                ) AS data_rejestracji,
+                es.sprawa_createdate as data_utworzenia,
                 fd_pliki.form_dane_wartosc AS zalaczniki,
-                fd_tytul.form_dane_wartosc AS tytul,
-                ps_petent.view_podmiot as interesant,
-                ps_petent.view_adres_korespondencyjny as interesant_adres,
-                pd_petent.typ_osoby as interesant_type,
+                (NULLIF(fd_tytul.form_dane_wartosc, '')::jsonb)->>'textarea' AS dokument_tytul,
+                fd_tresc_wniosku.form_dane_wartosc AS tresc_wniosku,
+                ek.ksiega_numer || '/' || ek.ksiega_rok AS nr_ksiegi,
                 EXISTS (
                     SELECT 1
                     FROM eurzad_form_dane fd
@@ -241,16 +237,18 @@ SQL;
 
     }
 
-    private function dokumentCommonSelectSql(): string
+    private function dokumentSelectSql(): string
     {
         return <<<SQL
                 ep.pismo_uid AS id_dokumentu,
+                null AS nr_na_pismie,
                 ep.pismo_wersja AS wersja,
+                ep.pismo_createdate as data_rejestracji,
+                ep.pismo_createdate as data_utworzenia,
                 fd_pliki.wartosc AS zalaczniki,
-                fd_tytul.wartosc AS tytul,
-                NULL as interesant,                 --dokumenty (decyzja/korespondencja) dołączane do sprawy - nie mają pola interesanci - dlatego ustawiamy na NULL
-                NULL as interesant_adres,           --dokumenty (decyzja/korespondencja) dołączane do sprawy - nie mają pola interesanci - dlatego ustawiamy na NULL
-                NULL as interesant_type,            --dokumenty (decyzja/korespondencja) dołączane do sprawy - nie mają pola interesanci - dlatego ustawiamy na NULL
+                (NULLIF(fd_tytul.wartosc, '')::jsonb)->>'textarea' AS dokument_tytul,
+                null AS tresc_wniosku,
+                '' AS nr_ksiegi,
                 false AS has_pozostali_interesanci  --dokumenty (decyzja/korespondencja) dołączane do sprawy - nie mają pola interesanci - dlatego ustawiamy na false
                 
 SQL;
@@ -284,13 +282,20 @@ SQL;
                 ug_w."groupDesc" as wlasciciel_stanowisko_nazwa,
                 ug_g."groupName" as wlasciciel_komorka_skrot,
                 ug_g."groupDesc" as wlasciciel_komorka_nazwa,
+                uu.surname AS wlasciciel_nazwisko,
+                uu.forename AS wlasciciel_imie,
+                NULLIF(uu.surname2, '') AS wlasciciel_nazwisko2,
+                NULLIF(uu.surname3, '') AS wlasciciel_nazwisko3,
                 CONCAT_WS(
                    ' ',
                    uu.forename,
                    uu.surname,
                    NULLIF(uu.surname2, ''),
                    NULLIF(uu.surname3, '')
-                )  as wlasciciel_imie_nazwisko
+                )  as wlasciciel_imie_nazwisko,
+                ps_petent.view_podmiot as interesant,
+                ps_petent.view_adres_korespondencyjny as interesant_adres,
+                pd_petent.typ_osoby as interesant_type
                 
 SQL;
 
@@ -312,7 +317,7 @@ SQL;
                 {$join} eurzad_teczka_zawartosc etz ON etz.teczka_zawartosc_uid = es.sprawa_uid
                 {$join} eurzad_teczka et ON et.teczka_uid = etz.teczka_uid
             SQL,
-            self::DOKUMENTY_ZWROT => <<<SQL
+            self::PISMA_POTWIERDZENIE_ODBIORU => <<<SQL
                 {$join} eurzad_teczka_zawartosc etz2 ON etz2.teczka_zawartosc_uid = es.sprawa_uid
                 {$join} eurzad_teczka_zawartosc etz ON etz.teczka_zawartosc_uid = etz2.teczka_uid
                 {$join} eurzad_teczka et ON et.teczka_uid = etz.teczka_uid
@@ -325,6 +330,7 @@ SQL;
     {
         return <<<SQL
                 INNER JOIN galaxia_processes gp ON gp.normalized_name = es.form_name
+                INNER JOIN eurzad_sprawa_przedluzanie esp ON esp.sprawa_uid = es.sprawa_uid
                 INNER JOIN eurzad_obieg eo ON (eo.sprawa_uid = es.sprawa_uid AND max_status_sprawy_id > 0)
                 INNER JOIN eurzad_slownik_status ess ON ess.symbol = eo.status
                 INNER JOIN galaxia_instances gi ON gi."instanceId" = eo."instanceId" 
@@ -337,6 +343,14 @@ SQL;
         return <<<SQL
                 LEFT JOIN eurzad_form_dane fd_tytul
                        ON (fd_tytul.sprawa_uid = es.sprawa_uid AND fd_tytul.form_dane_pole = 'dokument_tytul')
+                LEFT JOIN eurzad_form_dane fd_tresc_wniosku
+                       ON (fd_tresc_wniosku.sprawa_uid = es.sprawa_uid AND fd_tresc_wniosku.form_dane_pole = 'tresc_wniosku')
+                LEFT JOIN eurzad_form_dane fd_nr_na_pismie
+                       ON (fd_nr_na_pismie.sprawa_uid = es.sprawa_uid AND fd_nr_na_pismie.form_dane_pole = 'nr_na_pismie')
+                LEFT JOIN eurzad_ksiega_sprawa eks ON (eks.sprawa_uid = es.sprawa_uid)
+                LEFT JOIN eurzad_ksiega ek ON (ek.ksiega_uid = eks.ksiega_uid)
+                LEFT JOIN eurzad_form_dane fd_data_rej
+                       ON (fd_data_rej.sprawa_uid = es.sprawa_uid AND fd_data_rej.form_dane_pole = 'data')
                 LEFT JOIN eurzad_form_dane fd_petent
                        ON (fd_petent.sprawa_uid = es.sprawa_uid AND fd_petent.form_dane_pole = 'petent_uid')
                 LEFT JOIN eurzad_petent_dane pd_petent ON (
@@ -354,176 +368,24 @@ SQL;
     {
         return <<<SQL
                 LEFT JOIN eurzad_form_pisma_dane fd_tytul
-                       ON (fd_tytul.id = ep.id AND fd_tytul.klucz = 'dokument_tytul')
+                    ON (fd_tytul.id = ep.id AND fd_tytul.klucz = 'dokument_tytul')
+                LEFT JOIN eurzad_form_pisma_dane fpd_petent
+                    ON (fpd_petent.id = ep.id AND fpd_petent.klucz = 'petent_uid')
+                LEFT JOIN eurzad_petent_dane pd_petent 
+                    ON (
+                        pd_petent.main_petent_uid = fpd_petent.wartosc 
+                        AND pd_petent.petent_uid = pd_petent.main_petent_uid
+                    )
+                LEFT JOIN eurzad_petent_search ps_petent 
+                    ON (ps_petent.main_petent_uid = fpd_petent.wartosc)
                 LEFT JOIN eurzad_form_pisma_dane fd_pliki
-                       ON (fd_pliki.id = ep.id AND fd_pliki.klucz = 'pliki')
+                    ON (fd_pliki.id = ep.id AND fd_pliki.klucz = 'pliki')
 SQL;
 
     }
 
-    private function getFilterJoinSql(int $unionType, TypFiltrDokument $filtry): string
-    {
-        if (!$filtry->requiresOpisJoin()) {
-            return '';
-        }
-
-        if ($unionType === self::DOKUMENTY_W_SPRAWIE) {
-            return '';
-        }
-
-        // TODO: filtrowanie po opisie dokumentu
-        return <<<SQL
-                LEFT JOIN eurzad_form_dane fd_opis
-                       ON (fd_opis.sprawa_uid = es.sprawa_uid AND fd_opis.form_dane_pole = 'dokument_tytul')
-        SQL;
-    }
-
-    private function getWhereSql(
-        int $unionType,
-        ApiKonfiguracja $konfiguracja,
-        TypFiltrDokument $filtry,
-        int $dntas,
-    ): string {
-        if ($filtry->isScopedToTeczka()) {
-            return $this->getScopedWhereSql($filtry, $dntas);
-        }
-
-        return $this->getGlobalWhereSql($unionType, $konfiguracja, $filtry, $dntas);
-    }
-
-    private function getScopedWhereSql(TypFiltrDokument $filtry, int $dntas): string
-    {
-        $conditions = [
-            'et.teczka_uid = ' . $this->bind($filtry->teczkaUid),
-            'et.dntas = ' . $dntas,
-        ];
-
-        return implode("\n                AND ", $conditions);
-    }
-
-    private function getGlobalWhereSql(
-        int $unionType,
-        ApiKonfiguracja $konfiguracja,
-        TypFiltrDokument $filtry,
-        int $dntas,
-    ): string {
-        $conditions = [
-            '(et.teczka_uid IS NULL OR et.dntas = ' . $dntas . ')',
-        ];
-
-        $this->appendWorkstationScope($conditions, $konfiguracja, $filtry);
-
-        if ($filtry->idProcesu !== null) {
-            $conditions[] = 'gp."pId" = ' . $this->bind($filtry->idProcesu);
-        }
-
-        if ($filtry->statusProcesu !== null) {
-            $conditions[] = match ($unionType) {
-                self::DOKUMENTY_W_SPRAWIE => 'epo.status = ' . $this->bind($filtry->statusProcesu),
-                default => 'eo.status = ' . $this->bind($filtry->statusProcesu),
-            };
-        }
-
-        if ($filtry->wlascicielStanowisko !== null) {
-            $conditions[] = $this->buildWorkstationCondition(
-                [$filtry->wlascicielStanowisko],
-                $filtry->pokazUdostepnione !== null,
-            );
-        }
-
-        if ($filtry->dataOd !== null) {
-            $conditions[] = $this->dateFromCondition($unionType, $filtry->dataOd);
-        }
-
-        if ($filtry->dataDo !== null) {
-            $conditions[] = $this->dateToCondition($unionType, $filtry->dataDo);
-        }
-
-        if ($filtry->przesylka !== null) {
-            // TODO: mapowanie wartości przesylka → gp.typ
-            $conditions[] = 'gp.typ = ' . $this->bind($filtry->przesylka);
-        }
-
-        if ($filtry->opisDokumentu !== null) {
-            // TODO: filtrowanie po opisie dokumentu
-            $conditions[] = 'fd_opis.form_dane_wartosc ILIKE ' . $this->bind('%' . $filtry->opisDokumentu . '%');
-        }
-
-        return implode("\n                AND ", $conditions);
-    }
-
-    private function dateFromCondition(int $unionType, string $dataOd): string
-    {
-        return match ($unionType) {
-            self::DOKUMENTY_W_SPRAWIE => 'ep.pismo_createdate >= ' . $this->bind($dataOd . ' 00:00:00'),
-            default => 'sp.sprawa_createdate >= ' . $this->bind($dataOd . ' 00:00:00'),
-        };
-    }
-
-    private function dateToCondition(int $unionType, string $dataDo): string
-    {
-        return match ($unionType) {
-            self::DOKUMENTY_W_SPRAWIE => 'ep.pismo_createdate <= ' . $this->bind($dataDo . ' 23:59:59'),
-            default => 'sp.sprawa_createdate <= ' . $this->bind($dataDo . ' 23:59:59'),
-        };
-    }
-
     /**
-     * @param string[] $conditions
-     */
-    private function appendWorkstationScope(
-        array &$conditions,
-        ApiKonfiguracja $konfiguracja,
-        TypFiltrDokument $filtry,
-    ): void {
-        if ($konfiguracja->madkomWorkstationIds === []) {
-            throw new \Exception('Brak wskazanych wlascicieli [err_10_appendWorkstationScope]');
-        }
-
-        $conditions[] = $this->buildWorkstationCondition(
-            $konfiguracja->madkomWorkstationIds,
-            $filtry->pokazUdostepnione !== null,
-        );
-    }
-
-    /**
-     * @param int[] $workstationIds
-     */
-    private function buildWorkstationCondition(array $workstationIds, bool $includeShared): string
-    {
-        if ($workstationIds === []) {
-            throw new InvalidArgumentException('Workstation IDs cannot be empty');
-        }
-
-        $placeholders = implode(', ', array_map(
-            fn (int $id) => $this->bind($id),
-            $workstationIds,
-        ));
-        $ownerCondition = "gi.workstation IN ({$placeholders})";
-
-        if (!$includeShared) {
-            return $ownerCondition;
-        }
-
-        $sharedPlaceholders = implode(', ', array_map(
-            fn (int $id) => $this->bind($id),
-            $workstationIds,
-        ));
-
-        return <<<SQL
-                ( {$ownerCondition} OR
-                EXISTS (
-                        SELECT 1
-                        FROM galaxia_instance_users giu
-                        WHERE giu.instance_id = gi."instanceId"
-                          AND giu.workstation IN ({$sharedPlaceholders})
-                   )
-                )
-        SQL;
-    }
-
-    /**
-     * @param list<string> $parts
+     pp* @param list<string> $parts
      */
     private function implodeUnions(array $parts): string
     {
@@ -535,16 +397,24 @@ SQL;
         return $type;
     }
 
-    private function bind(mixed $value): string
+    /**
+     * @return list<int>
+     */
+    private function resolveUnionTypes(TypFiltrDokument $filtry): array
     {
-        $this->bindings[] = $value;
+        if ($filtry->typProcesu === null) {
+            return self::UNION_TYPES;
+        }
 
-        return '?';
+        if (!in_array($filtry->typProcesu, self::UNION_TYPES, true)) {
+            throw new InvalidArgumentException("Nieprawidłowy typ_procesu: {$filtry->typProcesu}");
+        }
+
+        return [$filtry->typProcesu];
     }
 
-    private function getOrderSql(Sortowanie $sortowanie): string
+    private function getOrderSql(SortowanieDokumentow $sortowanie): string
     {
-        // TODO: sortowanie dokumentów — obecne Sortowanie::FIELD_COLUMNS dotyczy spraw
         return $sortowanie->toOrderBySql();
     }
 

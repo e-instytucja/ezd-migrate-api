@@ -6,7 +6,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Api\BaseApiController;
 use App\Http\Response\ApiResponseRenderer;
-use App\Source\V1\DTO\Request\KryteriaWyszukiwania;
+use App\Source\V1\DTO\Request\KryteriaWyszukiwaniaSpraw;
 use App\Source\V1\Services\Case\CaseService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -24,7 +24,7 @@ abstract class AbstractCaseController extends BaseApiController
 
     public function list(Request $request): Response
     {
-        $kryteriaWyszukiwania = KryteriaWyszukiwania::fromPayload(
+        $kryteriaWyszukiwania = KryteriaWyszukiwaniaSpraw::fromPayload(
             $request->all(),
             $this->dntas(),
         );

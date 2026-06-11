@@ -3,7 +3,7 @@
 namespace App\Source\V1\Services\Case;
 
 use App\Shared\Functions;
-use App\Source\V1\DTO\Request\KryteriaWyszukiwania;
+use App\Source\V1\DTO\Request\KryteriaWyszukiwaniaSpraw;
 use App\Source\V1\DTO\TypOpisSprawy;
 use App\Source\V1\DTO\TypPracownik;
 use App\Source\V1\DTO\TypZnakSprawy;
@@ -158,7 +158,7 @@ class CaseService
         return $this->caseDetails;
     }
 
-    public function getList(KryteriaWyszukiwania $kryteriaWyszukiwania): array
+    public function getList(KryteriaWyszukiwaniaSpraw $kryteriaWyszukiwania): array
     {
         Log::notice('CASE_LIST.start', [
             'offset' => $kryteriaWyszukiwania->paginacja->offset,
