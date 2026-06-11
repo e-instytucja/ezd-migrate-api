@@ -218,7 +218,7 @@ class AttachmentService
             Log::info('CASE_ATTACHMENTS.empty', ['case_uid' => $caseUid, 'main_document_uid' => $mainDocumentUid]);
             return [];
         }
-        $attachments = implode(';', array_column($attachments, 'form_dane_wartosc'));
+        $attachments = implode(';', array_column($attachments, 'wartosc'));
         $result = $this->getAttachmentsDetails($attachments);
 
         Log::info('[' . Functions::elapsedMs($startedAt) . 'ms] CASE_ATTACHMENTS.ok', [
@@ -242,6 +242,8 @@ class AttachmentService
                 break;
             case DocumentQuery::DOCUMENT_TYPE_DOKUMENT:
                 $attachments = $this->formQuery->getValuesFromFormPismaDane($documentId, 'pliki');
+
+
                 break;
 
             default:
@@ -257,7 +259,7 @@ class AttachmentService
             ]);
             return [];
         }
-        $attachments = implode(';', array_column($attachments, 'form_dane_wartosc'));
+        $attachments = implode(';', array_column($attachments, 'wartosc'));
         $result = $this->getAttachmentsDetails($attachments);
 
         Log::info('[' . Functions::elapsedMs($startedAt) . 'ms] CASE_ATTACHMENTS.ok', [

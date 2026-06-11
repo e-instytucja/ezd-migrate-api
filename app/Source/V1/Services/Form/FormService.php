@@ -41,71 +41,71 @@ class FormService {
         $formStruct = $this->formStruct($formName);
         $clientsCount = 0;
         foreach ($formFromDb as $val) {
-            if ($val['form_struktura_typ'] === 'interesanci') {
+            if ($val['struktura_typ'] === 'interesanci') {
                 $clientsCount++;
             }
         }
         $ret = [];
         foreach ($formFromDb as $val) {
-            if (isset($formStruct[$val['form_dane_pole']]['typ']) && $val['form_struktura_pole'] != null) {
-                switch ($formStruct[$val['form_struktura_pole']]['typ']) {
+            if (isset($formStruct[$val['form_pole']]['typ']) && $val['struktura_pole'] != null) {
+                switch ($formStruct[$val['struktura_pole']]['typ']) {
                     case 'cpv':
-                        $ret[$val["form_struktura_pole"]] = explode('#', $val["form_dane_wartosc"]);
+                        $ret[$val["struktura_pole"]] = explode('#', $val["wartosc"]);
                         break;
                     case 'checkbox':
                     case 'multiselect1':
-                        $val["form_dane_wartosc"] = htmlspecialchars_decode(str_replace('&#34;', '"', $val["form_dane_wartosc"]));
-                        $ret[$val["form_struktura_pole"]] = json_decode($val["form_dane_wartosc"]);
+                        $val["wartosc"] = htmlspecialchars_decode(str_replace('&#34;', '"', $val["wartosc"]));
+                        $ret[$val["struktura_pole"]] = json_decode($val["wartosc"]);
                         break;
                     case 'interesanci':
                         if ($clientsCount <= 1) {
-                            $ret[$val["form_struktura_pole"]] = null;
+                            $ret[$val["struktura_pole"]] = null;
                         }
-                        if (!empty($val["form_dane_wartosc"])) {
-                            $ret[$val["form_dane_pole"]][] = $this->getSuppliantToForm(
-                                $val["form_dane_wartosc"],
+                        if (!empty($val["wartosc"])) {
+                            $ret[$val["form_pole"]][] = $this->getSuppliantToForm(
+                                $val["wartosc"],
                                 $val['form_dane_id'],
                                 false
                             );
                         }
                         break;
                     case 'stanowiska':
-                        $ret[$val["form_struktura_pole"]] = $val["form_dane_wartosc"];
-                        $departamentInfo = $this->workstationQuery->getDepartamentInfo($val["form_dane_wartosc"]);
-                        $ret[$val["form_struktura_pole"] . '_symbol_kom'] = $departamentInfo['groupName'];
+                        $ret[$val["struktura_pole"]] = $val["wartosc"];
+                        $departamentInfo = $this->workstationQuery->getDepartamentInfo($val["wartosc"]);
+                        $ret[$val["struktura_pole"] . '_symbol_kom'] = $departamentInfo['groupName'];
                         break;
                     case 'stanowisko_uzytkownik':
-                        $ret[$val["form_struktura_pole"]] = $val["form_dane_wartosc"];
-                        $departamentInfo = $this->uugQuery->getDepartamentInfo($val["form_dane_wartosc"]);
-                        $ret[$val["form_struktura_pole"] . '_symbol_kom'] = $departamentInfo['groupName'];
+                        $ret[$val["struktura_pole"]] = $val["wartosc"];
+                        $departamentInfo = $this->uugQuery->getDepartamentInfo($val["wartosc"]);
+                        $ret[$val["struktura_pole"] . '_symbol_kom'] = $departamentInfo['groupName'];
                         break;
                     case 'dokument_tytul':
-                        $ret[$val["form_struktura_pole"]] = $val["form_dane_wartosc"];
+                        $ret[$val["struktura_pole"]] = $val["wartosc"];
                         break;
                     case 'referat':
-                        $departamentInfo = $this->workstationQuery->getDepartamentInfo($val["form_dane_wartosc"]);
-                        $ret[$val["form_struktura_pole"]] = $departamentInfo['groupName'];
+                        $departamentInfo = $this->workstationQuery->getDepartamentInfo($val["wartosc"]);
+                        $ret[$val["struktura_pole"]] = $departamentInfo['groupName'];
                         break;
                     case 'attachment':
-                        $ret[$val["form_struktura_pole"]] = $this->attachmentService->getAttachmentsDetails($val["form_dane_wartosc"]);
+                        $ret[$val["struktura_pole"]] = $this->attachmentService->getAttachmentsDetails($val["wartosc"]);
                         break;
                     case 'slownik':
-                        $ret[$val["form_struktura_pole"]] = $this->dictionaryService->getDictionaryValue($val["form_dane_wartosc"]);
+                        $ret[$val["struktura_pole"]] = $this->dictionaryService->getDictionaryValue($val["wartosc"]);
                         break;
                     default:
-                        $val["form_dane_wartosc"] = str_replace('&#34;', '"', $val["form_dane_wartosc"]);
-                        $ret[$val["form_struktura_pole"]] = $val["form_dane_wartosc"];
+                        $val["wartosc"] = str_replace('&#34;', '"', $val["wartosc"]);
+                        $ret[$val["struktura_pole"]] = $val["wartosc"];
                         break;
                 }
-            } elseif (!empty($val['form_dane_wartosc'])) {
-                if ($val["form_dane_pole"] === 'petent_uid' && $val['form_struktura_typ'] !== 'interesanci') {
+            } elseif (!empty($val['wartosc'])) {
+                if ($val["form_pole"] === 'petent_uid' && $val['struktura_typ'] !== 'interesanci') {
                     $ret['interesanci'][] = $this->getSuppliantToForm(
-                        $val["form_dane_wartosc"],
+                        $val["wartosc"],
                         $val['form_dane_id'],
                         true
                     );
                 } else {
-                    $ret[$val["form_struktura_pole"]] = $val["form_dane_wartosc"];
+                    $ret[$val["struktura_pole"]] = $val["wartosc"];
                 }
             }
         }

@@ -44,26 +44,6 @@ class DocumentQuery extends AbstractDocumentQuery
             ->first();
     }
 
-    public function getLastInsertedToPismo(
-        $value = 0,
-        string $column = 'instance_id'
-    ): ?object {
-        $allowedColumns = [
-            'instance_id',
-            'pismo_uid',
-            'sprawa_uid',
-        ];
-
-        if (!in_array($column, $allowedColumns, true)) {
-            throw new \InvalidArgumentException('Invalid column');
-        }
-
-        return DB::table('eurzad_pismo')
-            ->where($column, $value)
-            ->orderByDesc('pismo_wersja')
-            ->first();
-    }
-
     public function getDocumentListByCaseUid($caseUID) {
         $sql = $this->prepareSQLForDataFromCase($caseUID);
         $data = collect(DB::select($sql['query'], $sql['params']))

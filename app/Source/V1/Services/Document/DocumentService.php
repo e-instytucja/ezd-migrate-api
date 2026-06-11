@@ -102,115 +102,20 @@ class DocumentService
         return $this->documentQuery->getProcessNames($kryteriaWyszukiwania);
     }
 
-    public function getDocumentsListByCaseUID(string $caseUID, int $dntas = 0): array
+    public function getDocumentsListByCaseUID(string $caseUID): array
     {
-        Log::notice('DOCUMENT_LIST.start', ['case_uid' => $caseUID, 'dntas' => $dntas]);
+        Log::notice('DOCUMENT_LIST.start', ['case_uid' => $caseUID]);
         $startedAt = Functions::startTimer();
 
-        $data = $this->documentListQuery->getListByTeczkaUid($caseUID, $dntas);
-        $documentList = $this->hydrateDataToObjects(
-            $this->fillDocumentsWithRemainingData(
-                $data
-            )
-        );
+        $documentList = $this->documentListQuery->getListByTeczkaUid($caseUID);
 
         Log::info('[' . Functions::elapsedMs($startedAt) . 'ms] DOCUMENT_LIST.ok', [
             'case_uid' => $caseUID,
             'count' => count($documentList),
         ]);
+        $data = json_encode($documentList, JSON_THROW_ON_ERROR);
 
         return $documentList;
-    }
-
-    private function fillDocumentsWithRemainingData($documentList)
-    {
-//        $rejestrObieg = new rejestrObieg();
-        foreach ($documentList as &$document) {
-            $dateTime = $this->getDocumentDateTime($document['id_dokumentu'], $document['typ']);
-            $document['data_i_czas'] = Functions::convertToISO8601($dateTime);
-//            $document['przesylka'] =
-//                $this->documentElements->getDeliveryType($document['id_dokumentu'], $document['typ']);
-
-//            if ($rejestrObieg->sprawdzZwrot($document['id_dokumentu'])) {
-//                $document['przesylka'] = RodzajPrzesylki::ZWROTKA;
-//            }
-
-            $document['wlasciciel'] = $this->employeeService->getEmployee(
-                RodzajPracownika::WLASCICIEL,
-                $document['id_dokumentu'],
-                $document['typ']
-            );
-
-        }
-
-        return $documentList;
-    }
-
-    public function getDocumentDateTime($documentId, $processType): string
-    {
-        switch ($processType) {
-            case TypDokumentu::DOKUMENT:
-                $pismoData = $this->documentQuery->getLastInsertedToPismo($documentId, 'pismo_uid');
-                if (empty($pismoData) || !isset($pismoData->pismo_createdate)) {
-                    Log::error('DOCUMENT_DATETIME.error', ['document_id' => $documentId, 'process_type' => $processType, 'error' => 'missing_pismo_date']);
-                    throw new Exception(
-                        "Brak daty ostatniego dokumentu '{$documentId}'"
-                    );
-                }
-                $date = $pismoData->pismo_createdate;
-                break;
-            case TypDokumentu::AUTHENTICATION:
-            case TypDokumentu::PISMO:
-//                $formName = $this->caseQuery->getFormNameByMainDocumentUid($documentId);
-//                $formValues = $this->formService->getFormValues($documentId, $formName);
-                $value = $this->formQuery->getValueFromFormDane('data', $documentId);
-                if (empty($value)) {
-                    $date = $this->caseQuery->getSprawaPrzedluzanie($documentId, 'sprawa_createdate');
-                    if ($date === false) {
-                        Log::error('DOCUMENT_DATETIME.error', ['document_id' => $documentId, 'process_type' => $processType, 'error' => 'missing_registration_date']);
-                        throw new Exception(
-                            "Brak daty zarejestrowania pisma '{$documentId}'"
-                        );
-                    }
-                } else {
-                    $date = $value;
-                }
-
-
-                $tmpDate = $this->caseQuery->getSprawaCreateDate($documentId);
-                $date = ($tmpDate) ? $tmpDate : $date;
-
-                break;
-            default:
-                Log::error('DOCUMENT_DATETIME.error', ['document_id' => $documentId, 'process_type' => $processType, 'error' => 'unsupported_process_type']);
-                throw new Exception("ID: '{$documentId}'");
-        }
-
-        return $date;
-    }
-
-    /**
-     * @param $rawDocuments
-     * @return TypPozycjaDokumentu[]
-     */
-    private function hydrateDataToObjects($rawDocuments): array
-    {
-        $documents = [];
-        foreach ($rawDocuments as $rawDocument) {
-            $document = new TypPozycjaDokumentu();
-            $document->id_dokumentu = $rawDocument['id_dokumentu'];
-            $document->nazwa_procesu = $rawDocument['nazwa_procesu'];
-            $document->id_procesu = $rawDocument['id_procesu'];
-            $document->status_procesu = $rawDocument['status_procesu'];
-            $document->data_i_czas = $rawDocument['data_i_czas'];
-            $document->wersja = $rawDocument['wersja'];
-            $document->przesylka = $rawDocument['przesylka']??'';
-            $document->wlasciciel = $rawDocument['wlasciciel'];
-            $document->blad = $rawDocument['blad']??'';
-
-            $documents[] = $document;
-        }
-        return $documents;
     }
 
 
