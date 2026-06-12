@@ -80,12 +80,12 @@ Route::prefix('v1')
         Route::match(['get', 'post'], '/documents', [DocumentsController::class, 'list'])
             ->name('documents.list');
 
-        Route::get('/documents/{documentId}', [DocumentsController::class, 'show'])
-            ->whereNumber('documentId')
+        Route::match(['get', 'post'],'/documents/{documentId}', [DocumentsController::class, 'show'])
+            ->where('documentId', '(\d+|[a-f0-9]{13})') //@TODO - zmienić wartość z pismo_uid/sprawa_uid na instanceId - będzie zawsze number
             ->name('documents.show');
 
         Route::match(['get', 'post'], '/documents/{documentId}/attachments', [AttachmentController::class, 'documentAttachments'])
-            ->whereNumber('documentId')
+            ->where('documentId', '(\d+|[a-f0-9]{13})') //@TODO - zmienić wartość z pismo_uid/sprawa_uid na instanceId - będzie zawsze number
             ->name('documents.attachments');
 
         Route::match(['get', 'post'], '/documents/statuses', [DocumentsController::class, 'statuses'])

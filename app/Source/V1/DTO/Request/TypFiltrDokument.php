@@ -7,15 +7,16 @@ namespace App\Source\V1\DTO\Request;
 readonly class TypFiltrDokument
 {
     public function __construct(
+        public ?string $documentId = null,
         public ?string $teczkaUid = null,
-        public ?int $rok = null,
-        public ?int $typProcesu = null,
+        public ?int    $rok = null,
+        public ?int    $typProcesu = null,
         public ?string $nazwaProcesu = null,
         public ?string $statusProcesu = null,
         public ?string $dataRejestracjiOd = null,
         public ?string $dataRejestracjiDo = null,
-        public ?int $wlascicielStanowisko = null,
-        public ?bool $pokazUdostepnione = null,
+        public ?int    $wlascicielStanowisko = null,
+        public ?bool   $pokazUdostepnione = null,
         public ?string $opisDokumentu = null,
         public ?string $trescPisma = null,
         public ?string $oznaczenie = null,
@@ -26,6 +27,7 @@ readonly class TypFiltrDokument
     public static function fromArray(array $data): self
     {
         return new self(
+            documentId: self::nullableString($data['documentId'] ?? null),
             teczkaUid: self::nullableString($data['teczka_uid'] ?? null),
             rok: isset($data['rok']) ? (int) $data['rok'] : null,
             typProcesu: self::parseTypProcesu($data['typ_procesu'] ?? null),

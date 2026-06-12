@@ -11,13 +11,13 @@ use App\Source\V1\Enum\RodzajPracownika;
 use App\Source\V1\Enum\TypDokumentu;
 use App\Source\V1\Queries\Case\CaseListQuery;
 use App\Source\V1\Queries\Case\CaseQuery;
+use App\Source\V1\Queries\Document\DocumentQuery;
 use App\Source\V1\Queries\Form\FormQuery;
 use App\Source\V1\Queries\ProcessQuery;
 use App\Source\V1\Queries\Structure\WorkstationQuery;
 use App\Source\V1\Services\Attachment\AttachmentService;
 use App\Source\V1\Services\Case\HistoryService as CaseHistoryService;
 use App\Source\V1\Services\Document\DocumentService;
-use App\Source\V1\Services\Document\HistoryService as DocumentHistoryService;
 use App\Source\V1\Services\Form\FormService;
 use App\Source\V1\Services\Structure\EmployeeService;
 use App\Source\V1\Services\Suppliant\SupliantService;
@@ -38,7 +38,7 @@ class CaseService
         private readonly ProcessQuery           $processQuery,
         private readonly DocumentService        $documentService,
         private readonly WorkstationQuery       $workstationQuery,
-        private readonly DocumentHistoryService $documentHistoryService,
+        private readonly DocumentQuery          $documentQuery,
         private readonly EmployeeService        $employeeService,
         private readonly FormService            $formService,
         private readonly CaseHistoryService     $caseHistoryService,
@@ -145,7 +145,7 @@ class CaseService
         $this->caseDetails->dokumenty = !$dntas
             ? $this->documentService->getDocumentsListByCaseUID($this->caseUid)
             : [];
-        $this->caseDetails->dane_formularza = $this->formService->getFormValues($this->mainDocumentUid, $normalizedProcessName);
+        $this->caseDetails->dane_formularza = $this->formService->getFormMainDocumentValues($this->mainDocumentUid, $normalizedProcessName);
         $this->caseDetails->historia_obiegu = $this->caseHistoryService->getHistory($this->mainDocumentUid);
 //        $this->caseDetails->udostepniona = $employee->getEmployeesWhoSharedCase($mainDocumentUid);
 //        $this->caseDetails->strony = $this->getSidesOfCase();
@@ -254,7 +254,7 @@ class CaseService
         switch ($employeeType) {
             case RodzajPracownika::TWORCA:
                 if ($processType == TypDokumentu::DOKUMENT) {
-                    $row = $this->documentHistoryService->getFirstRowFromHistory($id);
+                    $row = $this->documentQuery->getFirstRowFromHistory($id);
                     if (empty($row->uugid_from)) {
                         Log::error('EMPLOYEE.error', ['document_id' => $id, 'employee_type' => $employeeType, 'error' => 'missing_uugid_pismo']);
                         throw new Exception(
@@ -290,7 +290,7 @@ class CaseService
 
                 break;
             case (RodzajPracownika::ZATWIERDZAJACY && $processType == TypDokumentu::DOKUMENT):
-                $uugid = $this->documentHistoryService->getLastRowFromHistory($id);
+                $uugid = $this->documentQuery->getLastRowFromHistory($id);
                 if (empty($uugid)) {
                     Log::error('EMPLOYEE.error', ['document_id' => $id, 'employee_type' => $employeeType, 'error' => 'missing_zatwierdzajacy']);
                     throw new Exception(

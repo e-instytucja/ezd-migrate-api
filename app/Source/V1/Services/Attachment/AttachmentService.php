@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 namespace App\Source\V1\Services\Attachment;
-use App\Source\V1\DTO\TypZalacznik;
+use App\Source\V1\DTO\ZalacznikDto;
 use App\Source\V1\Queries\Attachment\AttachmentQuery;
 use App\Source\V1\Queries\Case\CaseQuery;
 use App\Source\V1\Queries\Document\DocumentQuery;
@@ -23,10 +23,9 @@ class AttachmentService
         private readonly FormQuery $formQuery
     )
     {
-
     }
 
-    private function getAttachmentDetails(string $attachmentUid): ?TypZalacznik
+    private function getAttachmentDetails(string $attachmentUid): ?ZalacznikDto
     {
         $attachmentDetails = $this->getAttachmentsDetails($attachmentUid);
         if(!empty($attachmentDetails)) {
@@ -36,7 +35,7 @@ class AttachmentService
     }
     /**
      * @param $attachmentUids
-     * @return TypZalacznik[]
+     * @return ZalacznikDto[]
      * @throws \JsonException
      */
     public function getAttachmentsDetails(string $attachmentUids): array
@@ -51,20 +50,19 @@ class AttachmentService
 
             $fileInfo = $this->resolveFileInfo($item->zalacznik_original_filename);
 
-            $typZalacznik = new TypZalacznik(
-                filename: $item->zalacznik_filename,
+            $attachmentDetails[] = new ZalacznikDto(
                 uid: $item->zalacznik_uid,
+                filename: $item->zalacznik_filename,
                 nazwa: $item->zalacznik_original_filename,
-                zalacznik_obcy_uid: $item->zalacznik_obcy_uid,
-                rozmiar: $item->zalacznik_filesize,
-                url: $url,
-                md5: $item->zalacznik_md5_sum,
-                opis: $item->zalacznik_opis,
+                zalacznikObcyUid: $item->zalacznik_obcy_uid,
+                rozmiar: (int) $item->zalacznik_filesize,
                 mime: $fileInfo['mime'],
-                data_utworzenia: $item->zalacznik_createdate,
                 extension: $fileInfo['extension'],
+                md5: $item->zalacznik_md5_sum,
+                url: $url,
+                opis: $item->zalacznik_opis,
+                dataUtworzenia: $item->zalacznik_createdate,
             );
-            $attachmentDetails[] = $typZalacznik;
 
         }
         return $attachmentDetails;
@@ -105,9 +103,9 @@ class AttachmentService
 
         $path = $this->buildAttachmentPath(
             basePath: (string) env('FILES_URL'),
-            createdAt: $attachmentDetails->data_utworzenia,
-            foreignUid: $attachmentDetails->zalacznik_obcy_uid,
-            storedFilename: $attachmentDetails->filename
+            createdAt: $attachmentDetails->dataUtworzenia ?? '',
+            foreignUid: $attachmentDetails->zalacznikObcyUid ?? '',
+            storedFilename: $attachmentDetails->filename ?? ''
         );
 
         if (!is_file($path) || !is_readable($path)) {
@@ -204,7 +202,7 @@ class AttachmentService
     }
     /**
      * @param $caseUid
-     * @return array|TypZalacznik[]
+     * @return ZalacznikDto[]
      * @throws \JsonException
      */
     public function getCaseAttachments(string $caseUid): array
@@ -213,12 +211,12 @@ class AttachmentService
         $startedAt = Functions::startTimer();
 
         $mainDocumentUid = $this->caseQuery->getMainDocumentUidByCaseUid($caseUid);
-        $attachments = $this->formQuery->getValuesFromFormDane($mainDocumentUid, 'pliki');
+        $attachments = $this->formQuery->getMainDocumentFormValues($mainDocumentUid, 'pliki');
         if (empty($attachments)) {
             Log::info('CASE_ATTACHMENTS.empty', ['case_uid' => $caseUid, 'main_document_uid' => $mainDocumentUid]);
             return [];
         }
-        $attachments = implode(';', array_column($attachments, 'wartosc'));
+        $attachments = implode(';', array_column($attachments, 'form_wartosc'));
         $result = $this->getAttachmentsDetails($attachments);
 
         Log::info('[' . Functions::elapsedMs($startedAt) . 'ms] CASE_ATTACHMENTS.ok', [
@@ -238,10 +236,10 @@ class AttachmentService
         $documentType = $this->documentQuery->getDocumentType($documentId); //pobiera typ Pismo|Dokument
         switch($documentType) {
             case DocumentQuery::DOCUMENT_TYPE_PISMO:
-                $attachments = $this->formQuery->getValuesFromFormDane($documentId, 'pliki');
+                $attachments = $this->formQuery->getMainDocumentFormValues($documentId, 'pliki');
                 break;
             case DocumentQuery::DOCUMENT_TYPE_DOKUMENT:
-                $attachments = $this->formQuery->getValuesFromFormPismaDane($documentId, 'pliki');
+                $attachments = $this->formQuery->getDocumentFormValues($documentId, 'pliki');
 
 
                 break;
@@ -259,7 +257,7 @@ class AttachmentService
             ]);
             return [];
         }
-        $attachments = implode(';', array_column($attachments, 'wartosc'));
+        $attachments = implode(';', array_column($attachments, 'form_wartosc'));
         $result = $this->getAttachmentsDetails($attachments);
 
         Log::info('[' . Functions::elapsedMs($startedAt) . 'ms] CASE_ATTACHMENTS.ok', [

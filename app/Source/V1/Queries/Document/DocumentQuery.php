@@ -44,13 +44,49 @@ class DocumentQuery extends AbstractDocumentQuery
             ->first();
     }
 
-    public function getDocumentListByCaseUid($caseUID) {
-        $sql = $this->prepareSQLForDataFromCase($caseUID);
-        $data = collect(DB::select($sql['query'], $sql['params']))
-            ->map(fn($item) => (array) $item)
-            ->toArray();
-        return $data;
+    public function getLastRowFromHistory(
+        $documentUid,
+        array $statuses = [],
+    ): stdClass
+    {
+        return $this->getRowFromHistory($documentUid, $statuses, 'DESC');
+    }
 
+    public function getFirstRowFromHistory(
+        $documentUid,
+        array $statuses = []
+    ): stdClass
+    {
+        return $this->getRowFromHistory($documentUid, $statuses, 'ASC');
+    }
+
+    public function getHistory($documentUid)
+    {
+        $sql = <<<SQL
+    SELECT
+        po.pismo_uid,
+        po.createdate,
+        (
+            SELECT p.instance_id
+            FROM eurzad_pismo p
+            WHERE p.pismo_uid = po.pismo_uid
+            ORDER BY p.pismo_wersja DESC
+            LIMIT 1
+        ) AS instance_id,
+        ss.opis AS status_opis,
+        po.uugid_from,
+        po.uugid_to,
+        po.added_automatically
+    FROM eurzad_pismo_obieg po
+    INNER JOIN eurzad_slownik_status ss
+        ON po.status = ss.symbol
+    WHERE po.pismo_uid = :documentUid
+    ORDER BY po.pismo_obieg_id DESC
+SQL;
+
+        return collect(DB::select($sql, [
+            'documentUid' => $documentUid,
+        ]));
     }
 
     public function getDocumentType($documentId)

@@ -273,6 +273,7 @@ SQL;
     {
         return <<<SQL
                 gp.name AS nazwa_procesu,
+                gp.normalized_name AS nazwa_znormalizowana_procesu,
                 gp."pId" AS id_procesu,
                 ess.opis AS status_procesu,
                 gp.typ AS typ,

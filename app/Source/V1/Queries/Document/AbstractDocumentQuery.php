@@ -47,6 +47,13 @@ abstract class AbstractDocumentQuery
 
         $this->appendWorkstationScope($conditions, $konfiguracja, $filtry);
 
+        if ($filtry->documentId !== null) {
+            $conditions[] = match ($unionType) {
+                self::DOKUMENTY_W_SPRAWIE => 'ep.pismo_uid = ' . $this->bind($filtry->documentId),
+                default => 'es.sprawa_uid = ' . $this->bind($filtry->documentId),
+            };
+        }
+
         if ($filtry->rok !== null) {
             $conditions[] = $this->rokCondition($unionType, $filtry->rok);
         }

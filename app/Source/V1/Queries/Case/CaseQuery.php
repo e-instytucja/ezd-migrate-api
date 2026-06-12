@@ -9,16 +9,6 @@ use stdClass;
 
 class CaseQuery
 {
-    /**
-     * Placeholder pod audyt zalacznikow pism wiodacych.
-     * Docelowo dodaj tutaj zapytanie SQL do pobrania danych testowych.
-     *
-     * @return array<int, array<string, mixed>>
-     */
-    public function getMainDocumentAttachmentsAuditCandidates(int $limit = 0, int $offset = 0): array
-    {
-        return [];
-    }
 
     public function getTeczkaSyg($caseUid, $columnName = 'teczka_znak_sprawy')
     {
@@ -202,32 +192,6 @@ class CaseQuery
         return $this->getFirstRowFromHistory($caseUid)->instanceId;
     }
 
-    public function getSprawaCreateDate($documentId = 0)
-    {
-        if (!$documentId) {
-            return null;
-        }
-
-        $caseData = (array)DB::table('eurzad_sprawa')
-            ->where('sprawa_uid', $documentId)
-            ->first();
-
-        if (empty($caseData) || $caseData['rodzaj_pisma'] !== 'internal') {
-            return null;
-        }
-
-        $hour = date('H', strtotime($caseData['sprawa_createdate']));
-        if ((int)$hour > 0) {
-            return $caseData['sprawa_createdate'];
-        }
-
-        $createdate = DB::table('eurzad_teczka_zawartosc')
-            ->where('teczka_zawartosc_uid', $documentId)
-            ->value('createdate');
-
-        return !empty($createdate) ? $createdate : null;
-    }
-
     public function getHistory($caseUid)
     {
         return DB::table('eurzad_obieg as o')
@@ -237,9 +201,10 @@ class CaseQuery
                 'o.sprawa_uid',
                 'o.createdate',
                 'o.instanceId',
-                'ss.opis as action',
+                'ss.opis as status_opis',
                 'o.uugid_from',
-                'o.uugid_to'
+                'o.uugid_to',
+                'o.added_automatically'
             )
             ->orderBy('o.status_sprawy_id', 'DESC')
             ->get();

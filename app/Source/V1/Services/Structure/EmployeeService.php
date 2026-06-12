@@ -6,9 +6,9 @@ use App\Source\V1\DTO\TypPracownik;
 use App\Source\V1\Enum\RodzajPracownika;
 use App\Source\V1\Enum\TypDokumentu;
 use App\Source\V1\Queries\Case\CaseQuery;
+use App\Source\V1\Queries\Document\DocumentQuery;
 use App\Source\V1\Queries\Structure\UugQuery;
 use App\Source\V1\Queries\Structure\WorkstationQuery;
-use App\Source\V1\Services\Document\HistoryService;
 use Exception;
 use Illuminate\Support\Facades\Log;
 
@@ -20,17 +20,16 @@ class EmployeeService
         private CaseQuery $caseQuery,
         private WorkstationQuery $workstationQuery,
         private UugQuery $uugQuery,
-        private HistoryService $documentHistoryService
+        private DocumentQuery $documentQuery
     )
     {
-
     }
     public function getEmployee($employeeType, $id, $processType = null): TypPracownik
     {
         switch ($employeeType) {
             case RodzajPracownika::TWORCA:
                 if ($processType == TypDokumentu::DOKUMENT) {
-                    $row = $this->documentHistoryService->getFirstRowFromHistory($id);
+                    $row = $this->documentQuery->getFirstRowFromHistory($id);
                     if (empty($row->uugid_from)) {
                         throw new Exception(
                             "Wpis dla dokumentu nie zawiera informacji o stanowisku (od) dla '{$id}'"
@@ -63,7 +62,7 @@ class EmployeeService
 
                 break;
             case (RodzajPracownika::ZATWIERDZAJACY && $processType == TypDokumentu::DOKUMENT):
-                $uugid = $this->documentHistoryService->getLastRowFromHistory($id);
+                $uugid = $this->documentQuery->getLastRowFromHistory($id);
                 if (empty($uugid)) {
                     throw new Exception(
                         "Wpis nie zawiera informacji o osobie zatwierdzającej dla '{$id}'"

@@ -3,20 +3,20 @@
 namespace App\Source\V1\Services\Document;
 
 use App\Shared\Functions;
-use App\Source\V1\DTO\Request\KryteriaWyszukiwaniaSpraw;
+use App\Source\V1\DTO\DokumentDto;
+use App\Source\V1\DTO\HistoriaObieguDto;
+use App\Source\V1\DTO\InteresantDto;
+use App\Source\V1\DTO\PracownikDto;
 use App\Source\V1\DTO\Request\KryteriaWyszukiwaniaDokumentow;
-use App\Source\V1\DTO\TypPozycjaDokumentu;
-use App\Source\V1\Enum\RodzajPracownika;
-use App\Source\V1\Enum\TypDokumentu;
-use App\Source\V1\Queries\Case\CaseQuery;
 use App\Source\V1\Queries\Document\DocumentQuery;
 use App\Source\V1\Queries\Document\DocumentListQuery;
-use App\Source\V1\Queries\Form\FormQuery;
 use App\Source\V1\Services\Attachment\AttachmentService;
-use App\Source\V1\Services\Structure\EmployeeService;
+use App\Source\V1\Services\Form\FormService;
 use App\Source\V1\Services\Suppliant\SupliantService;
 use Exception;
 use Illuminate\Support\Facades\Log;
+use App\Source\V1\Services\Document\HistoryService as DocumentHistoryService;
+use App\Source\V1\Services\Case\HistoryService as CaseHistoryService;
 
 class DocumentService
 {
@@ -26,11 +26,11 @@ class DocumentService
     public function __construct(
         private readonly DocumentQuery $documentQuery,
         private readonly DocumentListQuery $documentListQuery,
-        private readonly CaseQuery $caseQuery,
-        private readonly EmployeeService $employeeService,
-        private readonly FormQuery $formQuery,
         private readonly SupliantService $supliantService,
-        private readonly AttachmentService $attachmentService
+        private readonly AttachmentService $attachmentService,
+        private readonly DocumentHistoryService $documentHistoryService,
+        private readonly CaseHistoryService $caseHistoryService,
+        private readonly FormService $formService
     )
     {
     }
@@ -80,6 +80,74 @@ class DocumentService
         ];
     }
 
+    public function getDocumentDetails(
+        KryteriaWyszukiwaniaDokumentow $kryteriaWyszukiwania
+    ): DokumentDto {
+        $documentDetails = $this->documentListQuery->getList($kryteriaWyszukiwania);
+        if (count($documentDetails) === 0) {
+            throw new Exception('Document not found');
+        }
+
+        $row = $documentDetails[0];
+        $this->supliantService->hydrateSuppliantData($row, $row['id_dokumentu']);
+
+        return $this->mapToDokumentDto($row);
+    }
+
+    /**
+     * @param array<string, mixed> $row
+     * @throws \JsonException
+     */
+    private function mapToDokumentDto(array $row): DokumentDto
+    {
+        $historiaObieguRaw = $row['document_group_type'] === DocumentListQuery::DOKUMENTY_W_SPRAWIE
+            ? $this->documentHistoryService->getHistory($row['id_dokumentu'])
+            : $this->caseHistoryService->getHistory($row['id_dokumentu']);
+
+
+
+        $daneFormularza = $row['document_group_type'] === DocumentListQuery::DOKUMENTY_W_SPRAWIE
+            ? $this->formService->getFormDocumentValues($row['id_dokumentu'], $row['nazwa_znormalizowana_procesu'])
+            : $this->formService->getFormMainDocumentValues($row['id_dokumentu'], $row['nazwa_znormalizowana_procesu']);
+
+        $zalaczniki = !empty($daneFormularza['pliki']) ? $daneFormularza['pliki'] : [];
+        unset($daneFormularza['pliki']);
+        $interesanci = !empty($daneFormularza['interesanci']) ? $daneFormularza['interesanci'] : [];
+        unset($daneFormularza['interesanci']);
+
+        return new DokumentDto(
+            nazwaProcesu: $row['nazwa_procesu'] ?? null,
+            idProcesu: isset($row['id_procesu']) ? (int) $row['id_procesu'] : null,
+            statusProcesu: $row['status_procesu'] ?? null,
+            typ: isset($row['typ']) ? (int) $row['typ'] : null,
+            znakSprawy: $row['znak_sprawy'] ?? null,
+            idDokumentu: $row['id_dokumentu'] ?? null,
+            nrNaPismie: $row['nr_na_pismie'] ?? null,
+            wersja: isset($row['wersja']) ? (int) $row['wersja'] : null,
+            dataRejestracji: $row['data_rejestracji'] ?? null,
+            dataUtworzenia: $row['data_utworzenia'] ?? null,
+            dokumentTytul: $row['dokument_tytul'] ?? null,
+            trescWniosku: $row['tresc_wniosku'] ?? null,
+            nrKsiegi: ($row['nr_ksiegi'] ?? '') !== '' ? $row['nr_ksiegi'] : null,
+            documentGroupType: isset($row['document_group_type']) ? (int) $row['document_group_type'] : null,
+            wlasciciel: new PracownikDto(
+                id: isset($row['wlasciciel_stanowisko_id']) ? (int) $row['wlasciciel_stanowisko_id'] : null,
+                skrot: $row['wlasciciel_stanowisko_skrot'] ?? null,
+                nazwa: $row['wlasciciel_stanowisko_nazwa'] ?? null,
+                komorkaSkrot: $row['wlasciciel_komorka_skrot'] ?? null,
+                komorkaNazwa: $row['wlasciciel_komorka_nazwa'] ?? null,
+                imie: $row['wlasciciel_imie'] ?? null,
+                nazwisko: $row['wlasciciel_nazwisko'] ?? null,
+                nazwisko2: $row['wlasciciel_nazwisko2'] ?? null,
+                nazwisko3: $row['wlasciciel_nazwisko3'] ?? null,
+                imieNazwisko: $row['wlasciciel_imie_nazwisko'] ?? null,
+            ),
+            interesanci: $interesanci,
+            zalaczniki: $zalaczniki,
+            historiaObiegu: $historiaObieguRaw,
+            daneFormularza: $daneFormularza,
+        );
+    }
     public function getTypes(): array
     {
         return [
@@ -113,7 +181,6 @@ class DocumentService
             'case_uid' => $caseUID,
             'count' => count($documentList),
         ]);
-        $data = json_encode($documentList, JSON_THROW_ON_ERROR);
 
         return $documentList;
     }

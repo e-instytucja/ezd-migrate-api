@@ -41,20 +41,22 @@ class DocumentsController extends BaseApiController
 
     public function show(Request $request, int $id): Response
     {
-    //    $data = $this->service->getDocument($id);
 
-    //    if ($data === null) {
-    //        return $this->renderNotFound($request, "Document #{$id} not found.");
-    //    }
-
-    //    return $this->renderResponse($request, $data);
-
-        return $this->renderError(
-            $request,
-            'not_implemented',
-            'DocumentsController::show is not implemented yet.',
-            501,
+        $requestAll = $request->all();
+        $requestAll['filtry']['documentId'] = (string)$id;
+        $kryteriaWyszukiwania = KryteriaWyszukiwaniaDokumentow::fromPayload(
+            $requestAll
         );
+
+        $data = $this->service->getDocumentDetails($kryteriaWyszukiwania);
+
+        if ($data === null) {
+            return $this->renderNotFound($request, "Document #{$id} not found.");
+        }
+
+        return $this->renderResponse($request, $data);
+
+
     }
 
     public function statuses(Request $request): Response
