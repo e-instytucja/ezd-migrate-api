@@ -19,21 +19,31 @@ class WorkstationQuery {
 
     public function getDepartamentInfo($workstationId): array
     {
-        return (array) $this->getWorkstationInfo($workstationId, ['g_ug.*']);
+        $columns = [
+            'g_ug.groupName as departament_name',
+            'g_ug.groupDesc as departament_description',
+            'g_ug.group_id as departament_id',
+        ];
+        return (array) $this->getWorkstationInfo($workstationId, $columns);
 
     }
 
-
-    public function getWorkstations(): array
+    public function getDepartament($workstationId)
     {
-        return DB::table('users_groups as u_w')
+        return $this->getWorkstationsActive($workstationId);
+    }
+
+
+    public function getWorkstationsActive(): array
+    {
+        return DB::table('users_groups as w_ug')
             ->select([
-                'u_w.groupName as workstation_name',
-                'u_w.groupDesc as workstation_description',
-                'u_g.groupName as departament_name',
-                'u_g.groupDesc as departament_description',
-                'u_w.group_id as workstation_id',
-                'u_g.group_id as departament_id',
+                'w_ug.groupName as workstation_name',
+                'w_ug.groupDesc as workstation_description',
+                'g_ug.groupName as departament_name',
+                'g_ug.groupDesc as departament_description',
+                'w_ug.group_id as workstation_id',
+                'g_ug.group_id as departament_id',
                 'uu.login',
                 'uu.userId as user_id',
                 'uu.forename',
@@ -41,9 +51,9 @@ class WorkstationQuery {
                 'uu.surname2',
                 'uu.surname3',
             ])
-            ->join('users_groups as u_g', 'u_w.parent_group_id', '=', 'u_g.group_id')
+            ->join('users_groups as g_ug', 'w_ug.parent_group_id', '=', 'g_ug.group_id')
             ->leftJoin('users_usergroups as uug', function ($join) {
-                $join->on('u_w.group_id', '=', 'uug.group_id')
+                $join->on('w_ug.group_id', '=', 'uug.group_id')
                      ->where('uug.status', '=', 'A')
                      ->where('uug.typ', '=', 'Z');
             })
@@ -51,19 +61,35 @@ class WorkstationQuery {
                 $join->on('uu.userId', '=', 'uug.userId')
                      ->where('uu.u_status', '=', 'A');
             })
-            ->where('u_w.groupStatus', 'A')
-            ->whereIn('u_w.group_type', ['S', 'L', 'SL', 'P'])
-            ->where('u_g.group_type', 'G')
-            ->where('u_g.root_type', 'U')
-            ->where('u_w.root_type', 'U')
+            ->where('w_ug.groupStatus', 'A')
+            ->whereIn('w_ug.group_type', ['S', 'L', 'SL', 'P'])
+            ->where('g_ug.group_type', 'G')
+            ->where('g_ug.root_type', 'U')
+            ->where('w_ug.root_type', 'U')
             ->get()
             ->toArray();
     }
 
     public function getWorkstationInfo(
         int $workstationId,
-        array $columns = ['w_ug.*']
+        array $columns = []
     ): ?object {
+        if(empty($columns)) {
+            $columns = [
+                'w_ug.groupName as workstation_name',
+                'w_ug.groupDesc as workstation_description',
+                'g_ug.groupName as departament_name',
+                'g_ug.groupDesc as departament_description',
+                'w_ug.group_id as workstation_id',
+                'g_ug.group_id as departament_id',
+                'uu.login',
+                'uu.userId as user_id',
+                'uu.forename',
+                'uu.surname',
+                'uu.surname2',
+                'uu.surname3',
+            ];
+        }
         return DB::table('users_groups as w_ug')
             ->join(
                 'users_groups as g_ug',
@@ -71,6 +97,15 @@ class WorkstationQuery {
                 '=',
                 'w_ug.parent_group_id'
             )
+            ->leftJoin('users_usergroups as uug', function ($join) {
+                $join->on('w_ug.group_id', '=', 'uug.group_id')
+                    ->where('uug.status', '=', 'A')
+                    ->where('uug.typ', '=', 'Z');
+            })
+            ->leftJoin('users_users as uu', function ($join) {
+                $join->on('uu.userId', '=', 'uug.userId')
+                    ->where('uu.u_status', '=', 'A');
+            })
             ->where('w_ug.group_id', $workstationId)
             ->where('w_ug.group_type', '!=', 'G')
             ->select($columns)

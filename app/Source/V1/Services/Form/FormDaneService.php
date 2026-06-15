@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace App\Source\V1\Services\Form;
 
+use App\Shared\Structure;
 use App\Source\V1\DTO\InteresantDto;
-use App\Source\V1\Queries\Structure\UugQuery;
+use App\Source\V1\Queries\Structure\GroupQuery;
 use App\Source\V1\Queries\Structure\WorkstationQuery;
 use App\Source\V1\Services\Attachment\AttachmentService;
 use App\Source\V1\Services\Dictionary\DictionaryService;
@@ -13,9 +14,10 @@ use App\Source\V1\Services\Suppliant\SupliantService;
 
 final class FormDaneService
 {
+
     public function __construct(
+        private readonly GroupQuery $groupQuery,
         private readonly WorkstationQuery $workstationQuery,
-        private readonly UugQuery $uugQuery,
         private readonly AttachmentService $attachmentService,
         private readonly DictionaryService $dictionaryService,
         private readonly SupliantService $suppliantService,
@@ -28,13 +30,18 @@ final class FormDaneService
      *
      * @return array<string, mixed>
      */
-    public function przetworzDane(array $daneZBazy, array $strukturaFormularza): array
+    public function przetworzDane(array $daneZBazy): array
     {
-        $liczbaInteresantow = $this->policzInteresantow($daneZBazy);
+
         $wynik = [];
 
         foreach ($daneZBazy as $wiersz) {
-            $this->przetworzWiersz($wiersz, $strukturaFormularza, $liczbaInteresantow, $wynik);
+            if($wiersz['struktura_typ'] !== null) {
+                $this->przetworzWierszZeStruktura($wiersz, $wynik);
+            }
+            else {
+                $this->przetworzWierszBezStruktury($wiersz, $wynik);
+            }
         }
 
         return $wynik;
@@ -48,7 +55,9 @@ final class FormDaneService
         $liczba = 0;
 
         foreach ($daneZBazy as $wiersz) {
-            if (($wiersz['struktura_typ'] ?? null) === 'interesanci') {
+            $typ = $wiersz['struktura_typ'] ?? null;
+
+            if ($typ === 'interesanci' || $typ === 'petent_uid') {
                 $liczba++;
             }
         }
@@ -63,27 +72,10 @@ final class FormDaneService
      */
     private function przetworzWiersz(
         array $wiersz,
-        array $strukturaFormularza,
-        int $liczbaInteresantow,
         array &$wynik,
     ): void {
-        if (
-            ($wiersz['struktura_pole'] ?? null) !== null
-            && isset($strukturaFormularza[$wiersz['struktura_pole']]['struktura_typ'])
-        ) {
-            $this->przetworzWierszZeStruktura(
-                $wiersz,
-                $strukturaFormularza[$wiersz['struktura_pole']]['struktura_typ'],
-                $liczbaInteresantow,
-                $wynik,
-            );
 
-            return;
-        }
 
-        if (!empty($wiersz['form_wartosc'])) {
-            $this->przetworzWierszBezStruktury($wiersz, $wynik);
-        }
     }
 
     /**
@@ -92,24 +84,81 @@ final class FormDaneService
      */
     private function przetworzWierszZeStruktura(
         array $wiersz,
-        string $typPola,
-        int $liczbaInteresantow,
         array &$wynik,
     ): void {
         $kluczPola = $wiersz['struktura_pole'];
-        $wartosc = $wiersz['form_wartosc'];
+        $wartoscPola = $wiersz['form_wartosc'];
+        $typPola = $wiersz['struktura_typ'];
+        $opisPola = $wiersz['struktura_opis'];
 
-        match ($typPola) {
-            'dokument_tytul' => $wynik[$kluczPola] = json_decode($wartosc, true)['textarea'] ?? null,
-            'interesanci' => $this->dodajInteresanta($wiersz, $liczbaInteresantow, $wynik),
-            'attachment' => $wynik[$kluczPola] = $this->attachmentService->getAttachmentsDetails((string) $wartosc),
-            'dekretacja_wydzial' => $this->uzupelnijStanowisko($wiersz, $wynik, $this->workstationQuery),
-            'slownik' => $wynik[$kluczPola] = $this->dictionaryService->getDictionaryValue((int) $wartosc),
-            'stanowisko_uzytkownik' => $this->uzupelnijStanowisko($wiersz, $wynik, $this->uugQuery),
-            'referat' => $wynik[$kluczPola] = $this->workstationQuery->getDepartamentInfo((string) $wartosc)['groupName'],
-//            insertdate, textinput, streszczenie, textarea, insertdatetime, select1, radio, sposob_dostarczenia_tylko_lista,tresc_wniosku, odwzorowanie, ilosc_dni - Chojnice - typy pól które obsługuje default
-            default => $wynik[$kluczPola] = str_replace('&#34;', '"', (string) $wartosc),
-        };
+        if(!empty($wartoscPola)) {
+
+            switch ($typPola) {
+                case 'dokument_tytul':
+                    $wartoscPola = json_decode($wartoscPola, true)['textarea'] ?? null;
+                    break;
+
+                case 'interesanci':
+                    $wartoscPola = $this->pobierzInteresantaDoFormularza(
+                        $wartoscPola,
+                        $wiersz['form_dane_id'],
+                        false,
+                    );
+                    break;
+
+
+                case 'attachment':
+                    $wartoscPola = $this->attachmentService->getAttachmentsDetails(
+                        (string) $wartoscPola
+                    );
+                    break;
+
+                // identyfikatory oddzielone "#" (np. "123#99#46")
+                // są to identyfikatory stanowisk lub komórek
+                case 'dekretacja_wydzial':
+                    $wartoscPola = $this->getDekretacjaWydzial($wartoscPola);
+                    break;
+
+                case 'slownik':
+                    $wartoscPola = $this->dictionaryService->getDictionaryValue(
+                        (int) $wartoscPola
+                    );
+                    break;
+
+                case 'referat':
+                    $departament = $this->workstationQuery->getDepartamentInfo(
+                        (string) $wartoscPola
+                    );
+
+                    $wartoscPola = $departament['groupName'] ?? null;
+                    break;
+
+                // insertdate, textinput, streszczenie, textarea, insertdatetime,
+                // select1, radio, sposob_dostarczenia_tylko_lista,
+                // tresc_wniosku, odwzorowanie, ilosc_dni
+                default:
+                    $wartoscPola = str_replace('&#34;', '"', (string) $wartoscPola);
+                    break;
+            }
+        }
+
+        if ($kluczPola === 'interesanci') {
+            if (!isset($wynik['interesanci'])) {
+                $wynik['interesanci'] = [
+                    'label' => $opisPola,
+                    'value' => [],
+                ];
+            }
+
+            $wynik['interesanci']['value'][] = $wartoscPola;
+
+            return;
+        }
+
+        $wynik[$kluczPola] = [
+            'label' => $opisPola,
+            'value' => $wartoscPola,
+        ];
     }
 
     /**
@@ -118,41 +167,50 @@ final class FormDaneService
      */
     private function przetworzWierszBezStruktury(array $wiersz, array &$wynik): void
     {
+        if(empty($wiersz['form_wartosc'])) {
+            return;
+        }
         if (
             ($wiersz['form_pole'] ?? null) === 'petent_uid'
-            && ($wiersz['struktura_typ'] ?? null) !== 'interesanci'
         ) {
-            $wynik['interesanci'][] = $this->pobierzInteresantaDoFormularza(
+            $daneInteresanta = $this->pobierzInteresantaDoFormularza(
                 $wiersz['form_wartosc'],
                 $wiersz['form_dane_id'],
                 true,
             );
-
+            if(!isset($wynik['interesanci'])) {
+                $wynik['interesanci'] = [
+                    'label' => $wiersz['struktura_opis'],
+                ];
+            }
+            $wynik['interesanci']['value'][] = $daneInteresanta;
             return;
         }
-
-        $wynik[$wiersz['struktura_pole']] = $wiersz['form_wartosc'];
+        $wynik[$wiersz['struktura_pole']] = [
+            'label' => $wiersz['struktura_opis'],
+            'value' => $wiersz['form_wartosc'],
+        ];
     }
 
-    /**
-     * @param array<string, mixed> $wiersz
-     * @param array<string, mixed> $wynik
-     */
-    private function dodajInteresanta(array $wiersz, int $liczbaInteresantow, array &$wynik): void
+    private function getDekretacjaWydzial(
+        string $wartoscPola
+    )
     {
-        if ($liczbaInteresantow <= 1) {
-            $wynik[$wiersz['struktura_pole']] = null;
+        $ids = explode('#', $wartoscPola);
+        $rows = [];
+        foreach ($ids as $id) {
+            $workstationData = $this->workstationQuery->getWorkstationInfo((int)$id);
+            if (!empty($workstationData)) {
+                $rows[] = Structure::concatWorkstationData($workstationData);
+            } else {
+                $groupData = $this->groupQuery->getDepartamentInfo((int)$id);
+                if (!empty($groupData)) {
+                    $rows[] = Structure::concatGroupData($groupData);
+                }
+            }
         }
-
-        if (!empty($wiersz['form_wartosc'])) {
-            $wynik[$wiersz['form_pole']][] = $this->pobierzInteresantaDoFormularza(
-                $wiersz['form_wartosc'],
-                $wiersz['form_dane_id'],
-                false,
-            );
-        }
+        return implode('<br>', $rows);
     }
-
     /**
      * @param array<string, mixed> $wiersz
      * @param array<string, mixed> $wynik
@@ -165,7 +223,8 @@ final class FormDaneService
         $kluczPola = $wiersz['struktura_pole'];
         $wartosc = (string) $wiersz['form_wartosc'];
 
-        $wynik[$kluczPola] = $wartosc . '[' . $zapytanie->getDepartamentInfo($wartosc)['groupName'] . ']';
+        $departament = $zapytanie->getDepartamentInfo($wartosc);
+        $wynik[$kluczPola] = $wartosc . '[' . $departament['groupName'] . ']';
     }
 
     private function pobierzInteresantaDoFormularza(

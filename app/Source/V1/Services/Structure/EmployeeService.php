@@ -2,6 +2,7 @@
 
 namespace App\Source\V1\Services\Structure;
 
+use App\Shared\Structure;
 use App\Source\V1\DTO\TypPracownik;
 use App\Source\V1\Enum\RodzajPracownika;
 use App\Source\V1\Enum\TypDokumentu;
@@ -14,8 +15,6 @@ use Illuminate\Support\Facades\Log;
 
 class EmployeeService
 {
-    use StructureHelpers;
-
     public function __construct(
         private CaseQuery $caseQuery,
         private WorkstationQuery $workstationQuery,
@@ -105,7 +104,7 @@ class EmployeeService
         $employee = new TypPracownik();
         $employee->id_uzytkownika = $uugInfo->user_id;
         $employee->imie = $uugInfo->forename;
-        $employee->nazwisko = $this->concatSurnames($uugInfo);
+        $employee->nazwisko = Structure::concatSurnames($uugInfo);
         $employee->id_stanowiska = $uugInfo->workstation_id;
         $employee->nazwa_stanowiska = $uugInfo->workstation_description;
         $employee->login = $uugInfo->login;

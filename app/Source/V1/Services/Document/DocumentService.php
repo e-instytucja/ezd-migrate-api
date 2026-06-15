@@ -110,9 +110,9 @@ class DocumentService
             ? $this->formService->getFormDocumentValues($row['id_dokumentu'], $row['nazwa_znormalizowana_procesu'])
             : $this->formService->getFormMainDocumentValues($row['id_dokumentu'], $row['nazwa_znormalizowana_procesu']);
 
-        $zalaczniki = !empty($daneFormularza['pliki']) ? $daneFormularza['pliki'] : [];
+        $zalaczniki = !empty($daneFormularza['pliki']['value']) ? $daneFormularza['pliki']['value'] : [];
         unset($daneFormularza['pliki']);
-        $interesanci = !empty($daneFormularza['interesanci']) ? $daneFormularza['interesanci'] : [];
+        $interesanci = !empty($daneFormularza['interesanci']['value']) ? $daneFormularza['interesanci']['value'] : [];
         unset($daneFormularza['interesanci']);
 
         return new DokumentDto(

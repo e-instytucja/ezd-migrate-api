@@ -22,6 +22,7 @@ FROM (
             fd.form_dane_id,
             fs.form_struktura_typ,
             fs.form_struktura_pole,
+            fs.form_struktura_opis,
             fd.form_dane_pole,
             fd.form_dane_wartosc
         FROM
@@ -29,7 +30,7 @@ FROM (
         INNER JOIN
             eurzad_sprawa s ON fs.form_name = s.form_name
         LEFT JOIN
-            eurzad_form_dane fd ON fd.sprawa_uid = s.sprawa_uid AND fd.form_dane_pole = fs.form_struktura_pole
+            eurzad_form_dane fd ON fd.sprawa_uid = s.sprawa_uid AND fd.form_dane_pole = fs.form_struktura_pole AND fd.form_dane_wartosc != ''
         WHERE
             s.sprawa_uid = ?{$formPoleWhereSql}
     )
@@ -39,6 +40,7 @@ FROM (
             fd.form_dane_id,
             fs.form_struktura_typ,
             fs.form_struktura_pole,
+            fs.form_struktura_opis,
             fd.form_dane_pole,
             fd.form_dane_wartosc
         FROM
@@ -48,7 +50,7 @@ FROM (
         LEFT JOIN
             eurzad_form_struktura fs ON fs.form_name = s.form_name AND fd.form_dane_pole = fs.form_struktura_pole
         WHERE
-            s.sprawa_uid = ?{$formPoleWhereSql}
+            s.sprawa_uid = ? AND fd.form_dane_wartosc != '' {$formPoleWhereSql}
     )
 ) tmp
 ORDER BY
@@ -60,6 +62,7 @@ SQL;
                 'form_dane_id' => $item->form_dane_id ?? null,
                 'struktura_typ' => $item->form_struktura_typ ?? null,
                 'struktura_pole' => $item->form_struktura_pole ?? null,
+                'struktura_opis' => $item->form_struktura_opis ?? null,
                 'form_pole' => $item->form_dane_pole ?? null,
                 'form_wartosc' => $item->form_dane_wartosc ?? null,
             ])
@@ -85,6 +88,7 @@ FROM (
         SELECT
             fs.form_struktura_typ,
             fs.form_struktura_pole,
+            fs.form_struktura_opis,
             fdp.form_pisma_dane_id,
             fdp.klucz,
             fdp.wartosc
@@ -108,6 +112,7 @@ FROM (
         SELECT
             fs.form_struktura_typ,
             fs.form_struktura_pole,
+            fs.form_struktura_opis,
             fdp.form_pisma_dane_id,
             fdp.klucz,
             fdp.wartosc
@@ -134,125 +139,19 @@ SQL;
                 'form_dane_id' => $item->form_pisma_dane_id ?? null,
                 'struktura_typ' => $item->form_struktura_typ ?? null,
                 'struktura_pole' => $item->form_struktura_pole ?? null,
+                'struktura_opis' => $item->form_struktura_opis ?? null,
                 'form_pole' => $item->klucz ?? null,
                 'form_wartosc' => $item->wartosc ?? null,
             ])
             ->values()
             ->toArray();
-    }
-
-    public function getValuesFromFormPismaDane($documentId, $pole = '')
-    {
-        $formDanePole = '';
-        $params = [$documentId];
-        if (!empty($pole)) {
-            $params[] = $pole;
-            $formDanePole = ' AND fdp.klucz = ?';
-        }
-        $params = array_merge($params, $params);
-        $query = <<<SQL
-SELECT
-    *
-FROM (
-    (
-        SELECT
-            fs.form_struktura_typ,
-            fs.form_struktura_pole,
-            fdp.klucz,
-            fdp.wartosc
-        FROM
-            eurzad_form_struktura fs
-        INNER JOIN
-            galaxia_processes gp ON fs.form_name = gp.normalized_name
-        INNER JOIN 
-            galaxia_instances gi ON (gi."pId" = gp."pId")
-        INNER JOIN 
-            eurzad_pismo p ON (p.instance_id = gi."instanceId" AND p.pismo_wersja = (
-                SELECT MAX(pismo_wersja) FROM eurzad_pismo WHERE instance_id = gi."instanceId")
-            )
-        LEFT JOIN
-            eurzad_form_pisma_dane fdp ON p.id = fdp.id AND fdp.klucz = fs.form_struktura_pole
-        WHERE
-            p.pismo_uid = ?{$formDanePole}
-    )
-    UNION
-    (
-        SELECT
-            fs.form_struktura_typ,
-            fs.form_struktura_pole,
-            fdp.klucz,
-            fdp.wartosc
-        FROM
-            eurzad_form_pisma_dane fdp
-        INNER JOIN 
-            eurzad_pismo p ON (p.id = fdp.id AND p.pismo_wersja = (
-                SELECT MAX(pismo_wersja) FROM eurzad_pismo WHERE instance_id = p.instance_id)
-            )
-        INNER JOIN 
-            galaxia_instances gi ON (gi."instanceId" = p.instance_id)
-        INNER JOIN 
-            galaxia_processes gp ON (gp."pId" = gi."pId")
-        LEFT JOIN
-            eurzad_form_struktura fs ON fs.form_name = gp.normalized_name AND fdp.klucz = fs.form_struktura_pole
-        WHERE
-            p.pismo_uid = ?{$formDanePole}
-    )
-) tmp
-SQL;
-        return collect(DB::select($query, $params))
-            ->map(fn($item) => [
-                'form_dane_id' => null,
-                'struktura_typ' => $item->form_struktura_typ ?? null,
-                'struktura_pole' => $item->form_struktura_pole ?? null,
-                'form_pole' => $item->klucz ?? null,
-                'form_wartosc' => $item->wartosc ?? null,
-            ])
-            ->values()
-            ->toArray();
-    }
-
-    public function getStruktureFormularza(string $znormalizowanaNazwaFormularza): array
-    {
-        $params = [$znormalizowanaNazwaFormularza];
-        $query = <<<SQL
-SELECT
-    form_struktura_pole AS struktura_pole,
-    form_struktura_opis AS struktura_opis,
-    form_struktura_typ AS struktura_typ
-FROM
-    eurzad_form_struktura
-WHERE
-    form_name = ?
-ORDER BY
-    form_struktura_id
-SQL;
-        return collect(DB::select($query, $params))
-            ->map(fn($item) => (array) $item)
-            ->toArray();
-    }
-
-    /**
-     * @return string[]
-     */
-    public function getKolejnoscPolFormularza(string $formName): array
-    {
-        return collect(DB::select(
-            'SELECT form_parts_pola FROM eurzad_form_parts WHERE form_name = ? ORDER BY form_parts_lp',
-            [$formName],
-        ))->pluck('form_parts_pola')->all();
-    }
-
-    public function getValueFromFormDane($key, $documentId) {
-        return DB::table('eurzad_form_dane')
-            ->where('sprawa_uid', $documentId)
-            ->where('form_dane_pole', $key)
-            ->value('form_dane_wartosc');
     }
 
     public function getAllValuesByKey(string $key, int $limit = 0, int $offset = 0): array
     {
         $query = DB::table('eurzad_form_dane')
-            ->where('form_dane_pole', $key);
+            ->where('form_dane_pole', $key)
+            ->where('form_dane_wartosc', '!=', '');
 
         if ($offset > 0) {
             $query->offset($offset);
@@ -271,6 +170,7 @@ SQL;
     {
         $query = DB::table('eurzad_form_dane')
             ->where('form_dane_pole', $key)
+            ->where('form_dane_wartosc', '!=', '')
             ->orderBy('form_dane_id');
 
         if ($offset > 0) {
@@ -289,6 +189,7 @@ SQL;
     {
         $total = (int) DB::table('eurzad_form_dane')
             ->where('form_dane_pole', $key)
+            ->where('form_dane_wartosc', '!=', '')
             ->count();
 
         $effectiveTotal = max(0, $total - max(0, $offset));

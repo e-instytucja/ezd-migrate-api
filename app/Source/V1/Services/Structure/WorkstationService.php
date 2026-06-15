@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Source\V1\Services\Structure;
 
+use App\Shared\Structure;
 use App\Source\V1\Queries\Structure\WorkstationQuery;
 use App\Source\V1\DTO\TypPracownik;
 
 class WorkstationService
 {
-    use StructureHelpers;
     public function __construct(
         private readonly WorkstationQuery $workstationQuery,
     ) {}
@@ -17,16 +17,9 @@ class WorkstationService
     public function getWorkstations(): array
     {
         $workstationsList = [];
-        $workstationsQueryList =  $this->workstationQuery->getWorkstations();
+        $workstationsQueryList =  $this->workstationQuery->getWorkstationsActive();
         foreach ($workstationsQueryList as $workstation) {
-            $fullName = sprintf(
-                '%s %s [%s] {%s} (%s)',
-                $workstation->forename,
-                $this->concatSurnames($workstation),
-                $workstation->workstation_description,
-                $workstation->departament_name,
-                $workstation->login
-            );
+            $fullName = Structure::concatWorkstationData($workstation);
             $workstationsList[] = [
                 'nazwa' => $fullName,
                 'id' => $workstation->workstation_id,

@@ -39,7 +39,7 @@ class DocumentsController extends BaseApiController
         ]);
     }
 
-    public function show(Request $request, int $id): Response
+    public function show(Request $request, string $id): Response
     {
 
         $requestAll = $request->all();
