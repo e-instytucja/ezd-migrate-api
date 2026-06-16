@@ -5,8 +5,6 @@ declare(strict_types=1);
 namespace App\Source\V1\Queries\Document;
 
 use App\Source\V1\DTO\Request\KryteriaWyszukiwaniaDokumentow;
-use App\Source\V1\Enum\DocumentQueryContext;
-use App\Source\V1\Enum\TypDokumentu;
 use Illuminate\Support\Facades\DB;
 use stdClass;
 
@@ -15,11 +13,6 @@ class DocumentQuery extends AbstractDocumentQuery
     public const DOCUMENT_TYPE_PISMO = 'pismo';
     public const DOCUMENT_TYPE_DOKUMENT = 'dokument';
 
-    public function __construct(
-        private QueryBuilder $documentListQueryBuilder,
-    )
-    {
-    }
     public function getRowFromHistory(
         $documentUid,
         array $statuses = [],
@@ -110,42 +103,6 @@ SQL;
         return null;
 
 
-    }
-
-    private function prepareSQLForDataFromCase($caseUID)
-    {
-        $sql = [
-            'query'  =>
-                '(' . $this->documentListQueryBuilder->buildSQLQuery(
-                    DocumentQueryContext::CASE_UID, //pisma wiodące dołączone do sprawy
-                    TypDokumentu::PISMO
-                ) . ')
-                UNION
-                (' .
-                $this->documentListQueryBuilder->buildSQLQuery(
-                    DocumentQueryContext::CASE_UID,  //dokumenty dołączone do sprawy
-                    TypDokumentu::DOKUMENT
-                ) . ')
-                UNION
-                (' .
-                $this->documentListQueryBuilder->buildSQLQuery(
-                    DocumentQueryContext::CASE_UID_MAIN_DOCUMENT_ATTACHED_TO_CASE, //pismo wiodące na podstawie którego została utworzona sprawa -
-                    TypDokumentu::PISMO
-                ) . ')
-                UNION
-                (' .
-                $this->documentListQueryBuilder->buildSQLQuery(
-                    DocumentQueryContext::CASE_UID_MAIN_DOCUMENT_ATTACHED_TO_DOCUMENT,  //zwrot/zwrotka
-                    TypDokumentu::PISMO
-                ) . ')' .
-                $this->documentListQueryBuilder->addDocumentGroupOrder(),
-            'params' => [],
-        ];
-
-        // prepare params
-        $sql['params'] = [$caseUID, $caseUID, $caseUID, $caseUID];
-
-        return $sql;
     }
 
     public function getProcessNames(KryteriaWyszukiwaniaDokumentow $criteria): array

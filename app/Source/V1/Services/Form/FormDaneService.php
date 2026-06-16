@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Source\V1\Services\Form;
 
-use App\Shared\Structure;
+use App\Source\V1\DTO\PracownikDto;
 use App\Source\V1\DTO\InteresantDto;
 use App\Source\V1\Queries\Structure\GroupQuery;
 use App\Source\V1\Queries\Structure\WorkstationQuery;
@@ -201,11 +201,11 @@ final class FormDaneService
         foreach ($ids as $id) {
             $workstationData = $this->workstationQuery->getWorkstationInfo((int)$id);
             if (!empty($workstationData)) {
-                $rows[] = Structure::concatWorkstationData($workstationData);
+                $rows[] = PracownikDto::labelFromWorkstationRow($workstationData);
             } else {
                 $groupData = $this->groupQuery->getDepartamentInfo((int)$id);
                 if (!empty($groupData)) {
-                    $rows[] = Structure::concatGroupData($groupData);
+                    $rows[] = PracownikDto::labelFromGroup($groupData);
                 }
             }
         }

@@ -4,9 +4,8 @@ declare(strict_types=1);
 
 namespace App\Source\V1\Services\Structure;
 
-use App\Shared\Structure;
+use App\Source\V1\DTO\PracownikDto;
 use App\Source\V1\Queries\Structure\WorkstationQuery;
-use App\Source\V1\DTO\TypPracownik;
 
 class WorkstationService
 {
@@ -16,15 +15,16 @@ class WorkstationService
 
     public function getWorkstations(): array
     {
-        $workstationsList = [];
-        $workstationsQueryList =  $this->workstationQuery->getWorkstationsActive();
-        foreach ($workstationsQueryList as $workstation) {
-            $fullName = Structure::concatWorkstationData($workstation);
-            $workstationsList[] = [
-                'nazwa' => $fullName,
-                'id' => $workstation->workstation_id,
-            ];
-        }
-        return $workstationsList;
+        return array_map(
+            function (object $row): array {
+                $dto = PracownikDto::fromWorkstationRow($row);
+
+                return [
+                    'id' => $dto->stanowiskoId,
+                    'nazwa' => $dto->formatWorkstationListLabel($row->login ?? null),
+                ];
+            },
+            $this->workstationQuery->getWorkstationsActive(),
+        );
     }
 }

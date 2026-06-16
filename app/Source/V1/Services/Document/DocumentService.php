@@ -119,7 +119,7 @@ class DocumentService
             nazwaProcesu: $row['nazwa_procesu'] ?? null,
             idProcesu: isset($row['id_procesu']) ? (int) $row['id_procesu'] : null,
             statusProcesu: $row['status_procesu'] ?? null,
-            typ: isset($row['typ']) ? (int) $row['typ'] : null,
+            typDokumentu: isset($row['typ']) ? (int) $row['typ'] : null,
             znakSprawy: $row['znak_sprawy'] ?? null,
             idDokumentu: $row['id_dokumentu'] ?? null,
             nrNaPismie: $row['nr_na_pismie'] ?? null,
@@ -130,18 +130,7 @@ class DocumentService
             trescWniosku: $row['tresc_wniosku'] ?? null,
             nrKsiegi: ($row['nr_ksiegi'] ?? '') !== '' ? $row['nr_ksiegi'] : null,
             documentGroupType: isset($row['document_group_type']) ? (int) $row['document_group_type'] : null,
-            wlasciciel: new PracownikDto(
-                id: isset($row['wlasciciel_stanowisko_id']) ? (int) $row['wlasciciel_stanowisko_id'] : null,
-                skrot: $row['wlasciciel_stanowisko_skrot'] ?? null,
-                nazwa: $row['wlasciciel_stanowisko_nazwa'] ?? null,
-                komorkaSkrot: $row['wlasciciel_komorka_skrot'] ?? null,
-                komorkaNazwa: $row['wlasciciel_komorka_nazwa'] ?? null,
-                imie: $row['wlasciciel_imie'] ?? null,
-                nazwisko: $row['wlasciciel_nazwisko'] ?? null,
-                nazwisko2: $row['wlasciciel_nazwisko2'] ?? null,
-                nazwisko3: $row['wlasciciel_nazwisko3'] ?? null,
-                imieNazwisko: $row['wlasciciel_imie_nazwisko'] ?? null,
-            ),
+            wlasciciel: PracownikDto::fromDocumentRow($row),
             interesanci: $interesanci,
             zalaczniki: $zalaczniki,
             historiaObiegu: $historiaObieguRaw,
@@ -174,8 +163,7 @@ class DocumentService
     {
         Log::notice('DOCUMENT_LIST.start', ['case_uid' => $caseUID]);
         $startedAt = Functions::startTimer();
-
-        $documentList = $this->documentListQuery->getListByTeczkaUid($caseUID);
+        $documentList = $this->documentListQuery->getList(KryteriaWyszukiwaniaDokumentow::forTeczkaUid($caseUID));
 
         Log::info('[' . Functions::elapsedMs($startedAt) . 'ms] DOCUMENT_LIST.ok', [
             'case_uid' => $caseUID,

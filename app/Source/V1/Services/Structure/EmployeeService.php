@@ -2,118 +2,19 @@
 
 namespace App\Source\V1\Services\Structure;
 
-use App\Shared\Structure;
-use App\Source\V1\DTO\TypPracownik;
-use App\Source\V1\Enum\RodzajPracownika;
-use App\Source\V1\Enum\TypDokumentu;
-use App\Source\V1\Queries\Case\CaseQuery;
-use App\Source\V1\Queries\Document\DocumentQuery;
+use App\Source\V1\DTO\PracownikDto;
 use App\Source\V1\Queries\Structure\UugQuery;
-use App\Source\V1\Queries\Structure\WorkstationQuery;
-use Exception;
-use Illuminate\Support\Facades\Log;
 
 class EmployeeService
 {
     public function __construct(
-        private CaseQuery $caseQuery,
-        private WorkstationQuery $workstationQuery,
         private UugQuery $uugQuery,
-        private DocumentQuery $documentQuery
-    )
-    {
-    }
-    public function getEmployee($employeeType, $id, $processType = null): TypPracownik
-    {
-        switch ($employeeType) {
-            case RodzajPracownika::TWORCA:
-                if ($processType == TypDokumentu::DOKUMENT) {
-                    $row = $this->documentQuery->getFirstRowFromHistory($id);
-                    if (empty($row->uugid_from)) {
-                        throw new Exception(
-                            "Wpis dla dokumentu nie zawiera informacji o stanowisku (od) dla '{$id}'"
-                        );
-                    }
-                    $uugid = $row->uugid_from;;
-                } else { //pismo wiodące, sprawa
-                    $row = $this->caseQuery->getFirstRowFromHistory($id);
-                    if (empty($row->uugid_from)) {
-                        throw new Exception(
-                            "Wpis dla sprawy nie zawiera informacji o stanowisku (od) dla '{$id}'"
-                        );
-                    }
-                    $uugid = $row->uugid_from;
-                }
-                break;
-            case RodzajPracownika::WLASCICIEL:
-                if ($processType == TypDokumentu::DOKUMENT) {
-                    //podmiana pismo_uid na sprawa_uid (zmiana wartości zmiennej $id)
-                    // - potrzebne do pobrania właściciela
-                    $mainDocument = $this->caseQuery->getSprawaUidByTeczkaZawartoscUid($id, 'o.sprawa_uid');
-                    $id = $mainDocument->sprawa_uid;
-                }
-                $workstationId = $this->caseQuery->getCaseOwnerByCaseUid($id);
-                if (empty($workstationId)) {
-                    $info = "Dokument numer '{$id}' nie posiada właściciela sprawy dla bieżącej instancji";
-                    throw new Exception($info);
-                }
-                $uugid = $this->workstationQuery->getUugId($workstationId);
-
-                break;
-            case (RodzajPracownika::ZATWIERDZAJACY && $processType == TypDokumentu::DOKUMENT):
-                $uugid = $this->documentQuery->getLastRowFromHistory($id);
-                if (empty($uugid)) {
-                    throw new Exception(
-                        "Wpis nie zawiera informacji o osobie zatwierdzającej dla '{$id}'"
-                    );
-                }
-                break;
-            default:
-                throw new Exception(
-                    "Nieprawidłowy rodzaj pracownika '{$employeeType}' dla '{$id}'"
-                );
-        }
-
-        return $this->getEmployeeInfoByUUgId($uugid);
+    ) {
     }
 
     public function getEmployeeFullNameByUugId($uugid): string
     {
-        $employeeInfo = $this->getEmployeeInfoByUUgId($uugid);
-
-        return sprintf(
-            '%s %s [%s] {%s} (%s)',
-            $employeeInfo->imie,
-            $employeeInfo->nazwisko,
-            $employeeInfo->nazwa_stanowiska,
-            $employeeInfo->skrot_komorki,
-            $employeeInfo->login
-        );
-
-    }
-    public function getEmployeeInfoByUUgId($uugid): TypPracownik
-    {
         $uugInfo = $this->uugQuery->getInfo($uugid);
-        if (empty($uugInfo)) {
-            Log::error('EMPLOYEE_INFO.error', ['uugid' => $uugid, 'error' => 'not_found_in_uug']);
-            throw new Exception(
-                "Brak informacji o pracowniku na podstawie identyfikatora powiązania '{$uugid}'"
-            );
-        }
-
-        $employee = new TypPracownik();
-        $employee->id_uzytkownika = $uugInfo->user_id;
-        $employee->imie = $uugInfo->forename;
-        $employee->nazwisko = Structure::concatSurnames($uugInfo);
-        $employee->id_stanowiska = $uugInfo->workstation_id;
-        $employee->nazwa_stanowiska = $uugInfo->workstation_description;
-        $employee->login = $uugInfo->login;
-        $employee->skrot_komorki = $uugInfo->departament_name;
-        $employee->nazwa_komorki = $uugInfo->departament_description;
-
-        return $employee;
+        return PracownikDto::fromUugInfo($uugInfo)->displayName();
     }
-
-
-
 }

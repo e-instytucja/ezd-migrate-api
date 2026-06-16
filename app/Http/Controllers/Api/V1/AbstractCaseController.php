@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Api\BaseApiController;
 use App\Http\Response\ApiResponseRenderer;
+use App\Source\V1\DTO\Request\KryteriaWyszukiwaniaDokumentow;
 use App\Source\V1\DTO\Request\KryteriaWyszukiwaniaSpraw;
 use App\Source\V1\Services\Case\CaseService;
 use Illuminate\Http\Request;
@@ -42,7 +43,13 @@ abstract class AbstractCaseController extends BaseApiController
 
     public function show(Request $request, string $caseUid): Response
     {
-        $data = $this->caseService->getCaseDetails($caseUid, $this->dntas());
+        $requestAll = $request->all();
+        $requestAll['filtry']['sprawa_uid'] = $caseUid;
+        $kryteriaWyszukiwania = KryteriaWyszukiwaniaSpraw::fromPayload(
+            $requestAll,
+            $this->dntas(),
+        );
+        $data = $this->caseService->getCaseDetails($kryteriaWyszukiwania, $this->dntas());
 
         if ($data === null) {
             return $this->renderNotFound($request, "Case '{$caseUid}' not found.");

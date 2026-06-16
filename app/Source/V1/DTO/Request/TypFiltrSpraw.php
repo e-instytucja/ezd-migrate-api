@@ -7,6 +7,7 @@ namespace App\Source\V1\DTO\Request;
 readonly class TypFiltrSpraw extends \App\Source\V1\DTO\Request\TypFiltrDokument
 {
     public function __construct(
+        public ?string $sprawaUid = null,
         public ?int $rok = null,
         public ?string $znak = null,
         public ?string $oznaczenieDntas = null,
@@ -23,6 +24,7 @@ readonly class TypFiltrSpraw extends \App\Source\V1\DTO\Request\TypFiltrDokument
     public static function fromArray(array $data): self
     {
         return new self(
+            sprawaUid: self::parseSprawaUid($data),
             rok: isset($data['rok']) ? (int) $data['rok'] : null,
             znak: self::nullableString($data['znak'] ?? null),
             oznaczenieDntas: self::nullableString($data['oznaczenie_dntas'] ?? null),
@@ -39,6 +41,31 @@ readonly class TypFiltrSpraw extends \App\Source\V1\DTO\Request\TypFiltrDokument
     public function requiresInteresantJoin(): bool
     {
         return $this->interesant !== null;
+    }
+
+    private static function parseSprawaUid(array $data): ?string
+    {
+        $value = $data['sprawa_uid'] ?? $data['sprawaUid'] ?? null;
+
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        if (is_int($value) || is_float($value)) {
+            $value = (string) $value;
+        }
+
+        if (!is_string($value)) {
+            return null;
+        }
+
+        $value = trim($value);
+
+        if ($value === '' || !preg_match('/^[a-f0-9]{13}$/', $value)) {
+            return null;
+        }
+
+        return $value;
     }
 
     private static function nullableString(mixed $value): ?string

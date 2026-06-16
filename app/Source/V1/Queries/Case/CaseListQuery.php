@@ -65,6 +65,10 @@ class CaseListQuery
 
         $this->appendWorkstationScope($conditions, $konfiguracja, $filtry);
 
+        if ($filtry->sprawaUid !== null) {
+            $conditions[] = 'et.teczka_uid = ' . $this->bind($filtry->sprawaUid);
+        }
+
         if ($filtry->rok !== null) {
             $conditions[] = 'et.teczka_rok_zalozenia = ' . $this->bind($filtry->rok);
         }
@@ -205,7 +209,11 @@ class CaseListQuery
                 et.teczka_uid                                                 AS id_sprawy,
                 et.teczka_znak_sprawy                                         AS znak,
                 et.sprawa_uid                                                 AS main_document_uid,
+                esp.sprawa_createdate                                         AS data_rejestracji_dokumentu,
+                esp.czas_realizacji                                           AS czas_realizacji,
+                es.sprawa_createdate                                          AS data_utworzenia_dokumentu,
                 gp.name                                                       AS nazwa_procesu,
+                gp.normalized_name                                            AS nazwa_procesu_znormalizowana,
                 gp."pId"                                                      AS id_procesu,
                 ess.opis                                                      AS status_procesu,
                 et.teczka_createdate                                          AS data_wszczecia,
@@ -247,7 +255,7 @@ class CaseListQuery
                 INNER JOIN eurzad_obieg eo ON (eo.sprawa_uid = es.sprawa_uid AND eo.max_status_sprawy_id > 0)
                 INNER JOIN eurzad_slownik_status ess ON ess.symbol = eo.status
                 INNER JOIN galaxia_instances gi ON gi."instanceId" = eo."instanceId"
-                INNER JOIN eurzad_sprawa_przedluzanie sp ON sp.sprawa_uid = es.sprawa_uid
+                INNER JOIN eurzad_sprawa_przedluzanie esp ON esp.sprawa_uid = es.sprawa_uid
                 INNER JOIN users_groups ug_w ON (ug_w.group_id = gi.workstation)
                 INNER JOIN users_groups ug_g ON (ug_g.group_id = ug_w.parent_group_id)
                 INNER JOIN users_usergroups uug ON (uug.group_id = ug_w.group_id AND uug.status = 'A' AND uug.typ = 'Z')

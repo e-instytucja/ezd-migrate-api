@@ -13,6 +13,7 @@ class UugQuery {
             'uu.surname',
             'uu.surname2',
             'uu.surname3',
+            'w_ug.groupName as workstation_name',
             'w_ug.groupDesc as workstation_description',
             'w_ug.group_id as workstation_id',
             'g_ug.groupDesc as departament_description',

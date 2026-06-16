@@ -172,14 +172,6 @@ class CaseQuery
             ]);
     }
 
-    public function getFormNameByMainDocumentUid(
-        $mainDocumentUid
-    ): ?string {
-        return DB::table('eurzad_sprawa')
-            ->where('sprawa_uid', $mainDocumentUid)
-            ->value('form_name');
-    }
-
     public function getCaseOwnerByCaseUid($mainDocumentUid)
     {
         return $this->getCaseOwnerByInstanceId(

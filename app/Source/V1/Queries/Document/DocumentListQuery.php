@@ -54,11 +54,6 @@ class DocumentListQuery extends AbstractDocumentQuery
         return (int) $result[0]->count;
     }
 
-    public function getListByTeczkaUid(string $teczkaUid): array
-    {
-        return $this->getList(KryteriaWyszukiwaniaDokumentow::forTeczkaUid($teczkaUid));
-    }
-
     private function buildUnionsSql(KryteriaWyszukiwaniaDokumentow $criteria): string
     {
         $parts = array_map(

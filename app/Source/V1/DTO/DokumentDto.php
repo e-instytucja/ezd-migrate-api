@@ -9,35 +9,35 @@ final readonly class DokumentDto
         public ?int            $idProcesu,
         public ?string         $statusProcesu,
 
-        public ?int            $typ,
+        public ?int            $typDokumentu,
         public ?string         $znakSprawy,
 
         public string|int|null $idDokumentu,
         public ?string         $nrNaPismie,
         public ?int            $wersja,
 
-        public ?string      $dataRejestracji,
-        public ?string      $dataUtworzenia,
+        public ?string         $dataRejestracji,
+        public ?string         $dataUtworzenia,
 
-        public ?string      $dokumentTytul,
-        public ?string      $trescWniosku,
-        public ?string      $nrKsiegi,
+        public ?string         $dokumentTytul,
+        public ?string         $trescWniosku,
+        public ?string         $nrKsiegi,
 
-        public ?int         $documentGroupType,
+        public ?int            $documentGroupType,
 
-        public PracownikDto $wlasciciel,
+        public PracownikDto    $wlasciciel,
 
         /** @var InteresantDto[] */
-        public array        $interesanci,
+        public array           $interesanci,
 
         /** @var zalacznikDto[] */
-        public array        $zalaczniki,
+        public array           $zalaczniki,
 
         /** @var historiaObieguDto[] */
-        public ?array      $historiaObiegu,
+        public ?array          $historiaObiegu,
 
         /** @var array<> */
-        public ?array      $daneFormularza
+        public ?array          $daneFormularza
     )
     {
     }
