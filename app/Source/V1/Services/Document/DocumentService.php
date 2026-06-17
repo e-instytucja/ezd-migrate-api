@@ -3,13 +3,13 @@
 namespace App\Source\V1\Services\Document;
 
 use App\Shared\Functions;
+use App\Source\V1\DTO\DokumentDanePodstawoweDto;
 use App\Source\V1\DTO\DokumentDto;
-use App\Source\V1\DTO\HistoriaObieguDto;
-use App\Source\V1\DTO\InteresantDto;
 use App\Source\V1\DTO\PracownikDto;
 use App\Source\V1\DTO\Request\KryteriaWyszukiwaniaDokumentow;
 use App\Source\V1\Queries\Document\DocumentQuery;
 use App\Source\V1\Queries\Document\DocumentListQuery;
+use App\Source\V1\Queries\Structure\UugQuery;
 use App\Source\V1\Services\Attachment\AttachmentService;
 use App\Source\V1\Services\Form\FormService;
 use App\Source\V1\Services\Suppliant\SupliantService;
@@ -26,6 +26,7 @@ class DocumentService
     public function __construct(
         private readonly DocumentQuery $documentQuery,
         private readonly DocumentListQuery $documentListQuery,
+        private readonly UugQuery $uugQuery,
         private readonly SupliantService $supliantService,
         private readonly AttachmentService $attachmentService,
         private readonly DocumentHistoryService $documentHistoryService,
@@ -110,29 +111,18 @@ class DocumentService
             ? $this->formService->getFormDocumentValues($row['id_dokumentu'], $row['nazwa_znormalizowana_procesu'])
             : $this->formService->getFormMainDocumentValues($row['id_dokumentu'], $row['nazwa_znormalizowana_procesu']);
 
-        $zalaczniki = !empty($daneFormularza['pliki']['value']) ? $daneFormularza['pliki']['value'] : [];
-        unset($daneFormularza['pliki']);
-        $interesanci = !empty($daneFormularza['interesanci']['value']) ? $daneFormularza['interesanci']['value'] : [];
-        unset($daneFormularza['interesanci']);
+        $wlasciciel = PracownikDto::fromDocumentRow($row);
+        $historyRow = $this->documentQuery->getFirstRowFromHistory($row['id_dokumentu']);
+        $utworzyl = PracownikDto::fromWorkstationRow(
+            $this->uugQuery->getInfo($historyRow->uugid_from),
+        );
 
         return new DokumentDto(
-            nazwaProcesu: $row['nazwa_procesu'] ?? null,
-            idProcesu: isset($row['id_procesu']) ? (int) $row['id_procesu'] : null,
-            statusProcesu: $row['status_procesu'] ?? null,
-            typDokumentu: isset($row['typ']) ? (int) $row['typ'] : null,
-            znakSprawy: $row['znak_sprawy'] ?? null,
-            idDokumentu: $row['id_dokumentu'] ?? null,
-            nrNaPismie: $row['nr_na_pismie'] ?? null,
-            wersja: isset($row['wersja']) ? (int) $row['wersja'] : null,
-            dataRejestracji: $row['data_rejestracji'] ?? null,
-            dataUtworzenia: $row['data_utworzenia'] ?? null,
-            dokumentTytul: $row['dokument_tytul'] ?? null,
-            trescWniosku: $row['tresc_wniosku'] ?? null,
-            nrKsiegi: ($row['nr_ksiegi'] ?? '') !== '' ? $row['nr_ksiegi'] : null,
-            documentGroupType: isset($row['document_group_type']) ? (int) $row['document_group_type'] : null,
-            wlasciciel: PracownikDto::fromDocumentRow($row),
-            interesanci: $interesanci,
-            zalaczniki: $zalaczniki,
+            danePodstawowe: DokumentDanePodstawoweDto::fromDocumentRow($row),
+            wlasciciel: $wlasciciel,
+            utworzyl: $utworzyl,
+            interesanci: $daneFormularza->extractInteresanci(),
+            zalaczniki: $daneFormularza->extractZalaczniki(),
             historiaObiegu: $historiaObieguRaw,
             daneFormularza: $daneFormularza,
         );
@@ -164,6 +154,11 @@ class DocumentService
         Log::notice('DOCUMENT_LIST.start', ['case_uid' => $caseUID]);
         $startedAt = Functions::startTimer();
         $documentList = $this->documentListQuery->getList(KryteriaWyszukiwaniaDokumentow::forTeczkaUid($caseUID));
+        foreach ($documentList as &$document) {
+            $this->supliantService->hydrateSuppliantData($document, $document['id_dokumentu']);
+        }
+        unset($document);
+
 
         Log::info('[' . Functions::elapsedMs($startedAt) . 'ms] DOCUMENT_LIST.ok', [
             'case_uid' => $caseUID,

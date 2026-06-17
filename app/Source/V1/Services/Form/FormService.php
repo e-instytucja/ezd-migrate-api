@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Source\V1\Services\Form;
 
 use App\Shared\Functions;
+use App\Source\V1\DTO\DaneFormularzaDto;
 use App\Source\V1\Queries\Form\FormQuery;
 use Illuminate\Support\Facades\Log;
 
@@ -16,7 +17,7 @@ class FormService
     ) {
     }
 
-    public function getFormDocumentValues(string $documentUid, string $normalizedProcessName)
+    public function getFormDocumentValues(string $documentUid, string $normalizedProcessName): DaneFormularzaDto
     {
         Log::notice('FORM_DOKUMENT_VALUES.start', ['document_uid' => $documentUid, 'form_name' => $normalizedProcessName]);
         $startedAt = Functions::startTimer();
@@ -27,7 +28,7 @@ class FormService
         Log::info('[' . Functions::elapsedMs($startedAt) . 'ms] FORM_VALUES.ok', [
             'main_document_uid' => $documentUid,
             'form_name' => $normalizedProcessName,
-            'fields_count' => count($daneFormularza),
+            'fields_count' => $daneFormularza->count(),
         ]);
 
         return $daneFormularza;
@@ -36,7 +37,7 @@ class FormService
     /**
      * @throws \JsonException
      */
-    public function getFormMainDocumentValues(string $mainDocumentUid, string $normalizedProcessName)
+    public function getFormMainDocumentValues(string $mainDocumentUid, string $normalizedProcessName): DaneFormularzaDto
     {
         Log::notice('FORM_MAIN_DOCUMENT_VALUES.start', ['main_document_uid' => $mainDocumentUid, 'form_name' => $normalizedProcessName]);
         $startedAt = Functions::startTimer();
@@ -47,7 +48,7 @@ class FormService
         Log::info('[' . Functions::elapsedMs($startedAt) . 'ms] FORM_VALUES.ok', [
             'main_document_uid' => $mainDocumentUid,
             'form_name' => $normalizedProcessName,
-            'fields_count' => count($daneFormularza),
+            'fields_count' => $daneFormularza->count(),
         ]);
 
         return $daneFormularza;

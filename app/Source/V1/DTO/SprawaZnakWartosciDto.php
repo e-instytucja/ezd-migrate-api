@@ -6,8 +6,10 @@ namespace App\Source\V1\DTO;
 
 use Exception;
 
-class znakSprawyDto
+final class SprawaZnakWartosciDto
 {
+    public string $pelny = '';
+    public ?string $oznaczenieDntas = null;
     public string $symbolKomorki = '';
     public string $symbolJrwa = '';
     public ?int $numerPodteczki = null;
@@ -15,8 +17,13 @@ class znakSprawyDto
     public ?int $numer = null;
     public int|string|null $rok = null;
 
-    public static function fromTeczkaRow(object $caseData, string $caseUid): self
-    {
+    public static function fromCaseData(
+        string $pelny,
+        ?string $oznaczenieDntas,
+        object $caseData,
+        string $caseUid,
+        ?string $fallbackSymbolKomorki = null,
+    ): self {
         if (empty($caseData->teczka_sygnatura)) {
             throw new Exception(
                 "Brak JRWA dla ID: '{$caseUid}'"
@@ -27,12 +34,18 @@ class znakSprawyDto
         $zbiorNr = str_replace([$jrwa, '-', '.'], '', $caseData->teczka_sygnatura);
 
         $dto = new self();
+        $dto->pelny = $pelny;
+        $dto->oznaczenieDntas = $oznaczenieDntas;
         $dto->symbolJrwa = $jrwa;
-        $dto->numerPodteczki = $zbiorNr === '' ? null : $zbiorNr;
+        $dto->numerPodteczki = $zbiorNr === '' ? null : (int) $zbiorNr;
         $dto->numer = $caseData->teczka_numer ?? null;
         $dto->rok = $caseData->teczka_rok_zalozenia ?? null;
         $dto->opisPodteczki = $caseData->opis_zbioru ?? null;
         $dto->symbolKomorki = $caseData->teczka_wydzial ?? '';
+
+        if ($dto->symbolKomorki === '' && $fallbackSymbolKomorki !== null) {
+            $dto->symbolKomorki = $fallbackSymbolKomorki;
+        }
 
         return $dto;
     }

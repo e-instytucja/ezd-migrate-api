@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Source\V1\Services\Form;
 
-use App\Source\V1\DTO\PracownikDto;
+use App\Source\V1\DTO\DaneFormularzaDto;
 use App\Source\V1\DTO\InteresantDto;
+use App\Source\V1\DTO\DaneFormularzaPoleDto;
+use App\Source\V1\DTO\PracownikDto;
 use App\Source\V1\Queries\Structure\GroupQuery;
 use App\Source\V1\Queries\Structure\WorkstationQuery;
 use App\Source\V1\Services\Attachment\AttachmentService;
@@ -26,20 +28,15 @@ final class FormDaneService
 
     /**
      * @param array<int, array<string, mixed>> $daneZBazy
-     * @param array<string, array<string, mixed>> $strukturaFormularza
-     *
-     * @return array<string, mixed>
      */
-    public function przetworzDane(array $daneZBazy): array
+    public function przetworzDane(array $daneZBazy): DaneFormularzaDto
     {
-
-        $wynik = [];
+        $wynik = new DaneFormularzaDto();
 
         foreach ($daneZBazy as $wiersz) {
-            if($wiersz['struktura_typ'] !== null) {
+            if ($wiersz['struktura_typ'] !== null) {
                 $this->przetworzWierszZeStruktura($wiersz, $wynik);
-            }
-            else {
+            } else {
                 $this->przetworzWierszBezStruktury($wiersz, $wynik);
             }
         }
@@ -67,31 +64,17 @@ final class FormDaneService
 
     /**
      * @param array<string, mixed> $wiersz
-     * @param array<string, array<string, mixed>> $strukturaFormularza
-     * @param array<string, mixed> $wynik
-     */
-    private function przetworzWiersz(
-        array $wiersz,
-        array &$wynik,
-    ): void {
-
-
-    }
-
-    /**
-     * @param array<string, mixed> $wiersz
-     * @param array<string, mixed> $wynik
      */
     private function przetworzWierszZeStruktura(
         array $wiersz,
-        array &$wynik,
+        DaneFormularzaDto $wynik,
     ): void {
         $kluczPola = $wiersz['struktura_pole'];
         $wartoscPola = $wiersz['form_wartosc'];
         $typPola = $wiersz['struktura_typ'];
         $opisPola = $wiersz['struktura_opis'];
 
-        if(!empty($wartoscPola)) {
+        if (!empty($wartoscPola)) {
 
             switch ($typPola) {
                 case 'dokument_tytul':
@@ -143,31 +126,30 @@ final class FormDaneService
         }
 
         if ($kluczPola === 'interesanci') {
-            if (!isset($wynik['interesanci'])) {
-                $wynik['interesanci'] = [
-                    'label' => $opisPola,
-                    'value' => [],
-                ];
+            if (!$wynik->hasPole('interesanci')) {
+                $wynik->addPole('interesanci', new DaneFormularzaPoleDto(
+                    label: $opisPola,
+                    value: [],
+                ));
             }
 
-            $wynik['interesanci']['value'][] = $wartoscPola;
+            $wynik->appendToPoleValue('interesanci', $wartoscPola);
 
             return;
         }
 
-        $wynik[$kluczPola] = [
-            'label' => $opisPola,
-            'value' => $wartoscPola,
-        ];
+        $wynik->addPole($kluczPola, new DaneFormularzaPoleDto(
+            label: $opisPola,
+            value: $wartoscPola,
+        ));
     }
 
     /**
      * @param array<string, mixed> $wiersz
-     * @param array<string, mixed> $wynik
      */
-    private function przetworzWierszBezStruktury(array $wiersz, array &$wynik): void
+    private function przetworzWierszBezStruktury(array $wiersz, DaneFormularzaDto $wynik): void
     {
-        if(empty($wiersz['form_wartosc'])) {
+        if (empty($wiersz['form_wartosc'])) {
             return;
         }
         if (
@@ -178,18 +160,20 @@ final class FormDaneService
                 $wiersz['form_dane_id'],
                 true,
             );
-            if(!isset($wynik['interesanci'])) {
-                $wynik['interesanci'] = [
-                    'label' => $wiersz['struktura_opis'],
-                ];
+            if (!$wynik->hasPole('interesanci')) {
+                $wynik->addPole('interesanci', new DaneFormularzaPoleDto(
+                    label: $wiersz['struktura_opis'] ?? '',
+                    value: [],
+                ));
             }
-            $wynik['interesanci']['value'][] = $daneInteresanta;
+            $wynik->appendToPoleValue('interesanci', $daneInteresanta);
+
             return;
         }
-        $wynik[$wiersz['struktura_pole']] = [
-            'label' => $wiersz['struktura_opis'],
-            'value' => $wiersz['form_wartosc'],
-        ];
+        $wynik->addPole($wiersz['struktura_pole'], new DaneFormularzaPoleDto(
+            label: $wiersz['struktura_opis'] ?? '',
+            value: $wiersz['form_wartosc'],
+        ));
     }
 
     private function getDekretacjaWydzial(
@@ -211,21 +195,6 @@ final class FormDaneService
         }
         return implode('<br>', $rows);
     }
-    /**
-     * @param array<string, mixed> $wiersz
-     * @param array<string, mixed> $wynik
-     */
-    private function uzupelnijStanowisko(
-        array $wiersz,
-        array &$wynik,
-        WorkstationQuery|UugQuery $zapytanie,
-    ): void {
-        $kluczPola = $wiersz['struktura_pole'];
-        $wartosc = (string) $wiersz['form_wartosc'];
-
-        $departament = $zapytanie->getDepartamentInfo($wartosc);
-        $wynik[$kluczPola] = $wartosc . '[' . $departament['groupName'] . ']';
-    }
 
     private function pobierzInteresantaDoFormularza(
         mixed $idInteresanta,
@@ -234,19 +203,12 @@ final class FormDaneService
     ): InteresantDto {
         $interesantDane = $this->suppliantService->getSupliantById($idInteresanta);
         $interesantRola = $this->suppliantService->getPetentRoleById($idDanychFormularza);
-        $interesantTyp = ($interesantDane['typ_osoby'] ?? null) === 'firma'
-            ? 'instytucja'
-            : 'osoba';
 
-        return new InteresantDto(
-            nazwa: $interesantDane['view_podmiot'],
-            adres: $interesantDane['adres_metadane']['adres_korespondencyjny'],
-            adresEpuap: $interesantDane['front_office_petent_id'],
-            meta: [
-                'glowny' => $czyGlowny,
-                'role' => $interesantRola,
-                'interesant_type' => $interesantTyp,
-            ],
+        return $this->suppliantService->mapToInteresantDto(
+            row: $interesantDane,
+            uid: (string) $idInteresanta,
+            glowny: $czyGlowny,
+            role: $interesantRola,
         );
     }
 }

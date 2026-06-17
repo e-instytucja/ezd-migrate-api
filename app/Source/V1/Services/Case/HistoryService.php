@@ -15,6 +15,9 @@ class HistoryService
     {
     }
 
+    /**
+     * @return HistoriaObieguDto[]
+     */
     public function getHistory($mainDocumentUid): array
     {
         $historyWorkflow = $this->caseQuery->getHistory($mainDocumentUid);
