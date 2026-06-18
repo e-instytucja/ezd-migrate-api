@@ -11,7 +11,7 @@ final class DaneFormularzaDto implements JsonSerializable
     /** @var array<string, DaneFormularzaPoleDto> */
     private array $pola = [];
 
-    public function addPole(string $klucz, DaneFormularzaPoleDto $pole): void
+    public function addPole(?string $klucz, DaneFormularzaPoleDto $pole): void
     {
         $this->pola[$klucz] = $pole;
     }
