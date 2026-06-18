@@ -1,0 +1,43 @@
+---
+description: Czego agent AI NIE powinien robić w projekcie SIDAS EZD API
+alwaysApply: true
+---
+
+# Guardrails — czego NIE robić
+
+## Architektura i baza
+
+- NIE dodawaj migracji Laravel ani Eloquent modeli dla tabel `eurzad_*` / `galaxia_*` / `users_*`
+- NIE zakładaj, że schemat DB jest w repo — pochodzi z dumpa EZD (`scripts/import-*.sh`)
+- NIE buduj „import service" w aplikacji — import = skrypty shell + Docker Postgres
+- NIE zakładaj read-only na poziomie runtime — to konwencja; kod nie blokuje INSERT/UPDATE
+- NIE pisz do `FILES_URL` w układzie Docker — volume jest `:ro` (`docker-compose.yml`); na hoście bez `:ro` gwarancji brak
+
+## API i kontrakt
+
+- NIE usuwaj POST z endpointów list/show — routes używają `Route::match(['get', 'post'], ...)`
+- NIE zmieniaj envelope odpowiedzi bez decyzji — pola: `success`, `status_code`, opcjonalnie `message`, `error` (tylko przy błędzie), `meta`, `data`
+- NIE dodawaj auth middleware bez jawnego polecenia — w kodzie tylko `ApiAccessLogMiddleware`
+- NIE zmieniaj constraintów `documentId` w routes — @TODO: przejście na numeric `instanceId`
+
+## Zapytania i domena
+
+- NIE pomijaj `konfiguracja.madkomWorkstationIds` w listach globalnych — pusta tablica → `[err_10_appendWorkstationScope]`
+- NIE zakładaj, że wszystkie ID to hex 13 znaków — `{documentId}` akceptuje też `\d+`
+- NIE mieszaj Cases (`dntas=0`, `/cases`) z DNTAS (`dntas=1`, `/dntas`)
+- NIE zmieniaj nazw polskich pól API ani kolumn SQL bez koordynacji z konsumentami
+- NIE masowo poprawiaj typo (`DoctionaryQuery`, `SupliantService`) — osobny refaktor
+
+## Zmiany w kodzie
+
+- NIE rób drive-by refaktorów `strict_types` poza edytowanymi plikami
+- NIE dodawaj testów/CI/bibliotek bez polecenia
+- NIE zgaduj logiki SQL — sprawdź `docs/queries/` i kod; niepewności → `docs/open-questions.md`
+- Przy każdej zmianie SQL aktualizuj `docs/queries/*.md`
+
+## Pułapki potwierdzone w kodzie
+
+- `pokaz_udostepnione`: `$filtry->pokazUdostepnione !== null` decyduje o EXISTS — **obecność klucza w JSON**, nie wartość bool (patrz docs/queries/README.md)
+- `TypFiltrDokument::$trescPisma` — pole w DTO, brak WHERE w AbstractDocumentQuery
+- `DocumentQuery::DOCUMENT_TYPE_PISMO` = `eurzad_sprawa`, `DOCUMENT_TYPE_DOKUMENT` = `eurzad_pismo`
+- `DocumentService::mapToDokumentDto` — `getFirstRowFromHistory` zawsze na `eurzad_pismo_obieg`, niezależnie od `document_group_type`

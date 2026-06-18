@@ -1,0 +1,50 @@
+---
+description: Reguły dla warstwy Queries — SQL, JOIN-y, filtry
+globs: app/Source/V1/Queries/**
+alwaysApply: false
+---
+
+# Queries — reguły SQL
+
+## Wzorzec
+
+- Klasy w `app/Source/V1/Queries/{Domain}/`
+- Raw SQL (`DB::select`) lub Query Builder (`DB::table`) — bez Eloquent
+- Parametry list: `bind()` → `?` + `$bindings`
+- Filtry: `TypFiltrSpraw`, `TypFiltrDokument`, `ApiKonfiguracja`
+
+## Łańcuchy JOIN — nie mylić klas
+
+**CaseListQuery** — start od `eurzad_teczka et`, zawsze JOIN do `eurzad_sprawa es`.
+
+**DocumentListQuery (typy 1, 3, 4)** — start od `eurzad_sprawa es`; teczka przez LEFT/INNER JOIN (bezpośrednio lub via `teczka_zawartosc`).
+
+**DocumentListQuery (typ 2)** — start od `eurzad_pismo ep`; obieg via LATERAL na `eurzad_pismo_obieg`.
+
+Wspólny rdzeń pisma wiodącego (es): `galaxia_processes` → `eurzad_obieg` (`max_status_sprawy_id > 0`) → `galaxia_instances` → `users_*`.
+
+## Aktualny status obiegu — niespójność
+
+- Listy: `max_status_sprawy_id > 0`
+- CaseQuery::getFirstRowFromHistory: sort po `status_sprawy_id`, bez filtra max — DO WYJAŚNIENIA (Q-01)
+
+## Scope stanowisk
+
+`madkomWorkstationIds` — wymagane w listach globalnych (appendWorkstationScope).
+
+`buildWorkstationCondition($ids, $includeShared)`:
+- `$includeShared = ($filtry->pokazUdostepnione !== null)` — **obecność pola w request**, nie wartość bool
+- `false`: tylko `gi.workstation IN (...)`
+- `true`: + EXISTS `galaxia_instance_users`
+
+## PostgreSQL-specific
+
+- `DISTINCT ON (id_dokumentu)` — DocumentListQuery
+- `LATERAL (... LIMIT 1)` — ostatni wiersz `eurzad_pismo_obieg`
+- Kolumny Galaxii w cudzysłowach: `"instanceId"`, `"pId"`, `"groupName"`
+
+## Po zmianie SQL
+
+1. Zaktualizuj `docs/queries/*.md` i ewentualnie `docs/open-questions.md`
+2. Sprawdź symetrię `getList` vs `getListCount`
+3. Relacje tabel opisuj jako WNIOSEK Z SQL, nie jako DDL

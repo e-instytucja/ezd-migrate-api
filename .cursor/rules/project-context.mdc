@@ -1,0 +1,50 @@
+---
+description: Kontekst projektu SIDAS EZD API — stack, architektura, kluczowe ścieżki
+alwaysApply: true
+---
+
+# SIDAS EZD API — kontekst projektu
+
+Laravel 11 API nad legacy schematem PostgreSQL (EZD). Brak migracji, Eloquent i testów automatycznych w repo.
+
+**Read-only:** konwencja projektu (Queries = SELECT). Kod **nie blokuje** zapisów do DB ani plików — brak technicznej gwarancji read-only.
+
+## Stack
+
+- PHP ^8.2, Laravel 11, PostgreSQL (`pgsql`)
+- Załączniki z dysku: env `FILES_URL` (w Docker Compose mount `:ro` — patrz guardrails)
+- Locale: `pl`, timezone: `Europe/Warsaw`
+
+## Warstwy
+
+```
+routes/api.php → Controllers/Api/V1 → Source/V1/Services → Source/V1/Queries → DB
+                                              ↓
+                                        Source/V1/DTO
+```
+
+## Kluczowe ścieżki
+
+| Obszar | Ścieżka |
+|--------|---------|
+| Routing | `routes/api.php` (prefiks `/api/v1/`) |
+| Kontrolery | `app/Http/Controllers/Api/V1/` |
+| Serwisy | `app/Source/V1/Services/` |
+| SQL | `app/Source/V1/Queries/` |
+| DTO | `app/Source/V1/DTO/` |
+| Enum | `app/Source/V1/Enum/` |
+| Pytania otwarte | `docs/open-questions.md` |
+
+## Identyfikatory (z routes / DTO)
+
+| Parametr | Format w kodzie |
+|----------|-----------------|
+| `{caseUid}` | `[a-f0-9]{13}` |
+| `{documentId}` | `\d+` **lub** `[a-f0-9]{13}` (@TODO: docelowo tylko `instanceId` numeric) |
+| `{attachmentUid}` | `[a-f0-9]{13}` |
+
+## Domena EZD (skrót)
+
+- **Sprawa (API)** = teczka (`eurzad_teczka.teczka_uid`) powiązana z pismem wiodącym (`eurzad_sprawa.sprawa_uid`) — **WNIOSEK Z SQL, NIE Z DDL**
+- **DNTAS** = `eurzad_teczka.dntas = 1` (osobny kontroler, ta sama logika serwisu)
+- W `DocumentQuery`: `DOCUMENT_TYPE_PISMO` = wiersz w `eurzad_sprawa`; `DOCUMENT_TYPE_DOKUMENT` = wiersz w `eurzad_pismo`
