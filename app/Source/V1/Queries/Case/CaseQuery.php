@@ -24,6 +24,7 @@ class CaseQuery
             ->where('teczka_uid', $caseUid)
             ->value('sprawa_uid');
     }
+
     public function getStatus($uid)
     {
         $symbol = $this->getStatusSymbol($uid);
@@ -31,12 +32,11 @@ class CaseQuery
         $status = DB::table('eurzad_slownik_status')
             ->where('symbol', $symbol)
             ->value('opis');
-        if(empty($status)) {
+        if (empty($status)) {
             throw new \Exception("Brak danych dla statusu {$symbol}");
         }
         return $status;
     }
-
 
 
     private function getStatusSymbol($uid)
@@ -45,7 +45,7 @@ class CaseQuery
             ->where('sprawa_uid', $uid)
             ->value('status');
 
-        if(empty($status)) {
+        if (empty($status)) {
             throw new \Exception("Brak danych dla statusu {$status}");
         }
         return $status;
@@ -57,7 +57,7 @@ class CaseQuery
             ->where('sprawa_uid', $mainDocumentUid)
             ->value($column);
 
-        if(empty($createdate)) {
+        if (empty($createdate)) {
             throw new \Exception("Brak danych dla sprawy {$mainDocumentUid}");
         }
 
@@ -69,7 +69,7 @@ class CaseQuery
         $createdate = DB::table('eurzad_sprawa')
             ->where('sprawa_uid', $mainDocumentUid)
             ->value('sprawa_createdate');
-        if(empty($createdate)) {
+        if (empty($createdate)) {
             throw new \Exception("Brak danych dla sprawy {$mainDocumentUid}");
         }
         return $createdate;
@@ -79,7 +79,8 @@ class CaseQuery
         $mainDocumentUid,
         array $statuses = [],
         string $sortDirection = 'ASC'
-    ): stdClass {
+    ): stdClass
+    {
         $sortDirection = strtoupper($sortDirection);
 
         if (!in_array($sortDirection, ['ASC', 'DESC'], true)) {
@@ -101,7 +102,8 @@ class CaseQuery
     public function getSprawaUidByTeczkaZawartoscUid(
         $teczkaZawartoscUid,
         string $returnKeys = 'o."instanceId", o.sprawa_uid'
-    ): object {
+    ): object
+    {
         $allowedColumns = [
             'o."instanceId", o.sprawa_uid',
             'o.sprawa_uid',
@@ -135,7 +137,8 @@ class CaseQuery
     public function getAllFromTeczkaBySprawaUid(
         $caseUid,
         int $dntas = 0,
-    ): object {
+    ): object
+    {
         $ret = DB::table('eurzad_teczka as t')
             ->leftJoin(
                 'eurzad_teczka_podteczki as tp',
@@ -155,7 +158,7 @@ class CaseQuery
             return $ret;
         }
 
-        return (object) [
+        return (object)[
             'opis_sprawy' => '',
             'opis_zbioru' => '',
         ];
@@ -218,7 +221,7 @@ class CaseQuery
             ->groupBy('o.status', 's.opis')
             ->orderBy('s.opis')
             ->get()
-            ->map(static fn ($row) => [
+            ->map(static fn($row) => [
                 'status' => $row->status,
                 'opis' => $row->opis,
             ])

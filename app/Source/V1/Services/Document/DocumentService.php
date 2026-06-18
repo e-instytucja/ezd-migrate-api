@@ -7,6 +7,7 @@ use App\Source\V1\DTO\DokumentDanePodstawoweDto;
 use App\Source\V1\DTO\DokumentDto;
 use App\Source\V1\DTO\PracownikDto;
 use App\Source\V1\DTO\Request\KryteriaWyszukiwaniaDokumentow;
+use App\Source\V1\Queries\Case\CaseQuery;
 use App\Source\V1\Queries\Document\DocumentQuery;
 use App\Source\V1\Queries\Document\DocumentListQuery;
 use App\Source\V1\Queries\Structure\UugQuery;
@@ -25,6 +26,7 @@ class DocumentService
 
     public function __construct(
         private readonly DocumentQuery $documentQuery,
+        private readonly CaseQuery $caseQuery,
         private readonly DocumentListQuery $documentListQuery,
         private readonly UugQuery $uugQuery,
         private readonly SupliantService $supliantService,
@@ -112,7 +114,12 @@ class DocumentService
             : $this->formService->getFormMainDocumentValues($row['id_dokumentu'], $row['nazwa_znormalizowana_procesu']);
 
         $wlasciciel = PracownikDto::fromDocumentRow($row);
-        $historyRow = $this->documentQuery->getFirstRowFromHistory($row['id_dokumentu']);
+        if($row['typ'] === DocumentQuery::DOKUMENTY_W_SPRAWIE) {
+            $historyRow = $this->documentQuery->getFirstRowFromHistory($row['id_dokumentu']);
+        }
+        else {
+            $historyRow = $this->caseQuery->getFirstRowFromHistory($row['id_dokumentu']);
+        }
         $utworzyl = PracownikDto::fromWorkstationRow(
             $this->uugQuery->getInfo($historyRow->uugid_from),
         );
