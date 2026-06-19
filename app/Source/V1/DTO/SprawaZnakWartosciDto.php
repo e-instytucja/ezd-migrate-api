@@ -8,7 +8,7 @@ use Exception;
 
 final class SprawaZnakWartosciDto
 {
-    public string $pelny = '';
+    public ?string $pelny = '';
     public ?string $oznaczenieDntas = null;
     public string $symbolKomorki = '';
     public string $symbolJrwa = '';
@@ -18,7 +18,7 @@ final class SprawaZnakWartosciDto
     public int|string|null $rok = null;
 
     public static function fromCaseData(
-        string $pelny,
+        ?string $pelny,
         ?string $oznaczenieDntas,
         object $caseData,
         string $caseUid,
