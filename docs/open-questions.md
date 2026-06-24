@@ -111,7 +111,7 @@ Kontekst SQL: `docs/queries/`, `docs/database.md`.
 
 | Pole | Wartość |
 |------|---------|
-| **Opis** | Łańcuch `etz2 → etz → et` dla `PISMA_POTWIERDZENIE_ODBIORU`. Wniosek z SQL opisany w [queries/document-queries.md](queries/document-queries.md#potwierdzenia-odbioru--zwrotki-typ-4); **brak potwierdzenia reguły biznesowej EZD** (czy `etz2.teczka_uid` zawsze wskazuje dokument nadrzędny). |
+| **Opis** | Łańcuch `etz2 → etz → et` dla `TYP_DOK_PRZYCHODZACY_ZPO`. Wniosek z SQL opisany w [queries/document-queries.md](queries/document-queries.md#potwierdzenia-odbioru--zwrotki-typ-4); **brak potwierdzenia reguły biznesowej EZD** (czy `etz2.teczka_uid` zawsze wskazuje dokument nadrzędny). |
 | **Priorytet** | **Średni** |
 | **Ryzyko** | Błędne powiązanie zwrotu z teczką nadrzędną; trudna zmiana bez znajomości reguły EZD. |
 | **Sugerowane działanie** | Zweryfikować na próbce danych z analitykiem EZD; ewentualnie doprecyzować sekcję w `document-queries.md`. |

@@ -10,10 +10,10 @@ use InvalidArgumentException;
 
 abstract class AbstractDocumentQuery
 {
-    public const PISMA_INICJUJACE_WIODACE = 1;
-    public const DOKUMENTY_W_SPRAWIE = 2;
-    public const PISMA_INICJUJACE_W_SPRAWIE = 3;
-    public const PISMA_POTWIERDZENIE_ODBIORU = 4;
+    public const TYP_DOK_PRZYCHODZACY_INICJUJACY = 1;
+    public const TYP_DOK_WYCHADZACY_W_SPRAWIE = 2;
+    public const TYP_DOK_PRZYCHODZACY_W_SPRAWIE = 3;
+    public const TYP_DOK_PRZYCHODZACY_ZPO = 4; // Zwrotne potwierdzenie odbioru
 
     /** @var array<int, mixed> */
     protected array $bindings = [];
@@ -49,7 +49,7 @@ abstract class AbstractDocumentQuery
 
         if ($filtry->documentId !== null) {
             $conditions[] = match ($unionType) {
-                self::DOKUMENTY_W_SPRAWIE => 'ep.pismo_uid = ' . $this->bind($filtry->documentId),
+                self::TYP_DOK_WYCHADZACY_W_SPRAWIE => 'ep.pismo_uid = ' . $this->bind($filtry->documentId),
                 default => 'es.sprawa_uid = ' . $this->bind($filtry->documentId),
             };
         }
@@ -64,7 +64,7 @@ abstract class AbstractDocumentQuery
 
         if ($filtry->statusProcesu !== null) {
             $conditions[] = match ($unionType) {
-                self::DOKUMENTY_W_SPRAWIE => 'epo.status = ' . $this->bind($filtry->statusProcesu),
+                self::TYP_DOK_WYCHADZACY_W_SPRAWIE => 'epo.status = ' . $this->bind($filtry->statusProcesu),
                 default => 'eo.status = ' . $this->bind($filtry->statusProcesu),
             };
         }
@@ -103,7 +103,7 @@ abstract class AbstractDocumentQuery
     protected function rokCondition(int $unionType, int $rok): string
     {
         return match ($unionType) {
-            self::DOKUMENTY_W_SPRAWIE => 'EXTRACT(YEAR FROM ep.pismo_createdate) = ' . $this->bind($rok),
+            self::TYP_DOK_WYCHADZACY_W_SPRAWIE => 'EXTRACT(YEAR FROM ep.pismo_createdate) = ' . $this->bind($rok),
             default => 'EXTRACT(YEAR FROM COALESCE('
                 . "NULLIF(TRIM(fd_data_rej.form_dane_wartosc), '')::timestamp, "
                 . 'esp.sprawa_createdate)) = ' . $this->bind($rok),
@@ -114,7 +114,7 @@ abstract class AbstractDocumentQuery
     {
         $pattern = '%' . $opis . '%';
 
-        if ($unionType === self::DOKUMENTY_W_SPRAWIE) {
+        if ($unionType === self::TYP_DOK_WYCHADZACY_W_SPRAWIE) {
             return "(fd_tytul.wartosc::jsonb)->>'textarea' ILIKE " . $this->bind($pattern);
         }
 
@@ -135,7 +135,7 @@ SQL;
             'et.teczka_znak_sprawy ILIKE ' . $this->bind('%' . $oznaczenie . '%'),
         ];
 
-        if ($unionType !== self::DOKUMENTY_W_SPRAWIE) {
+        if ($unionType !== self::TYP_DOK_WYCHADZACY_W_SPRAWIE) {
             $parts[] = 'fd_nr_na_pismie.form_dane_wartosc = ' . $this->bind($oznaczenie);
             $parts[] = '(ek.ksiega_numer || \'/\' || ek.ksiega_rok) = ' . $this->bind($oznaczenie);
         }
@@ -150,7 +150,7 @@ SQL;
     protected function dateFromCondition(int $unionType, string $dataOd): string
     {
         return match ($unionType) {
-            self::DOKUMENTY_W_SPRAWIE => 'ep.pismo_createdate >= ' . $this->bind($dataOd . ' 00:00:00'),
+            self::TYP_DOK_WYCHADZACY_W_SPRAWIE => 'ep.pismo_createdate >= ' . $this->bind($dataOd . ' 00:00:00'),
             default => <<<SQL
 COALESCE(
     NULLIF(TRIM(fd_data_rej.form_dane_wartosc), '')::timestamp,
@@ -163,7 +163,7 @@ SQL  . $this->bind($dataOd . ' 00:00:00'),
     protected function dateToCondition(int $unionType, string $dataDo): string
     {
         return match ($unionType) {
-            self::DOKUMENTY_W_SPRAWIE => 'ep.pismo_createdate <= ' . $this->bind($dataDo . ' 23:59:59'),
+            self::TYP_DOK_WYCHADZACY_W_SPRAWIE => 'ep.pismo_createdate <= ' . $this->bind($dataDo . ' 23:59:59'),
             default => <<<SQL
 COALESCE(
     NULLIF(TRIM(fd_data_rej.form_dane_wartosc), '')::timestamp,

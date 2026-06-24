@@ -14,10 +14,10 @@ Wspólne filtry WHERE dla 4 typów UNION.
 
 | Stała | Wartość | FROM w SQL | Filtr procesu |
 |-------|---------|------------|---------------|
-| `PISMA_INICJUJACE_WIODACE` | 1 | `eurzad_sprawa es` | `gp.name NOT IN ('zwrot','zwrotka')` |
-| `DOKUMENTY_W_SPRAWIE` | 2 | `eurzad_pismo ep` | — |
-| `PISMA_INICJUJACE_W_SPRAWIE` | 3 | `eurzad_sprawa es` | `NOT IN ('zwrot','zwrotka')` |
-| `PISMA_POTWIERDZENIE_ODBIORU` | 4 | `eurzad_sprawa es` | `IN ('zwrot','zwrotka')` |
+| `TYP_DOK_PRZYCHODZACY_INICJUJACY` | 1 | `eurzad_sprawa es` | `gp.name NOT IN ('zwrot','zwrotka')` |
+| `TYP_DOK_WYCHADZACY_W_SPRAWIE` | 2 | `eurzad_pismo ep` | — |
+| `TYP_DOK_PRZYCHODZACY_W_SPRAWIE` | 3 | `eurzad_sprawa es` | `NOT IN ('zwrot','zwrotka')` |
+| `TYP_DOK_PRZYCHODZACY_ZPO` | 4 | `eurzad_sprawa es` | `IN ('zwrot','zwrotka')` |
 
 Typ 1 vs 3: różny JOIN teczki + **różna kolejność** joinów w SQL (Q-11). Różnica biznesowa poza SQL: DO WYJAŚNIENIA.
 
@@ -63,7 +63,7 @@ Filtr `oznaczenie`: gdy wartość składa się z cyfr (`ctype_digit`), dodawany 
 
 ### Potwierdzenia odbioru — zwrotki (typ 4)
 
-W API: `PISMA_POTWIERDZENIE_ODBIORU` (`document_group_type = 4`), etykieta w `DocumentService::getTypes`: „potwierdzenia odbioru”.
+W API: `TYP_DOK_PRZYCHODZACY_ZPO` (`document_group_type = 4`), etykieta w `DocumentService::getTypes`: „potwierdzenia odbioru”.
 
 **Zwrotka nie jest `eurzad_pismo`.** To osobne pismo workflow w `eurzad_sprawa` (`es`), rozpoznawane po procesie Galaxii:
 

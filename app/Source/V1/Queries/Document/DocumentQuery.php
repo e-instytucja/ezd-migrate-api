@@ -108,7 +108,7 @@ SQL;
     public function getProcessNames(KryteriaWyszukiwaniaDokumentow $criteria): array
     {
         $where = $this->getWhereSql(
-            self::PISMA_INICJUJACE_WIODACE,
+            self::TYP_DOK_PRZYCHODZACY_INICJUJACY,
             $criteria->konfiguracja,
             $criteria->filtry
         );

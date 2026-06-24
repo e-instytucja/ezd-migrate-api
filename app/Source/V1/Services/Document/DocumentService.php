@@ -103,18 +103,18 @@ class DocumentService
      */
     private function mapToDokumentDto(array $row): DokumentDto
     {
-        $historiaObieguRaw = $row['document_group_type'] === DocumentListQuery::DOKUMENTY_W_SPRAWIE
+        $historiaObieguRaw = $row['document_group_type'] === DocumentListQuery::TYP_DOK_WYCHADZACY_W_SPRAWIE
             ? $this->documentHistoryService->getHistory($row['id_dokumentu'])
             : $this->caseHistoryService->getHistory($row['id_dokumentu']);
 
 
 
-        $daneFormularza = $row['document_group_type'] === DocumentListQuery::DOKUMENTY_W_SPRAWIE
+        $daneFormularza = $row['document_group_type'] === DocumentListQuery::TYP_DOK_WYCHADZACY_W_SPRAWIE
             ? $this->formService->getFormDocumentValues($row['id_dokumentu'], $row['nazwa_znormalizowana_procesu'])
             : $this->formService->getFormMainDocumentValues($row['id_dokumentu'], $row['nazwa_znormalizowana_procesu']);
 
         $wlasciciel = PracownikDto::fromDocumentRow($row);
-        if($row['typ'] === DocumentQuery::DOKUMENTY_W_SPRAWIE) {
+        if($row['typ'] === DocumentQuery::TYP_DOK_WYCHADZACY_W_SPRAWIE) {
             $historyRow = $this->documentQuery->getFirstRowFromHistory($row['id_dokumentu']);
         }
         else {
@@ -137,10 +137,10 @@ class DocumentService
     public function getTypes(): array
     {
         return [
-            ['id' => DocumentListQuery::DOKUMENTY_W_SPRAWIE, 'label' => 'Dokumenty w sprawie'],
-            ['id' => DocumentListQuery::PISMA_INICJUJACE_W_SPRAWIE, 'label' => 'Pisma inicjujące'],
-            ['id' => DocumentListQuery::PISMA_INICJUJACE_WIODACE, 'label' => 'Pisma wiodące w sprawie'],
-            ['id' => DocumentListQuery::PISMA_POTWIERDZENIE_ODBIORU, 'label' => 'potwierdzenia odbioru'],
+            ['id' => DocumentListQuery::TYP_DOK_WYCHADZACY_W_SPRAWIE, 'label' => 'Dokumenty w sprawie'],
+            ['id' => DocumentListQuery::TYP_DOK_PRZYCHODZACY_W_SPRAWIE, 'label' => 'Pisma inicjujące'],
+            ['id' => DocumentListQuery::TYP_DOK_PRZYCHODZACY_INICJUJACY, 'label' => 'Pisma wiodące w sprawie'],
+            ['id' => DocumentListQuery::TYP_DOK_PRZYCHODZACY_ZPO, 'label' => 'potwierdzenia odbioru'],
         ];
     }
 

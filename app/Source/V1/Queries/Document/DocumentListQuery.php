@@ -14,10 +14,10 @@ class DocumentListQuery extends AbstractDocumentQuery
 {
     /** @var list<int> */
     private const UNION_TYPES = [
-        self::PISMA_INICJUJACE_WIODACE,
-        self::DOKUMENTY_W_SPRAWIE,
-        self::PISMA_INICJUJACE_W_SPRAWIE,
-        self::PISMA_POTWIERDZENIE_ODBIORU,
+        self::TYP_DOK_PRZYCHODZACY_INICJUJACY,
+        self::TYP_DOK_WYCHADZACY_W_SPRAWIE,
+        self::TYP_DOK_PRZYCHODZACY_W_SPRAWIE,
+        self::TYP_DOK_PRZYCHODZACY_ZPO,
     ];
 
     private $idDokumentuSelect = 'DISTINCT ON (id_dokumentu)';
@@ -80,10 +80,10 @@ class DocumentListQuery extends AbstractDocumentQuery
     private function buildUnionPart(int $type, KryteriaWyszukiwaniaDokumentow $criteria): string
     {
         return match ($type) {
-            self::PISMA_INICJUJACE_WIODACE => $this->pismaInicjujaceWiodaceSql($criteria),
-            self::DOKUMENTY_W_SPRAWIE => $this->dokumentyWSprawieSql($criteria),
-            self::PISMA_INICJUJACE_W_SPRAWIE => $this->pismaInicjujaceWSprawieSql($criteria),
-            self::PISMA_POTWIERDZENIE_ODBIORU => $this->pismaZwrotSql($criteria),
+            self::TYP_DOK_PRZYCHODZACY_INICJUJACY => $this->pismaInicjujaceWiodaceSql($criteria),
+            self::TYP_DOK_WYCHADZACY_W_SPRAWIE => $this->dokumentyWSprawieSql($criteria),
+            self::TYP_DOK_PRZYCHODZACY_W_SPRAWIE => $this->pismaInicjujaceWSprawieSql($criteria),
+            self::TYP_DOK_PRZYCHODZACY_ZPO => $this->pismaZwrotSql($criteria),
             default => throw new InvalidArgumentException("Nieprawidłowy typ UNION: {$type}"),
         };
     }
@@ -91,7 +91,7 @@ class DocumentListQuery extends AbstractDocumentQuery
     private function pismaInicjujaceWiodaceSql(KryteriaWyszukiwaniaDokumentow $criteria): string
     {
         $where = $this->getWhereSql(
-            self::PISMA_INICJUJACE_WIODACE,
+            self::TYP_DOK_PRZYCHODZACY_INICJUJACY,
             $criteria->konfiguracja,
             $criteria->filtry
         );
@@ -101,12 +101,12 @@ class DocumentListQuery extends AbstractDocumentQuery
                 $this->idDokumentuSelect
                 {$this->commonSelectSql()},
                 {$this->pismoSelectSql()},
-                {$this->documentGroupNumber(self::PISMA_INICJUJACE_WIODACE)} AS document_group_type
+                {$this->documentGroupNumber(self::TYP_DOK_PRZYCHODZACY_INICJUJACY)} AS document_group_type
             FROM eurzad_sprawa es
                 {$this->pismoInnerJoinsSql()}
                 {$this->commonInnerJoinSql()}
                 {$this->pismoLeftJoinsSql()}
-                {$this->teczkaJoinsSql(self::PISMA_INICJUJACE_WIODACE, $criteria)}
+                {$this->teczkaJoinsSql(self::TYP_DOK_PRZYCHODZACY_INICJUJACY, $criteria)}
             WHERE
                 gp.name NOT IN ('zwrot', 'zwrotka') AND
                 {$where}
@@ -117,7 +117,7 @@ class DocumentListQuery extends AbstractDocumentQuery
     private function dokumentyWSprawieSql(KryteriaWyszukiwaniaDokumentow $criteria): string
     {
         $where = $this->getWhereSql(
-            self::DOKUMENTY_W_SPRAWIE,
+            self::TYP_DOK_WYCHADZACY_W_SPRAWIE,
             $criteria->konfiguracja,
             $criteria->filtry
         );
@@ -127,12 +127,12 @@ class DocumentListQuery extends AbstractDocumentQuery
                 $this->idDokumentuSelect
                 {$this->commonSelectSql()},
                 {$this->dokumentSelectSql()},
-                {$this->documentGroupNumber(self::DOKUMENTY_W_SPRAWIE)} AS document_group_type
+                {$this->documentGroupNumber(self::TYP_DOK_WYCHADZACY_W_SPRAWIE)} AS document_group_type
             FROM eurzad_pismo ep
                 {$this->dokumentInnerJoinSql()}
                 {$this->commonInnerJoinSql()}
                 {$this->dokumentLeftJoinsSql()}
-                {$this->teczkaJoinsSql(self::DOKUMENTY_W_SPRAWIE, $criteria)}
+                {$this->teczkaJoinsSql(self::TYP_DOK_WYCHADZACY_W_SPRAWIE, $criteria)}
             WHERE
                 {$where}
             ORDER BY id_dokumentu ASC, epo.pismo_obieg_id DESC
@@ -145,7 +145,7 @@ class DocumentListQuery extends AbstractDocumentQuery
     private function pismaInicjujaceWSprawieSql(KryteriaWyszukiwaniaDokumentow $criteria): string
     {
         $where = $this->getWhereSql(
-            self::PISMA_INICJUJACE_W_SPRAWIE,
+            self::TYP_DOK_PRZYCHODZACY_W_SPRAWIE,
             $criteria->konfiguracja,
             $criteria->filtry
         );
@@ -155,12 +155,12 @@ class DocumentListQuery extends AbstractDocumentQuery
                 $this->idDokumentuSelect
                 {$this->commonSelectSql()},
                 {$this->pismoSelectSql()},
-                {$this->documentGroupNumber(self::PISMA_INICJUJACE_W_SPRAWIE)} AS document_group_type
+                {$this->documentGroupNumber(self::TYP_DOK_PRZYCHODZACY_W_SPRAWIE)} AS document_group_type
             FROM eurzad_sprawa es
                 {$this->pismoInnerJoinsSql()}
                 {$this->pismoLeftJoinsSql()}
                 {$this->commonInnerJoinSql()}
-                {$this->teczkaJoinsSql(self::PISMA_INICJUJACE_W_SPRAWIE, $criteria)}
+                {$this->teczkaJoinsSql(self::TYP_DOK_PRZYCHODZACY_W_SPRAWIE, $criteria)}
             WHERE
                 gp.name NOT IN ('zwrot', 'zwrotka') AND
                 {$where}
@@ -171,7 +171,7 @@ class DocumentListQuery extends AbstractDocumentQuery
     private function pismaZwrotSql(KryteriaWyszukiwaniaDokumentow $criteria): string
     {
         $where = $this->getWhereSql(
-            self::PISMA_POTWIERDZENIE_ODBIORU,
+            self::TYP_DOK_PRZYCHODZACY_ZPO,
             $criteria->konfiguracja,
             $criteria->filtry,
         );
@@ -181,12 +181,12 @@ class DocumentListQuery extends AbstractDocumentQuery
                 $this->idDokumentuSelect
                 {$this->commonSelectSql()},
                 {$this->pismoSelectSql()},
-                {$this->documentGroupNumber(self::PISMA_POTWIERDZENIE_ODBIORU)} AS document_group_type
+                {$this->documentGroupNumber(self::TYP_DOK_PRZYCHODZACY_ZPO)} AS document_group_type
             FROM eurzad_sprawa es
                 {$this->pismoInnerJoinsSql()}
                 {$this->commonInnerJoinSql()}
                 {$this->pismoLeftJoinsSql()}
-                {$this->teczkaJoinsSql(self::PISMA_POTWIERDZENIE_ODBIORU, $criteria)}
+                {$this->teczkaJoinsSql(self::TYP_DOK_PRZYCHODZACY_ZPO, $criteria)}
             WHERE
                 gp.name IN ('zwrot', 'zwrotka') AND
                 {$where}
@@ -302,18 +302,18 @@ SQL;
         $join = $criteria->filtry->isScopedToTeczka() ? 'INNER JOIN' : 'LEFT JOIN';
 
         return match ($type) {
-            self::PISMA_INICJUJACE_WIODACE => <<<SQL
+            self::TYP_DOK_PRZYCHODZACY_INICJUJACY => <<<SQL
                 {$join} eurzad_teczka et ON es.sprawa_uid = et.sprawa_uid
             SQL,
-            self::DOKUMENTY_W_SPRAWIE => <<<SQL
+            self::TYP_DOK_WYCHADZACY_W_SPRAWIE => <<<SQL
                 {$join} eurzad_teczka_zawartosc etz ON etz.teczka_zawartosc_uid = ep.pismo_uid
                 {$join} eurzad_teczka et ON et.teczka_uid = etz.teczka_uid
             SQL,
-            self::PISMA_INICJUJACE_W_SPRAWIE => <<<SQL
+            self::TYP_DOK_PRZYCHODZACY_W_SPRAWIE => <<<SQL
                 {$join} eurzad_teczka_zawartosc etz ON etz.teczka_zawartosc_uid = es.sprawa_uid
                 {$join} eurzad_teczka et ON et.teczka_uid = etz.teczka_uid
             SQL,
-            self::PISMA_POTWIERDZENIE_ODBIORU => <<<SQL
+            self::TYP_DOK_PRZYCHODZACY_ZPO => <<<SQL
                 {$join} eurzad_teczka_zawartosc etz2 ON etz2.teczka_zawartosc_uid = es.sprawa_uid
                 {$join} eurzad_teczka_zawartosc etz ON etz.teczka_zawartosc_uid = etz2.teczka_uid
                 {$join} eurzad_teczka et ON et.teczka_uid = etz.teczka_uid
