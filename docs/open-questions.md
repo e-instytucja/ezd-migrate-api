@@ -293,12 +293,24 @@ Kontekst SQL: `docs/queries/`, `docs/database.md`.
 
 ---
 
+### Q-27 — kolumny tabel RPW (szczegóły) na dumpie EZD
+
+| Pole | Wartość |
+|------|---------|
+| **Opis** | Szczegóły RPW (`RegistryAssignmentRpwQuery`): `eurzad_rejestr_obieg.rejestr_obieg_id`, `eurzad2_przesylka.nazwa`, `en_rpw` (`id`, `status`, `data_wyslania`) — brak DDL w repo; nazwy przyjęte z planu integracji EZD3. |
+| **Priorytet** | **Średni** |
+| **Ryzyko** | Błąd SQL przy braku kolumny na konkretnym dumpie; puste `historia_obiegu` / `przesylka_elektroniczna`. |
+| **Sugerowane działanie** | Zweryfikować `\d eurzad_rejestr_obieg`, `eurzad2_przesylka`, `en_rpw` na dumpie; doprecyzować `docs/queries/registry-assignment-rpw-queries.md`. |
+| **Pliki** | `app/Source/V1/Queries/Registry/RegistryAssignmentRpwQuery.php` |
+
+---
+
 ## Indeks według priorytetu
 
 | Priorytet | ID |
 |-----------|-----|
 | **Wysoki** | Q-01, Q-02, Q-12, Q-13, Q-16, Q-18 |
-| **Średni** | Q-03, Q-06, Q-08, Q-11, Q-15, Q-20, Q-19 |
+| **Średni** | Q-03, Q-06, Q-08, Q-11, Q-15, Q-20, Q-19, Q-27 |
 | **Niski** | Q-04, Q-05, Q-07, Q-09, Q-10, Q-14, Q-17, Q-21, Q-22, Q-23 |
 
 ---

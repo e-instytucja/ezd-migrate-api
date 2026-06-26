@@ -16,7 +16,9 @@ Queries **nie zwracają** DTO — mapowanie w Services.
 |----------------|------------------|
 | `Case/` | CaseListQuery, CaseQuery |
 | `Document/` | AbstractDocumentQuery, DocumentListQuery, DocumentQuery; `QueryBuilder.php` — **Q-04** |
-| `Form/`, `Structure/`, `Attachment/`, `Suppliant/`, `Dictionary/` | poza Fazą 1 docs |
+| `Registry/` | RegistryAssignmentQuery, RegistryAssignmentRpwQuery — patrz [registry-assignment-queries.md](registry-assignment-queries.md), [registry-assignment-rpw-queries.md](registry-assignment-rpw-queries.md) |
+| `Structure/` | WorkstationQuery, WorkstationScopeQuery |
+| `Form/`, `Attachment/`, `Suppliant/`, `Dictionary/` | poza Fazą 1 docs |
 | `ProcessQuery.php` | root; brak konsumenta w Services — **Q-05** |
 
 ## Style zapytań
@@ -78,11 +80,15 @@ Warunek w Query: `$filtry->pokazUdostepnione !== null` przekazywany jako `$inclu
 | `DictionaryService` | DoctionaryQuery |
 | `WorkstationService` | WorkstationQuery |
 | `EmployeeService` | UugQuery |
+| `RegistryAssignmentService` | RegistryAssignmentQuery, CaseQuery, WorkstationScopeService |
+| `RegistryAssignmentRpwService` | RegistryAssignmentRpwQuery, RegistryAssignmentQuery, CaseQuery, WorkstationScopeService, SupliantService, EmployeeService |
 
 ## Dokumentacja per domena
 
 - [case-queries.md](case-queries.md)
 - [document-queries.md](document-queries.md)
+- [registry-assignment-queries.md](registry-assignment-queries.md)
+- [registry-assignment-rpw-queries.md](registry-assignment-rpw-queries.md)
 
 ## Otwarte kwestie
 

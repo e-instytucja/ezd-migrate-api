@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\V1\AttachmentController;
 use App\Http\Controllers\Api\V1\CasesController;
 use App\Http\Controllers\Api\V1\DntasController;
 use App\Http\Controllers\Api\V1\DocumentsController;
+use App\Http\Controllers\Api\V1\RegistryAssignmentsController;
 use App\Http\Controllers\Api\V1\WorkstationsController;
 use Illuminate\Support\Facades\Route;
 
@@ -46,8 +47,10 @@ Route::prefix('v1')
             ->where('caseUid', '[a-f0-9]{13}')
             ->name('cases.attachments');
 
-        
-        
+        Route::match(['get', 'post'], '/cases/{caseUid}/registry-assignments', [RegistryAssignmentsController::class, 'caseAssignments'])
+            ->where('caseUid', '[a-f0-9]{13}')
+            ->name('cases.registry-assignments');
+
 
         /*
         |--------------------------------------------------------------------------
@@ -70,6 +73,10 @@ Route::prefix('v1')
             ->where('caseUid', '[a-f0-9]{13}')
             ->name('dntas.attachments');
 
+        Route::match(['get', 'post'], '/dntas/{caseUid}/registry-assignments', [RegistryAssignmentsController::class, 'dntasCaseAssignments'])
+            ->where('caseUid', '[a-f0-9]{13}')
+            ->name('dntas.registry-assignments');
+
 
         /*
         |--------------------------------------------------------------------------
@@ -88,6 +95,14 @@ Route::prefix('v1')
             ->where('documentId', '(\d+|[a-f0-9]{13})') //@TODO - zmienić wartość z pismo_uid/sprawa_uid na instanceId - będzie zawsze number
             ->name('documents.attachments');
 
+        Route::match(['get', 'post'], '/documents/{documentId}/registry-assignments', [RegistryAssignmentsController::class, 'documentAssignments'])
+            ->where('documentId', '(\d+|[a-f0-9]{13})')
+            ->name('documents.registry-assignments');
+
+        Route::match(['get', 'post'], '/documents/{documentId}/registry-assignments-rpw', [RegistryAssignmentsController::class, 'documentRpwAssignments'])
+            ->where('documentId', '(\d+|[a-f0-9]{13})')
+            ->name('documents.registry-assignments-rpw');
+
         Route::match(['get', 'post'], '/documents/statuses', [DocumentsController::class, 'statuses'])
             ->name('documents.statuses');
 
@@ -96,6 +111,30 @@ Route::prefix('v1')
 
         Route::match(['get', 'post'], '/documents/process_names', [DocumentsController::class, 'process_names'])
             ->name('documents.process_names');
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Registries
+        |--------------------------------------------------------------------------
+        */
+
+        Route::match(['get', 'post'], '/registry-assignments', [RegistryAssignmentsController::class, 'list'])
+            ->name('registry-assignments.list');
+
+        Route::match(['get', 'post'], '/registry-assignments-rpw', [RegistryAssignmentsController::class, 'listRpw'])
+            ->name('registry-assignments-rpw.list');
+
+        Route::match(['get', 'post'], '/registry-assignments/{registryAssignmentId}', [RegistryAssignmentsController::class, 'show'])
+            ->where('registryAssignmentId', '\d+')
+            ->name('registry-assignments.show');
+
+        Route::match(['get', 'post'], '/registry-assignments-rpw/{registryAssignmentId}', [RegistryAssignmentsController::class, 'showRpw'])
+            ->where('registryAssignmentId', '\d+')
+            ->name('registry-assignments-rpw.show');
+
+        Route::match(['get', 'post'], '/registries/types', [RegistryAssignmentsController::class, 'types'])
+            ->name('registries.types');
 
 
         /*
