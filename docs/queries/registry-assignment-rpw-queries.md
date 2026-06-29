@@ -22,11 +22,15 @@ Brak endpointów `/cases/.../registry-assignments-rpw` i `/dntas/...` — filtr 
 
 ## DTO odpowiedzi
 
-### Lista — `RejestrPrzypisanieRpwDto`
+Wzorzec jak `InteresanciDto`: `sectionLabel`, `labels`, `values`.
 
-`app/Source/V1/DTO/RejestrPrzypisanieRpwDto.php` — klucze JSON po angielsku (jak zwykłe przypisania).
+### Lista — `RejestrRpwPrzypisaniaDto`
 
-| Klucz JSON | Źródło |
+`app/Source/V1/DTO/RejestrRpwPrzypisaniaDto.php` — `data` na listach to obiekt sekcji (`sectionLabel` domyślnie `'Wysyłki RPW'`).
+
+`values`: `RejestrRpwPrzypisanieWartosciDto[]` — klucze JSON po angielsku (jak zwykłe przypisania).
+
+| Klucz JSON (w `values`) | Źródło |
 |------------|--------|
 | `registry_assignment_id` | `rz.id` |
 | `registry_assignment_uid` | `rz.rejestr_zawartosc_uid` (UID **przesyłki**) |
@@ -37,11 +41,11 @@ Brak endpointów `/cases/.../registry-assignments-rpw` i `/dntas/...` — filtr 
 | `registry_uid`, `registry_type`, `registry_description`, `created_at` | jak zwykłe rejestry |
 | `process_name` | serwis: `getProcessNameForPismoUid(document_id)` |
 
-### Szczegóły — `RejestrPrzypisanieRpwSzczegolyDto`
+### Szczegóły — `RejestrRpwPrzypisanieSzczegolyDto`
 
-`app/Source/V1/DTO/RejestrPrzypisanieRpwSzczegolyDto.php` — **polskie klucze JSON** + zagnieżdżenia:
+`app/Source/V1/DTO/RejestrRpwPrzypisanieSzczegolyDto.php` — obiekt sekcji; `values`: `RejestrRpwPrzypisanieSzczegolyWartosciDto` (**polskie klucze JSON** w `values`):
 
-| Klucz JSON | Typ |
+| Klucz JSON (w `values`) | Typ |
 |------------|-----|
 | `id_przypisania_rejestru`, `uid_przypisania_rejestru`, … | pola bazowe (mapowane z listy) |
 | `wysylka` | `RejestrRpwWysylkaDto` |

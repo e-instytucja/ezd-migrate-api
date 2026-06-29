@@ -6,7 +6,7 @@ namespace App\Source\V1\DTO;
 
 use JsonSerializable;
 
-final readonly class RejestrPrzypisanieRpwSzczegolyDto implements JsonSerializable
+final readonly class RejestrRpwPrzypisanieSzczegolyWartosciDto implements JsonSerializable
 {
     /**
      * @param HistoriaObieguDto[] $historiaObiegu
@@ -30,7 +30,7 @@ final readonly class RejestrPrzypisanieRpwSzczegolyDto implements JsonSerializab
     }
 
     public static function fromPodstawa(
-        RejestrPrzypisanieRpwDto $podstawa,
+        RejestrRpwPrzypisanieWartosciDto $podstawa,
         ?RejestrRpwWysylkaDto $wysylka = null,
         ?InteresantDto $adresat = null,
         array $historiaObiegu = [],

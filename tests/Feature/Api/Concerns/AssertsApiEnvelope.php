@@ -82,6 +82,32 @@ trait AssertsApiEnvelope
         $this->assertArrayHasKey('registry_uid', $item);
     }
 
+    /**
+     * @return array{sectionLabel: ?string, labels: array<string, string>, values: array<int, mixed>}
+     */
+    protected function assertRegistryListSection(array $data): array
+    {
+        $this->assertArrayHasKey('sectionLabel', $data);
+        $this->assertArrayHasKey('labels', $data);
+        $this->assertArrayHasKey('values', $data);
+        $this->assertIsArray($data['values']);
+
+        return $data;
+    }
+
+    /**
+     * @return array{sectionLabel: ?string, labels: array<string, string>, values: array<string, mixed>}
+     */
+    protected function assertRegistryShowSection(array $data): array
+    {
+        $this->assertArrayHasKey('sectionLabel', $data);
+        $this->assertArrayHasKey('labels', $data);
+        $this->assertArrayHasKey('values', $data);
+        $this->assertIsArray($data['values']);
+
+        return $data;
+    }
+
     protected function assertRegistryRpwListItemEn(array $item): void
     {
         $this->assertRegistryListItemEn($item);
@@ -91,16 +117,14 @@ trait AssertsApiEnvelope
     protected function assertRegistryRpwShowPl(TestResponse $response, int $status = 200): array
     {
         $data = $this->assertApiShow($response, $status);
-        $response->assertJsonStructure([
-            'data' => [
-                'id_przypisania_rejestru',
-                'uid_przypisania_rejestru',
-                'id_dokumentu',
-                'wysylka',
-                'historia_obiegu',
-            ],
-        ]);
+        $section = $this->assertRegistryShowSection($data);
+        $values = $section['values'];
+        $this->assertArrayHasKey('id_przypisania_rejestru', $values);
+        $this->assertArrayHasKey('uid_przypisania_rejestru', $values);
+        $this->assertArrayHasKey('id_dokumentu', $values);
+        $this->assertArrayHasKey('wysylka', $values);
+        $this->assertArrayHasKey('historia_obiegu', $values);
 
-        return $data;
+        return $values;
     }
 }

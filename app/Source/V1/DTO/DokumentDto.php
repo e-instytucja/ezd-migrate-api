@@ -22,5 +22,11 @@ final readonly class DokumentDto
         public ?array $historiaObiegu,
 
         public ?DaneFormularzaDto $daneFormularza,
+
+        /** @var RejestrPrzypisaniaDto */
+        public RejestrPrzypisaniaDto $rejestry,
+
+        /** @var RejestrRpwPrzypisaniaDto */
+        public RejestrRpwPrzypisaniaDto $wysylki,
     ) {}
 }

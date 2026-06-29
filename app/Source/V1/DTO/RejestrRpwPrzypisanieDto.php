@@ -6,23 +6,23 @@ namespace App\Source\V1\DTO;
 
 use JsonSerializable;
 
-final readonly class RejestrPrzypisanieDto implements JsonSerializable
+final readonly class RejestrRpwPrzypisanieDto implements JsonSerializable
 {
     /**
      * @param array<string, string> $labels
      */
     public function __construct(
-        public RejestrPrzypisanieWartosciDto $values,
+        public RejestrRpwPrzypisanieWartosciDto $values,
         public array $labels,
-        public ?string $sectionLabel = 'Przypisanie rejestru',
+        public ?string $sectionLabel = 'Wysyłka RPW',
     ) {
     }
 
     public static function fromValues(
-        RejestrPrzypisanieWartosciDto $values,
+        RejestrRpwPrzypisanieWartosciDto $values,
         ?string $sectionLabel = null,
     ): self {
-        return new self($values, RejestrPrzypisaniaDto::defaultLabels(), $sectionLabel);
+        return new self($values, RejestrRpwPrzypisaniaDto::defaultLabels(), $sectionLabel);
     }
 
     /**
@@ -30,11 +30,11 @@ final readonly class RejestrPrzypisanieDto implements JsonSerializable
      */
     public static function fromRow(array $row): self
     {
-        return self::fromValues(RejestrPrzypisanieWartosciDto::fromRow($row));
+        return self::fromValues(RejestrRpwPrzypisanieWartosciDto::fromRow($row));
     }
 
     /**
-     * @return array{sectionLabel: ?string, labels: array<string, string>, values: RejestrPrzypisanieWartosciDto}
+     * @return array{sectionLabel: ?string, labels: array<string, string>, values: RejestrRpwPrzypisanieWartosciDto}
      */
     public function jsonSerialize(): array
     {

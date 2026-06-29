@@ -7,8 +7,9 @@ namespace App\Source\V1\Services\Registry;
 use App\Shared\Functions;
 use App\Source\V1\DTO\HistoriaObieguDto;
 use App\Source\V1\DTO\InteresantDto;
-use App\Source\V1\DTO\RejestrPrzypisanieRpwDto;
-use App\Source\V1\DTO\RejestrPrzypisanieRpwSzczegolyDto;
+use App\Source\V1\DTO\RejestrRpwPrzypisanieWartosciDto;
+use App\Source\V1\DTO\RejestrRpwPrzypisaniaDto;
+use App\Source\V1\DTO\RejestrRpwPrzypisanieSzczegolyDto;
 use App\Source\V1\DTO\Request\KryteriaPrzypisanRejestrowRpw;
 use App\Source\V1\DTO\RejestrRpwFormaDoreczeniaDto;
 use App\Source\V1\DTO\RejestrRpwPrzesylkaElektronicznaDto;
@@ -36,10 +37,7 @@ class RegistryAssignmentRpwService
     ) {
     }
 
-    /**
-     * @return RejestrPrzypisanieRpwDto[]
-     */
-    public function getByDocumentId(string $documentId, array $payload = []): array
+    public function getByDocumentId(string $documentId, array $payload = []): RejestrRpwPrzypisaniaDto
     {
         $documentUid = $this->registryAssignmentQuery->resolveDocumentUid($documentId);
 
@@ -53,7 +51,7 @@ class RegistryAssignmentRpwService
     }
 
     /**
-     * @return array{data: RejestrPrzypisanieRpwDto[], count: int}
+     * @return array{data: RejestrRpwPrzypisaniaDto, count: int}
      */
     public function getGlobalList(array $payload = []): array
     {
@@ -66,7 +64,7 @@ class RegistryAssignmentRpwService
         return $this->getPaginatedList($kryteria, $scope);
     }
 
-    public function getById(int $registryAssignmentId): ?RejestrPrzypisanieRpwSzczegolyDto
+    public function getById(int $registryAssignmentId): ?RejestrRpwPrzypisanieSzczegolyDto
     {
         $row = $this->registryAssignmentRpwQuery->getById($registryAssignmentId);
 
@@ -77,7 +75,7 @@ class RegistryAssignmentRpwService
         $podstawa = $this->mapRow($row);
         $extension = $this->registryAssignmentRpwQuery->getRpwExtensionByAssignmentId($registryAssignmentId);
 
-        return RejestrPrzypisanieRpwSzczegolyDto::fromPodstawa(
+        return RejestrRpwPrzypisanieSzczegolyDto::fromPodstawa(
             podstawa: $podstawa,
             wysylka: $extension !== null ? $this->mapWysylka($extension) : null,
             adresat: $this->mapAdresat(
@@ -90,10 +88,7 @@ class RegistryAssignmentRpwService
         );
     }
 
-    /**
-     * @return RejestrPrzypisanieRpwDto[]
-     */
-    private function getList(KryteriaPrzypisanRejestrowRpw $kryteria): array
+    private function getList(KryteriaPrzypisanRejestrowRpw $kryteria): RejestrRpwPrzypisaniaDto
     {
         Log::notice('REGISTRY_ASSIGNMENTS_RPW.start', [
             'pismo_uid' => $kryteria->pismoUid,
@@ -102,20 +97,20 @@ class RegistryAssignmentRpwService
         $startedAt = Functions::startTimer();
 
         $rows = $this->registryAssignmentRpwQuery->getList($kryteria);
-        $result = array_map(
+        $values = array_map(
             fn (array $row) => $this->mapRow($row),
             $rows,
         );
 
         Log::info('[' . Functions::elapsedMs($startedAt) . 'ms] REGISTRY_ASSIGNMENTS_RPW.ok', [
-            'count' => count($result),
+            'count' => count($values),
         ]);
 
-        return $result;
+        return RejestrRpwPrzypisaniaDto::fromValues($values);
     }
 
     /**
-     * @return array{data: RejestrPrzypisanieRpwDto[], count: int}
+     * @return array{data: RejestrRpwPrzypisaniaDto, count: int}
      */
     private function getPaginatedList(KryteriaPrzypisanRejestrowRpw $kryteria, mixed $scope): array
     {
@@ -127,18 +122,18 @@ class RegistryAssignmentRpwService
 
         $count = $this->registryAssignmentRpwQuery->getListCount($kryteria, $scope);
         $rows = $this->registryAssignmentRpwQuery->getList($kryteria, $scope);
-        $result = array_map(
+        $values = array_map(
             fn (array $row) => $this->mapRow($row),
             $rows,
         );
 
         Log::info('[' . Functions::elapsedMs($startedAt) . 'ms] REGISTRY_ASSIGNMENTS_RPW_GLOBAL.ok', [
             'count' => $count,
-            'returned' => count($result),
+            'returned' => count($values),
         ]);
 
         return [
-            'data' => $result,
+            'data' => RejestrRpwPrzypisaniaDto::fromValues($values),
             'count' => $count,
         ];
     }
@@ -183,13 +178,13 @@ class RegistryAssignmentRpwService
     /**
      * @param array<string, mixed> $row
      */
-    private function mapRow(array $row): RejestrPrzypisanieRpwDto
+    private function mapRow(array $row): RejestrRpwPrzypisanieWartosciDto
     {
         $row['process_name'] = $this->registryAssignmentQuery->getProcessNameForPismoUid(
             (string) $row['document_id'],
         );
 
-        return RejestrPrzypisanieRpwDto::fromRow($row);
+        return RejestrRpwPrzypisanieWartosciDto::fromRow($row);
     }
 
     /**

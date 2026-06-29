@@ -18,6 +18,8 @@ use Exception;
 use Illuminate\Support\Facades\Log;
 use App\Source\V1\Services\Document\HistoryService as DocumentHistoryService;
 use App\Source\V1\Services\Case\HistoryService as CaseHistoryService;
+use App\Source\V1\Services\Registry\RegistryAssignmentRpwService;
+use App\Source\V1\Services\Registry\RegistryAssignmentService;
 
 class DocumentService
 {
@@ -33,7 +35,9 @@ class DocumentService
         private readonly AttachmentService $attachmentService,
         private readonly DocumentHistoryService $documentHistoryService,
         private readonly CaseHistoryService $caseHistoryService,
-        private readonly FormService $formService
+        private readonly FormService $formService,
+        private readonly RegistryAssignmentService $registryAssignmentService,
+        private readonly RegistryAssignmentRpwService $registryAssignmentRpwService,
     )
     {
     }
@@ -124,6 +128,8 @@ class DocumentService
             $this->uugQuery->getInfo($historyRow->uugid_from),
         );
 
+        $documentId = (string) $row['id_dokumentu'];
+
         return new DokumentDto(
             danePodstawowe: DokumentDanePodstawoweDto::fromDocumentRow($row),
             wlasciciel: $wlasciciel,
@@ -132,6 +138,8 @@ class DocumentService
             zalaczniki: $daneFormularza->extractZalaczniki(),
             historiaObiegu: $historiaObieguRaw,
             daneFormularza: $daneFormularza,
+            rejestry: $this->registryAssignmentService->getByDocumentId($documentId),
+            wysylki: $this->registryAssignmentRpwService->getByDocumentId($documentId),
         );
     }
     public function getTypes(): array

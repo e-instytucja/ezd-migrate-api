@@ -19,15 +19,16 @@ final class RegistryAssignmentShowTest extends ApiTestCase
         $response = $this->getApi('/registry-assignments/' . $assignmentId);
 
         $response->assertOk();
-        $show = $this->assertApiShow($response);
+        $show = $this->assertRegistryShowSection($this->assertApiShow($response));
+        $values = $show['values'];
 
-        $this->assertSame($assignmentId, $show['registry_assignment_id']);
-        $this->assertSame($registry['case_wniosek']['document_id'], $show['document_id']);
-        $this->assertSame($show['document_id'], $show['registry_assignment_uid']);
-        $this->assertArrayHasKey('registry_uid', $show);
-        $this->assertArrayHasKey('registry_type', $show);
-        $this->assertArrayHasKey('lead_case_uid', $show);
-        $this->assertArrayHasKey('process_name', $show);
+        $this->assertSame($assignmentId, $values['registry_assignment_id']);
+        $this->assertSame($registry['case_wniosek']['document_id'], $values['document_id']);
+        $this->assertSame($values['document_id'], $values['registry_assignment_uid']);
+        $this->assertArrayHasKey('registry_uid', $values);
+        $this->assertArrayHasKey('registry_type', $values);
+        $this->assertArrayHasKey('lead_case_uid', $values);
+        $this->assertArrayHasKey('process_name', $values);
     }
 
     public function test_standard_show_not_found(): void

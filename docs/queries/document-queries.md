@@ -137,12 +137,14 @@ Metody operują na `eurzad_pismo_obieg` (`pismo_obieg_id`).
 
 ### DocumentService — niespójność poza Query (Q-12, potwierdzone)
 
-W `mapToDokumentDto`:
+W `mapToDokumentDto` (tylko `GET|POST /api/v1/documents/{documentId}`):
 
 - `historiaObiegu` — typ 2: `DocumentHistoryService`; inne typy: `CaseHistoryService` (`eurzad_obieg`)
 - `utworzyl` — **zawsze** `documentQuery->getFirstRowFromHistory` → `eurzad_pismo_obieg`, niezależnie od `document_group_type`
+- `rejestry` — `RejestrPrzypisaniaDto` (sekcja: `sectionLabel`, `labels`, `values[]`); docs: [registry-assignment-queries.md](registry-assignment-queries.md)
+- `wysylki` — `RejestrRpwPrzypisaniaDto` (sekcja jak wyżej); docs: [registry-assignment-rpw-queries.md](registry-assignment-rpw-queries.md)
 
-To bug lub świadoma decyzja — DO WYJAŚNIENIA.
+To bug lub świadoma decyzja (dot. `utworzyl`) — DO WYJAŚNIENIA.
 
 ### getProcessNames (Q-08)
 

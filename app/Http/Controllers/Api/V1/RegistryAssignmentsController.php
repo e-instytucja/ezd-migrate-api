@@ -6,6 +6,8 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Api\BaseApiController;
 use App\Http\Response\ApiResponseRenderer;
+use App\Source\V1\DTO\RejestrPrzypisaniaDto;
+use App\Source\V1\DTO\RejestrRpwPrzypisaniaDto;
 use App\Source\V1\DTO\Request\KryteriaPrzypisanRejestrow;
 use App\Source\V1\DTO\Request\KryteriaPrzypisanRejestrowRpw;
 use App\Source\V1\Services\Registry\RegistryAssignmentRpwService;
@@ -39,7 +41,7 @@ class RegistryAssignmentsController extends BaseApiController
             'limit' => $kryteria->paginacja->limit,
             'count' => $result['count'],
             'has_prev' => $kryteria->paginacja->page > 1,
-            'has_next' => count($result['data']) >= $kryteria->paginacja->limit,
+            'has_next' => count($result['data']->values) >= $kryteria->paginacja->limit,
         ]);
     }
 
@@ -58,7 +60,7 @@ class RegistryAssignmentsController extends BaseApiController
             'limit' => $kryteria->paginacja->limit,
             'count' => $result['count'],
             'has_prev' => $kryteria->paginacja->page > 1,
-            'has_next' => count($result['data']) >= $kryteria->paginacja->limit,
+            'has_next' => count($result['data']->values) >= $kryteria->paginacja->limit,
         ]);
     }
 
@@ -131,13 +133,12 @@ class RegistryAssignmentsController extends BaseApiController
         ]);
     }
 
-    /**
-     * @param array<int, mixed> $data
-     */
-    private function renderAssignments(Request $request, array $data): Response
-    {
+    private function renderAssignments(
+        Request $request,
+        RejestrPrzypisaniaDto|RejestrRpwPrzypisaniaDto $data,
+    ): Response {
         return $this->renderResponse($request, $data, meta: [
-            'count' => count($data),
+            'count' => count($data->values),
         ]);
     }
 

@@ -6,7 +6,7 @@ namespace App\Source\V1\DTO;
 
 use JsonSerializable;
 
-final readonly class RejestrPrzypisanieRpwDto implements JsonSerializable
+final readonly class RejestrPrzypisanieWartosciDto implements JsonSerializable
 {
     public function __construct(
         public int $registryAssignmentId,
@@ -18,7 +18,7 @@ final readonly class RejestrPrzypisanieRpwDto implements JsonSerializable
         public ?string $registryType,
         public ?string $registryDescription,
         public ?string $createdAt,
-        public ?string $parentShipmentUid,
+        public ?string $leadCaseUid,
         public ?string $processName,
     ) {
     }
@@ -38,7 +38,7 @@ final readonly class RejestrPrzypisanieRpwDto implements JsonSerializable
             registryType: $row['registry_type'] ?? null,
             registryDescription: $row['registry_description'] ?? null,
             createdAt: $row['created_at'] ?? null,
-            parentShipmentUid: $row['parent_shipment_uid'] ?? null,
+            leadCaseUid: $row['lead_case_uid'] ?? null,
             processName: $row['process_name'] ?? null,
         );
     }
@@ -58,7 +58,7 @@ final readonly class RejestrPrzypisanieRpwDto implements JsonSerializable
             'registry_type' => $this->registryType,
             'registry_description' => $this->registryDescription,
             'created_at' => $this->createdAt,
-            'parent_shipment_uid' => $this->parentShipmentUid,
+            'lead_case_uid' => $this->leadCaseUid,
             'process_name' => $this->processName,
         ];
     }

@@ -21,7 +21,23 @@ Scope globalny: [workstation-scope-queries.md](workstation-scope-queries.md) —
 
 ## DTO odpowiedzi
 
-Lista i szczegóły zwracają ten sam kształt: `RejestrPrzypisanieDto` (`app/Source/V1/DTO/RejestrPrzypisanieDto.php`).
+Wzorzec jak `InteresanciDto`: `sectionLabel`, `labels` (etykiety PL pól), `values`.
+
+### Lista — `RejestrPrzypisaniaDto`
+
+`app/Source/V1/DTO/RejestrPrzypisaniaDto.php` — `data` na listach to **obiekt sekcji**, nie tablica wpisów.
+
+| Klucz JSON (sekcja) | Zawartość |
+|---------------------|-----------|
+| `sectionLabel` | domyślnie `'Rejestry'` |
+| `labels` | mapa kluczy EN → etykieta PL (`defaultLabels()`) |
+| `values` | `RejestrPrzypisanieWartosciDto[]` |
+
+### Show — `RejestrPrzypisanieDto`
+
+`app/Source/V1/DTO/RejestrPrzypisanieDto.php` — ten sam kształt sekcji; `values` to pojedynczy obiekt.
+
+Pola w `values` (klucze EN):
 
 | Klucz JSON | Źródło SQL / serwis |
 |------------|---------------------|
