@@ -11,7 +11,8 @@ API integracyjne EZD. Dokumentacja techniczna w `docs/`. Pytania otwarte: [docs/
 3. [docs/database.md](docs/database.md)
 4. [docs/queries/](docs/queries/)
 5. [docs/open-questions.md](docs/open-questions.md)
-6. `.cursor/rules/agent-guardrails.mdc`
+6. [tests/README.md](tests/README.md) — uruchamianie testów i raport HTML
+7. `.cursor/rules/agent-guardrails.mdc`
 
 ## Szybkie fakty (potwierdzone w kodzie)
 
@@ -25,6 +26,7 @@ API integracyjne EZD. Dokumentacja techniczna w `docs/`. Pytania otwarte: [docs/
 | Listy spraw/dokumentów | wymagane `konfiguracja.madkomWorkstationIds` (niepusta tablica) |
 | Cases vs DNTAS | ta sama logika serwisu, `dntas` 0 vs 1 |
 | `einstytucjaUserId` | pole w `ApiKonfiguracja`, **niewykorzystywane** w Services/Queries |
+| Testy API | `tests/Feature/Api/` — PHPUnit Feature, **tylko odczyt HTTP**; uruchom: `composer test` / `composer test:report`; raport: `/test-reports/` ([tests/README.md](tests/README.md), [api-tests.mdc](.cursor/rules/api-tests.mdc)) |
 
 ## Gdzie szukać kodu
 
@@ -34,6 +36,7 @@ API integracyjne EZD. Dokumentacja techniczna w `docs/`. Pytania otwarte: [docs/
 | Logika biznesowa | `app/Source/V1/Services/` |
 | SQL | `app/Source/V1/Queries/` |
 | Request/response | `app/Source/V1/DTO/`, `app/Http/Response/` |
+| Testy API | `tests/Feature/Api/`, `tests/Fixtures/`, [tests/README.md](tests/README.md) |
 
 ## Czego nie robić
 

@@ -28,6 +28,11 @@ alwaysApply: true
 - NIE zmieniaj nazw polskich pól API ani kolumn SQL bez koordynacji z konsumentami
 - NIE masowo poprawiaj typo (`DoctionaryQuery`, `SupliantService`) — osobny refaktor
 
+## Testy API (`tests/`)
+
+- **KATEGORYCZNY ZAKAZ INGERENCJI W STRUKTURĘ BAZY** — bez migracji, seedów, `RefreshDatabase`, `INSERT`/`UPDATE`/`DELETE`/`TRUNCATE`, `Schema::*` w testach; szczegóły: `.cursor/rules/api-tests.mdc`
+- Testy endpointów = tylko HTTP read model na istniejącej bazie EZD (jak dev); brak rekordu → skip lub pusta odpowiedź, **nie** „przygotowanie” danych w DB
+
 ## Zmiany w kodzie
 
 - NIE rób drive-by refaktorów `strict_types` poza edytowanymi plikami

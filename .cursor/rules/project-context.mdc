@@ -5,7 +5,7 @@ alwaysApply: true
 
 # SIDAS EZD API — kontekst projektu
 
-Laravel 11 API nad legacy schematem PostgreSQL (EZD). Brak migracji, Eloquent i testów automatycznych w repo.
+Laravel 11 API nad legacy schematem PostgreSQL (EZD). Brak migracji i Eloquent. Testy: PHPUnit Feature w `tests/` (read-only względem bazy).
 
 **Read-only:** konwencja projektu (Queries = SELECT). Kod **nie blokuje** zapisów do DB ani plików — brak technicznej gwarancji read-only.
 

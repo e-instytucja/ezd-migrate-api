@@ -29,7 +29,7 @@ Opis w `composer.json`: *„API integracyjne EZD – odczyt danych starego syste
 
 - Brak migracji w repo — schemat DB z dumpa EZD (`scripts/import-*.sh`)
 - Brak Eloquent — dostęp przez `Queries` + raw SQL / Query Builder
-- Brak testów automatycznych — katalog `tests/` nie istnieje; jest komenda audytowa załączników
+- Testy automatyczne: PHPUnit Feature w `tests/Feature/Api/` (integracja HTTP, read-only względem bazy — patrz [tests/README.md](../tests/README.md))
 - Brak middleware autoryzacji — tylko `ApiAccessLogMiddleware` (DO WYJAŚNIENIA: Q-18)
 
 ## Struktura repozytorium
@@ -45,6 +45,7 @@ app/
 │   └── Services/
 routes/api.php
 scripts/
+tests/                 # PHPUnit Feature (patrz tests/README.md)
 docs/
 ```
 
@@ -57,6 +58,20 @@ Aktywna wersja: **V1** (`/api/v1/`). Plan V2/V3: kopia katalogów (opis w README
 Setup: [README.md](../README.md). Import DB: `scripts/` (poza Laravel).
 
 **DO WYJAŚNIENIA (Q-23):** README wspomina `php artisan migrate`, plików migracji w repo nie ma.
+
+## Testy API (PHPUnit)
+
+Wymagają PostgreSQL z danymi EZD (jak po imporcie). Testy **nie modyfikują** bazy.
+
+| Cel | Komenda (Docker) |
+|-----|------------------|
+| Uruchomienie w terminalu | `docker compose exec app ./vendor/bin/phpunit tests/Feature/Api` |
+| Raport HTML | `docker compose exec app composer test:report` |
+| Pokrycie kodu (opcjonalnie) | `docker compose exec -e XDEBUG_MODE=coverage app composer test:coverage` |
+
+**Podgląd raportu:** [http://localhost:8080/test-reports/](http://localhost:8080/test-reports/) (nginx, port z `docker-compose.yml`). Na Apache: `https://{host}/test-reports/` przy DocumentRoot = `public/`.
+
+Szczegóły, zakres iteracji 1, fixture: [tests/README.md](../tests/README.md). Reguły dla agenta: [`.cursor/rules/api-tests.mdc`](../.cursor/rules/api-tests.mdc).
 
 ## Powiązana dokumentacja
 

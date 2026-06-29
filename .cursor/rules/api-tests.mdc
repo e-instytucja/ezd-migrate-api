@@ -1,0 +1,53 @@
+---
+description: Reguły PHPUnit Feature tests API — read-only, bez ingerencji w strukturę bazy EZD
+globs: tests/**/*
+alwaysApply: false
+---
+
+# Testy API (PHPUnit Feature)
+
+## KATEGORYCZNY ZAKAZ INGERENCJI W STRUKTURĘ BAZY DANYCH
+
+Testy **nie mogą** w żaden sposób modyfikować schematu ani zakładać, że testy „przygotowują” bazę:
+
+- **ZAKAZ** migracji Laravel (`RefreshDatabase`, `DatabaseMigrations`, `DatabaseTruncation`, `artisan migrate` w testach)
+- **ZAKAZ** `Schema::create` / `drop` / `table` / `rename` w testach i fixture SQL
+- **ZAKAZ** seedów, factory z zapisem do `eurzad_*` / `galaxia_*` / `users_*`
+- **ZAKAZ** `INSERT` / `UPDATE` / `DELETE` / `TRUNCATE` w testach (w tym `DB::statement`, raw SQL zapisujący)
+- **ZAKAZ** osobnej „bazy testowej” ze sztucznym DDL — schemat pochodzi wyłącznie z importu EZD (`scripts/import-*.sh`), poza repo
+- **ZAKAZ** Eloquent modeli i migracji dla tabel legacy (jak w guardrails projektu)
+
+API to **read model** — testy endpointów też są **tylko odczytem**: `getJson` / `postJson` na istniejącą bazę dev/import.
+
+Dozwolone wyłącznie:
+
+- odczyt przez HTTP (Feature tests),
+- `tests/Fixtures/*.php` ze **stałymi identyfikatorami** (bez generowania danych w DB),
+- `markTestSkipped` gdy brak rekordu w bazie (zamiast „dopisywania” danych),
+- konfiguracja aplikacji w pamięci (`config()->set('cache.default', 'array')` itp.) — **nie** bazy.
+
+## Konwencje
+
+- PHPUnit (nie Pest); struktura: `tests/Feature/Api/{Moduł}/`
+- Nie wołać metod kontrolerów bezpośrednio — tylko HTTP
+- Nie losować ID; nie generować tras z `Route::getRoutes()`
+- Statusy HTTP: odzwierciedlać **obecną** aplikację (nie wymuszać idealnego 422)
+- Baza: PostgreSQL z **danymi EZD jak w dev** (po imporcie) — testy nie importują same
+
+## Warstwy
+
+| Warstwa | Zakres |
+|---------|--------|
+| Smoke | wszystkie trasy z `routes/api.php` — głównie brak 500 |
+| Deep (iter. 1) | tylko `registry-assignments/{id}` i `registry-assignments-rpw/{id}` |
+
+## Uruchomienie i raport
+
+```bash
+docker compose exec app ./vendor/bin/phpunit tests/Feature/Api   # terminal
+docker compose exec app composer test:report                      # HTML
+```
+
+Raport: **http://localhost:8080/test-reports/** (pliki w `public/test-reports/`, generowane lokalnie).
+
+Szczegóły: [tests/README.md](tests/README.md)
