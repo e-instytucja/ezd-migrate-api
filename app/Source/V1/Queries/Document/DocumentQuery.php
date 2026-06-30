@@ -121,7 +121,7 @@ SQL;
                            INNER JOIN galaxia_processes gp ON sp.form_name = gp.normalized_name
                            INNER JOIN eurzad_obieg o ON (o.sprawa_uid = sp.sprawa_uid AND o.max_status_sprawy_id > 0)
                            INNER JOIN galaxia_instances gi ON (gi."instanceId" = o."instanceId")
-                           INNER JOIN galaxia_instance_users giu ON (giu.instance_id = gi."instanceId")
+--                            INNER JOIN galaxia_instance_users giu ON (giu.instance_id = gi."instanceId")
                            WHERE
                   {$where}
                   GROUP BY gp.normalized_name,
@@ -134,7 +134,7 @@ SQL;
                   FROM eurzad_pismo p
                            INNER JOIN galaxia_instances gi ON p.instance_id = gi."instanceId"
                            INNER JOIN galaxia_processes gp ON (gp."pId" = gi."pId")
-                           INNER JOIN galaxia_instance_users giu ON (giu.instance_id = gi."instanceId")
+--                            INNER JOIN galaxia_instance_users giu ON (giu.instance_id = gi."instanceId")
                            WHERE
                   {$where}
                   GROUP BY gp.normalized_name,
