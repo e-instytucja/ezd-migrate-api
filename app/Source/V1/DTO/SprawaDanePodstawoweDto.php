@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Source\V1\DTO;
 
 use App\Shared\Functions;
+use App\Source\V1\Enum\TypFormularza;
 use JsonSerializable;
 
 final readonly class SprawaDanePodstawoweDto implements JsonSerializable
@@ -60,6 +61,7 @@ final readonly class SprawaDanePodstawoweDto implements JsonSerializable
             new SprawaDanePodstawoweWartosciDto(
                 nazwaProcesu: $row['nazwa_procesu'],
                 idProcesu: $row['id_procesu'],
+                typFormularza: TypFormularza::tryFromWiersza($row['typ_formularza'] ?? null),
                 statusPismaWiodacego: $row['status_procesu'],
                 dataRejestracji: Functions::convertToISO8601($registerDate),
                 dataUtworzenia: Functions::convertToISO8601($row['data_utworzenia_dokumentu']),
@@ -78,6 +80,7 @@ final readonly class SprawaDanePodstawoweDto implements JsonSerializable
         return [
             'nazwaProcesu' => 'Nazwa procesu',
             'idProcesu' => 'Identyfikator procesu',
+            'typFormularza' => 'Typ formularza',
             'statusPismaWiodacego' => 'Status pisma wiodącego',
             'dataRejestracji' => 'Data rejestracji',
             'dataUtworzenia' => 'Data utworzenia',

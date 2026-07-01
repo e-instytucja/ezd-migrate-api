@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Source\V1\DTO\Request;
 
+use App\Source\V1\Enum\TypFormularza;
+
 readonly class TypFiltrSpraw extends \App\Source\V1\DTO\Request\TypFiltrDokument
 {
     public function __construct(
@@ -18,6 +20,7 @@ readonly class TypFiltrSpraw extends \App\Source\V1\DTO\Request\TypFiltrDokument
         public ?bool $pokazUdostepnione = null,
         public ?string $dataWszczeciaOd = null,
         public ?string $dataWszczeciaDo = null,
+        public ?TypFormularza $typFormularza = null,
     ) {
     }
 
@@ -35,6 +38,7 @@ readonly class TypFiltrSpraw extends \App\Source\V1\DTO\Request\TypFiltrDokument
             pokazUdostepnione: self::nullableBool($data['pokaz_udostepnione'] ?? null),
             dataWszczeciaOd: self::nullableString($data['data_wszczecia_od'] ?? null),
             dataWszczeciaDo: self::nullableString($data['data_wszczecia_do'] ?? null),
+            typFormularza: TypFormularza::tryFromFiltra($data['typ_formularza'] ?? null),
         );
     }
 

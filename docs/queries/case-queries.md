@@ -19,6 +19,7 @@ Konsumenci (grep): `CaseService`, `Case\HistoryService`, `AttachmentService`
 | `et` | `eurzad_teczka` | FROM |
 | `es` | `eurzad_sprawa` | INNER `es.sprawa_uid = et.sprawa_uid` |
 | `gp`, `eo`, `ess`, `gi`, `esp` | proces, obieg, status, instance, przedluzanie | INNER (rdzeń) |
+| `ef` | `eurzad_form` | INNER `gp.normalized_name = ef.form_name` |
 | `ug_w`, `ug_g`, `uug`, `uu` | users_* | INNER |
 | `fd_petent`, `pd_petent`, `ps_petent`, `fd_pliki` | form + petent | LEFT — w `getList()` |
 
@@ -37,6 +38,7 @@ Aktywny pracownik stanowiska: `uug.status = 'A' AND uug.typ = 'Z'` — znaczenie
 | `znak` | `filtry.znak` | `et.teczka_znak_sprawy ILIKE ?` |
 | `oznaczenieDntas` | `filtry.oznaczenie_dntas` | `et.oznaczenie_dntas ILIKE ?` |
 | `statusProcesu` | `filtry.status_procesu` | `eo.status = ?` |
+| `typFormularza` | `filtry.typ_formularza` | `ef.form_typ = ?` (`TypFormularza`: `internal` \| `external`; nieprawidłowa wartość → filtr ignorowany) |
 | `wlascicielStanowisko` | `filtry.wlasciciel_stanowisko` | `buildWorkstationCondition([id], pokazUdostepnione !== null)` |
 | `tytulSprawy` | `filtry.tytu_sprawy` | `et.tytul_sprawy ILIKE ?` |
 | `interesant` | `filtry.interesant` | ILIKE na `ps_petent` |
@@ -56,6 +58,7 @@ Patrz [README.md](README.md#pokaz_udostepnione--semantyka-w-kodzie) — decyduje
 |-------|--------|
 | `id_sprawy` | `et.teczka_uid` |
 | `main_document_uid` | `et.sprawa_uid` |
+| `typ_formularza` | `ef.form_typ` (`TypFormularza`: `internal` \| `external`) |
 | `has_pozostali_interesanci` | EXISTS `form_dane_pole = 'interesanci'` |
 | `zalaczniki` | `fd_pliki.form_dane_wartosc` |
 

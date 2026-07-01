@@ -13,7 +13,7 @@ Kontekst SQL: `docs/queries/`, `docs/database.md`.
 
 | Pole | Wartość |
 |------|---------|
-| **Opis** | `DocumentService::mapToDokumentDto` — pole `utworzyl` zawsze z `documentQuery->getFirstRowFromHistory` (`eurzad_pismo_obieg`). Tymczasem `historiaObiegu` dla `document_group_type !== 2` idzie przez `CaseHistoryService` (`eurzad_obieg`). |
+| **Opis** | `DocumentService::mapToDokumentDto` — pole `utworzyl` zawsze z `documentQuery->getFirstRowFromHistory` (`eurzad_pismo_obieg`). Tymczasem `historiaObiegu` dla `!DokWychodzacy` idzie przez `CaseHistoryService` (`eurzad_obieg`). |
 | **Priorytet** | **Wysoki** |
 | **Ryzyko** | Błędny lub pusty autor dokumentu dla pism wiodących (typy 1, 3, 4); niespójność z historią obiegu. |
 | **Sugerowane działanie** | Zweryfikować z domeną EZD; jeśli bug — rozgałęzić jak `historiaObiegu` (typ 2 → DocumentHistoryService, inne → CaseQuery/CaseHistoryService). |
@@ -111,7 +111,7 @@ Kontekst SQL: `docs/queries/`, `docs/database.md`.
 
 | Pole | Wartość |
 |------|---------|
-| **Opis** | Łańcuch `etz2 → etz → et` dla `TYP_DOK_PRZYCHODZACY_ZPO`. Wniosek z SQL opisany w [queries/document-queries.md](queries/document-queries.md#potwierdzenia-odbioru--zwrotki-typ-4); **brak potwierdzenia reguły biznesowej EZD** (czy `etz2.teczka_uid` zawsze wskazuje dokument nadrzędny). |
+| **Opis** | Łańcuch `etz2 → etz → et` dla `TypDokument::DokZpo`. Wniosek z SQL opisany w [queries/document-queries.md](queries/document-queries.md#potwierdzenia-odbioru--zwrotki-dokzpo); **brak potwierdzenia reguły biznesowej EZD** (czy `etz2.teczka_uid` zawsze wskazuje dokument nadrzędny). |
 | **Priorytet** | **Średni** |
 | **Ryzyko** | Błędne powiązanie zwrotu z teczką nadrzędną; trudna zmiana bez znajomości reguły EZD. |
 | **Sugerowane działanie** | Zweryfikować na próbce danych z analitykiem EZD; ewentualnie doprecyzować sekcję w `document-queries.md`. |
@@ -119,15 +119,12 @@ Kontekst SQL: `docs/queries/`, `docs/database.md`.
 
 ---
 
-### Q-11 — różnica biznesowa typ UNION 1 vs 3
+### Q-11 — różnica biznesowa typ UNION 1 vs 3 — **ZAMKNIĘTE**
 
 | Pole | Wartość |
 |------|---------|
-| **Opis** | Oba: `eurzad_sprawa`, NOT IN zwrot/zwrotka. Różnica: typ 1 JOIN teczki bezpośrednio; typ 3 via `teczka_zawartosc`. Różna też kolejność JOIN-ów w SQL. |
-| **Priorytet** | **Średni** |
-| **Ryzyko** | Zła interpretacja przy refaktorze; dokumentacja API (`getTypes`) może nie oddawać różnicy dla integratorów. |
-| **Sugerowane działanie** | Opisać regułę biznesową (wiodące vs inicjujące w sprawie); zweryfikować na próbce danych DNTAS/sprawy. |
-| **Pliki** | `app/Source/V1/Queries/Document/DocumentListQuery.php`, `app/Source/V1/Services/Document/DocumentService.php` (`getTypes`) |
+| **Status** | Zmergowane w jedną gałąź UNION (`DokPrzychodzacy`): `et_w` + `etz` → `et_z`, COALESCE w SELECT, scoped WHERE z OR. |
+| **Pliki** | `DocumentListQuery.php`, `AbstractDocumentQuery.php`, `TypDokument.php` |
 
 ---
 
@@ -310,7 +307,7 @@ Kontekst SQL: `docs/queries/`, `docs/database.md`.
 | Priorytet | ID |
 |-----------|-----|
 | **Wysoki** | Q-01, Q-02, Q-12, Q-13, Q-16, Q-18 |
-| **Średni** | Q-03, Q-06, Q-08, Q-11, Q-15, Q-20, Q-19, Q-27 |
+| **Średni** | Q-03, Q-06, Q-08, Q-15, Q-20, Q-19, Q-27 |
 | **Niski** | Q-04, Q-05, Q-07, Q-09, Q-10, Q-14, Q-17, Q-21, Q-22, Q-23 |
 
 ---

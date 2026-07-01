@@ -4,13 +4,16 @@ declare(strict_types=1);
 
 namespace App\Source\V1\DTO\Request;
 
+use App\Source\V1\Enum\TypDokument;
+use App\Source\V1\Enum\TypFormularza;
+
 readonly class TypFiltrDokument
 {
     public function __construct(
         public ?string $documentId = null,
         public ?string $teczkaUid = null,
         public ?int    $rok = null,
-        public ?int    $typProcesu = null,
+        public ?TypDokument $typProcesu = null,
         public ?string $nazwaProcesu = null,
         public ?string $statusProcesu = null,
         public ?string $dataRejestracjiOd = null,
@@ -21,6 +24,7 @@ readonly class TypFiltrDokument
         public ?string $trescPisma = null,
         public ?string $oznaczenie = null,
         public ?string $interesant = null,
+        public ?TypFormularza $typFormularza = null,
     ) {
     }
 
@@ -41,6 +45,7 @@ readonly class TypFiltrDokument
             trescPisma: self::nullableString($data['tresc_pisma'] ?? null),
             oznaczenie: self::coerceString($data['oznaczenie'] ?? $data['nr_na_pismie'] ?? null),
             interesant: self::nullableString($data['interesant'] ?? null),
+            typFormularza: TypFormularza::tryFromFiltra($data['typ_formularza'] ?? null),
         );
     }
 
@@ -64,19 +69,28 @@ readonly class TypFiltrDokument
         return $this->interesant !== null;
     }
 
-    private static function parseTypProcesu(mixed $value): ?int
+    private static function parseTypProcesu(mixed $value): ?TypDokument
     {
         if ($value === null || $value === '') {
             return null;
         }
 
-        $intValue = (int) $value;
-
-        if ($intValue < 1 || $intValue > 4) {
-            return null;
+        if (!is_string($value)) {
+            throw new \InvalidArgumentException(
+                'Nieprawidłowy filtr filtry.typ_procesu — oczekiwany string.',
+            );
         }
 
-        return $intValue;
+        $typDokumentu = TypDokument::tryFrom($value);
+
+        if ($typDokumentu === null) {
+            $dozwolone = implode(', ', array_keys(TypDokument::mapaPoWartosci()));
+            throw new \InvalidArgumentException(
+                "Nieprawidłowy filtr filtry.typ_procesu: \"{$value}\". Dozwolone: {$dozwolone}.",
+            );
+        }
+
+        return $typDokumentu;
     }
 
     private static function coerceString(mixed $value): ?string

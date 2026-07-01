@@ -25,6 +25,18 @@ final class DocumentsSmokeTest extends ApiTestCase
         $this->assertApiError($response, 422, 'request_failed');
     }
 
+    public function test_list_post_invalid_typ_procesu_returns_unprocessable(): void
+    {
+        $fixture = $this->apiFixture();
+        $payload = $this->apiListPayload($fixture['workstation_ids']);
+        $payload['filtry']['typ_procesu'] = 'bogus';
+
+        $response = $this->postApi('/documents', $payload);
+
+        $response->assertStatus(422);
+        $this->assertApiError($response, 422, 'request_failed');
+    }
+
     public function test_show_get_not_server_error(): void
     {
         $fixture = $this->apiFixture();

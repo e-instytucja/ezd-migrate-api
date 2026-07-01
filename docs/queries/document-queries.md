@@ -8,31 +8,51 @@ Konsumenci (grep): `DocumentService`, `Document\HistoryService`, `AttachmentServ
 
 ## AbstractDocumentQuery
 
-Wspólne filtry WHERE dla 4 typów UNION.
+Wspólne filtry WHERE dla 3 gałęzi UNION (`TypDokument`).
 
-### Stałe typów
+### Gałęzie UNION (`TypDokument`)
 
-| Stała | Wartość | FROM w SQL | Filtr procesu |
-|-------|---------|------------|---------------|
-| `TYP_DOK_PRZYCHODZACY_INICJUJACY` | 1 | `eurzad_sprawa es` | `gp.name NOT IN ('zwrot','zwrotka')` |
-| `TYP_DOK_WYCHADZACY_W_SPRAWIE` | 2 | `eurzad_pismo ep` | — |
-| `TYP_DOK_PRZYCHODZACY_W_SPRAWIE` | 3 | `eurzad_sprawa es` | `NOT IN ('zwrot','zwrotka')` |
-| `TYP_DOK_PRZYCHODZACY_ZPO` | 4 | `eurzad_sprawa es` | `IN ('zwrot','zwrotka')` |
+| Enum | Wartość JSON / filtra | FROM w SQL | Dodatkowy filtr procesu |
+|------|----------------------|------------|-------------------------|
+| `DokPrzychodzacy` | `dok_przychodzacy` | `eurzad_sprawa es` | `gp.name NOT IN ('zwrot','zwrotka')` |
+| `DokWychodzacy` | `dok_wychodzacy` | `eurzad_pismo ep` | — |
+| `DokZpo` | `dok_zpo` | `eurzad_sprawa es` | `gp.name IN ('zwrot','zwrotka')` |
 
-Typ 1 vs 3: różny JOIN teczki + **różna kolejność** joinów w SQL (Q-11). Różnica biznesowa poza SQL: DO WYJAŚNIENIA.
+`DokPrzychodzacy`: jedna gałąź UNION; `znak_sprawy` = `et.teczka_znak_sprawy`. Scoped do teczki: `INNER JOIN eurzad_teczka et` + membership WHERE; globalnie: `LEFT JOIN LATERAL` (wiodąca lub via `teczka_zawartosc`, `LIMIT 1`).
+
+### TypDokument (API — enum string)
+
+Endpoint `GET|POST /api/v1/documents/types` zwraca 3 typy biznesowe (`TypDokument` enum). Filtr `filtry.typ_procesu` przyjmuje te same wartości string.
+
+| Enum | `id` (JSON, filtry) | `name` (JSON, show) | `label` (JSON) |
+|------|---------------------|---------------------|----------------|
+| `DokWychodzacy` | `dok_wychodzacy` | `dok_wychodzacy` | Dokumenty wychodzące |
+| `DokPrzychodzacy` | `dok_przychodzacy` | `dok_przychodzacy` | Dokumenty przychodzące |
+| `DokZpo` | `dok_zpo` | `dok_zpo` | Potwierdzenia odbioru |
+
+- `/documents/types` (opcje filtra): `{ "id": "…", "label": "…" }` (`toFilterOption()`)
+- `danePodstawowe.values.typDokumentu` / `typFormularza` (show): `{ "name": "…", "label": "…" }` (`toApi()`); `null` gdy brak wartości
+
+- Brak filtra `typ_procesu` → `TypDokument::wszystkie()` (wszystkie gałęzie UNION)
+- Poprawny filtr → jedna gałąź (`[$filtry->typProcesu]`)
+- Nieprawidłowa wartość filtra → **422** (`InvalidArgumentException` w `parseTypProcesu`)
+
+Kolumna SQL `typ_dokumentu` → show: `typDokumentu` (`?TypDokument` w `DokumentDanePodstawoweWartosciDto`, JSON: `{name, label}` lub `null`). Lista (`DocumentService::getList`, `getDocumentsListByCaseUID`): `typ_dokumentu` / `typ_formularza` jako `{name, label}` lub `null` — mapowanie w serwisie (`tryFromWiersza` + `toApi()`), nie w Query.
 
 ### Tryby WHERE
 
 | Tryb | Warunek | Efekt |
 |------|---------|-------|
-| Scoped to teczka | `teczka_uid != null` | tylko `et.teczka_uid = ?`; bez LIMIT/OFFSET w DocumentListQuery |
+| Scoped to teczka | `teczka_uid != null` | `DokPrzychodzacy`: `INNER JOIN et` + membership `(es.sprawa_uid = et.sprawa_uid OR EXISTS teczka_zawartosc)`; `DokWychodzacy`/`DokZpo`: `et.teczka_uid = ?`; bez LIMIT/OFFSET w DocumentListQuery |
 | Globalny | domyślny | pełne filtry + scope stanowisk + paginacja |
 
 ### Filtry (`TypFiltrDokument`)
 
 | Pole DTO | Klucz JSON | Uwagi SQL |
 |----------|------------|-----------|
-| `documentId` | `filtry.documentId` | typ 2: `ep.pismo_uid`; inne: `es.sprawa_uid` (hex UID, nie instanceId) |
+| `documentId` | `filtry.documentId` | `DokWychodzacy`: `ep.pismo_uid`; inne: `es.sprawa_uid` (hex UID, nie instanceId) |
+| `typProcesu` | `filtry.typ_procesu` | `TypDokument` enum string; brak = wszystkie gałęzie; nieprawidłowa wartość → 422 |
+| `typFormularza` | `filtry.typ_formularza` | `ef.form_typ = ?` (`TypFormularza`: `internal` \| `external`; tylko tryb globalny) |
 | `trescPisma` | `filtry.tresc_pisma` | **brak WHERE** — Q-03 |
 | `pokazUdostepnione` | `filtry.pokaz_udostepnione` | patrz README — obecność klucza (Q-02) |
 | pozostałe | patrz case-queries / kod AbstractDocumentQuery | |
@@ -43,27 +63,29 @@ Filtr `oznaczenie`: gdy wartość składa się z cyfr (`ctype_digit`), dodawany 
 
 ## DocumentListQuery
 
-### Start zapytania — zależy od typu UNION
+### Start zapytania — zależy od `TypDokument`
 
-| Typ | FROM | Obieg |
-|-----|------|-------|
-| 1, 3, 4 | `eurzad_sprawa es` | `eurzad_obieg` (`max_status_sprawy_id > 0`) |
-| 2 | `eurzad_pismo ep` | LATERAL `eurzad_pismo_obieg` (ostatni wiersz) |
+| TypDokument | FROM | Obieg |
+|-------------|------|-------|
+| `DokPrzychodzacy`, `DokZpo` | `eurzad_sprawa es` | `eurzad_obieg` (`max_status_sprawy_id > 0`) |
+| `DokWychodzacy` | `eurzad_pismo ep` | LATERAL `eurzad_pismo_obieg` (ostatni wiersz) |
 
-**Różnica względem CaseListQuery:** brak startu od `eurzad_teczka`; teczka opcjonalna (LEFT/INNER w zależności od scope).
+**Różnica względem CaseListQuery:** brak startu od `eurzad_teczka`; teczka dołączana osobno (scoped `DokPrzychodzacy`: INNER JOIN; globalnie `DokPrzychodzacy`: LATERAL).
 
 ### JOIN teczki per typ
 
-| Typ | Łańcuch |
-|-----|---------|
-| 1 | `et ON es.sprawa_uid = et.sprawa_uid` |
-| 2 | `etz.teczka_zawartosc_uid = ep.pismo_uid` → `et` |
-| 3 | `etz.teczka_zawartosc_uid = es.sprawa_uid` → `et` |
-| 4 | `etz2` → `etz` → `et` (self-join zawartości, Q-06) |
+| TypDokument | Łańcuch |
+|-------------|---------|
+| `DokPrzychodzacy` (scoped) | `INNER JOIN eurzad_teczka et ON et.teczka_uid = ?` + membership WHERE |
+| `DokPrzychodzacy` (global) | `LEFT JOIN LATERAL (...)` — wiodąca lub via `teczka_zawartosc`, `LIMIT 1`; alias `et` |
+| `DokWychodzacy` | `LEFT JOIN etz` (`teczka_zawartosc_uid = ep.pismo_uid`) → `LEFT JOIN et` |
+| `DokZpo` | `LEFT JOIN etz2` → `etz` → `et` (self-join zawartości, Q-06) |
 
-### Potwierdzenia odbioru — zwrotki (typ 4)
+Wszystkie typy: `znak_sprawy` = `et.teczka_znak_sprawy` (bez COALESCE `et_w`/`et_z`).
 
-W API: `TYP_DOK_PRZYCHODZACY_ZPO` (`document_group_type = 4`), etykieta w `DocumentService::getTypes`: „potwierdzenia odbioru”.
+### Potwierdzenia odbioru — zwrotki (`DokZpo`)
+
+W API: `TypDokument::DokZpo` (`dok_zpo`), etykieta w `DocumentService::getTypes`: „potwierdzenia odbioru”.
 
 **Zwrotka nie jest `eurzad_pismo`.** To osobne pismo workflow w `eurzad_sprawa` (`es`), rozpoznawane po procesie Galaxii:
 
@@ -72,11 +94,11 @@ INNER JOIN galaxia_processes gp ON gp.normalized_name = es.form_name
 WHERE gp.name IN ('zwrot', 'zwrotka')
 ```
 
-Dokumenty wystawiane w sprawie (decyzje, korespondencja) to **typ 2** (`eurzad_pismo`); zwrotki idą osobną gałęzią UNION.
+Dokumenty wystawiane w sprawie (decyzje, korespondencja) to **`DokWychodzacy`** (`eurzad_pismo`); zwrotki idą osobną gałęzią UNION.
 
 #### Powiązanie ze sprawą (teczką)
 
-Łańcuch w `teczkaJoinsSql` (typ 4):
+Łańcuch w `teczkaJoinsSql` (`DokZpo`):
 
 ```sql
 JOIN eurzad_teczka_zawartosc etz2 ON etz2.teczka_zawartosc_uid = es.sprawa_uid
@@ -90,7 +112,7 @@ JOIN eurzad_teczka et             ON et.teczka_uid = etz.teczka_uid
 | `etz` | Ten kontener (`etz2.teczka_uid`) jest **zawartością** wyższego poziomu. |
 | `et` | Docelowa **teczka sprawy** (`teczka_uid`, znak sprawy itd.). |
 
-Dla porównania — pismo inicjujące w sprawie (typ 3) ma **jeden** hop: `etz.teczka_zawartosc_uid = es.sprawa_uid` → `et`. Zwrotka jest w drzewie `teczka_zawartosc` **o jeden poziom głębiej**.
+Dla porównania — pismo przychodzące w sprawie (`DokPrzychodzacy`, globalnie) ma teczkę z LATERAL: wiodąca (`t.sprawa_uid = es.sprawa_uid`) lub via `teczka_zawartosc`. Zwrotka jest w drzewie `teczka_zawartosc` **o jeden poziom głębiej**.
 
 #### Powiązanie z dokumentem wystawionym w sprawie
 
@@ -98,7 +120,7 @@ W Queries **brak** jawnej kolumny FK (np. `parent_pismo_uid`) łączącej zwrotk
 
 #### Obieg i identyfikatory
 
-| Aspekt | Zwrotka (typ 4) | Dokument w sprawie (typ 2) |
+| Aspekt | Zwrotka (`DokZpo`) | Dokument w sprawie (`DokWychodzacy`) |
 |--------|-----------------|----------------------------|
 | Tabela główna | `eurzad_sprawa` | `eurzad_pismo` |
 | `id_dokumentu` w API | `es.sprawa_uid` | `ep.pismo_uid` |
@@ -115,10 +137,15 @@ W Queries **brak** jawnej kolumny FK (np. `parent_pismo_uid`) łączącej zwrotk
 
 ### SELECT — różnice es vs ep
 
-| Kolumna | es (typ 1/3/4) | ep (typ 2) |
+Wspólne kolumny z `commonSelectSql()` (wszystkie typy UNION): m.in. `nazwa_procesu`, `id_procesu`, `typ_formularza` (`ef.form_typ` → `TypFormularza`). Każda gałąź dodaje `'…' AS typ_dokumentu` (wartość `TypDokument`).
+
+| Kolumna | es (`DokPrzychodzacy`/`DokZpo`) | ep (`DokWychodzacy`) |
 |---------|----------------|------------|
 | `id_dokumentu` | `es.sprawa_uid` | `ep.pismo_uid` |
+| `typ_formularza` | `ef.form_typ` | `ef.form_typ` |
 | `has_pozostali_interesanci` | EXISTS | literal `false` (komentarz w kodzie) |
+
+Join `eurzad_form ef`: `INNER JOIN ef ON (gp.normalized_name = ef.form_name)` w `commonInnerJoinSql()` (wspólny dla wszystkich gałęzi UNION).
 
 ---
 
@@ -139,8 +166,8 @@ Metody operują na `eurzad_pismo_obieg` (`pismo_obieg_id`).
 
 W `mapToDokumentDto` (tylko `GET|POST /api/v1/documents/{documentId}`):
 
-- `historiaObiegu` — typ 2: `DocumentHistoryService`; inne typy: `CaseHistoryService` (`eurzad_obieg`)
-- `utworzyl` — **zawsze** `documentQuery->getFirstRowFromHistory` → `eurzad_pismo_obieg`, niezależnie od `document_group_type`
+- `historiaObiegu` — `DokWychodzacy`: `DocumentHistoryService`; inne: `CaseHistoryService` (`eurzad_obieg`)
+- `utworzyl` — **zawsze** `documentQuery->getFirstRowFromHistory` → `eurzad_pismo_obieg`, niezależnie od `typ_dokumentu` (Q-12)
 - `rejestry` — `RejestrPrzypisaniaDto` (sekcja: `sectionLabel`, `labels`, `values[]`); docs: [registry-assignment-queries.md](registry-assignment-queries.md)
 - `wysylki` — `RejestrRpwPrzypisaniaDto` (sekcja jak wyżej); docs: [registry-assignment-rpw-queries.md](registry-assignment-rpw-queries.md)
 
@@ -174,10 +201,9 @@ Plik `Queries/ProcessQuery.php` — brak importu w Services. Metody: `getBySpraw
 |----|-------|
 | Q-02 | `pokaz_udostepnione` — obecność vs wartość |
 | Q-03 | `tresc_pisma` bez WHERE |
-| Q-06 | self-join teczka typ 4 — [zwrotki](#potwierdzenia-odbioru--zwrotki-typ-4) |
+| Q-06 | self-join teczka `DokZpo` — [zwrotki](#potwierdzenia-odbioru--zwrotki-dokzpo) |
 | Q-07 | duplikat przedluzanie |
 | Q-08 | getProcessNames scope |
-| Q-11 | typ 1 vs 3 biznesowo |
 | Q-12 | DocumentService utworzyl vs historia |
 
 Pełna lista: [open-questions.md](../open-questions.md)

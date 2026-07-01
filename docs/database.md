@@ -73,6 +73,7 @@ Kolumny = te używane w Queries. Pełny DDL poza repo.
 
 | Tabela | Alias | Rola |
 |--------|-------|------|
+| `eurzad_form` | `ef` | Definicja formularza procesu (`form_name`, `form_typ` ∈ `internal` \| `external`); JOIN w CaseListQuery i DocumentListQuery |
 | `eurzad_form_dane` | `fd_*` | Pola pisma wiodącego (`form_dane_pole`, `form_dane_wartosc`) |
 | `eurzad_form_struktura` | `fs` | Definicja pól (`FormQuery`) |
 | `eurzad_form_pisma_dane` | `fdp` | Pola pisma (`klucz`, `wartosc`, join po `ep.id`) |
@@ -98,6 +99,7 @@ Filtr zwrotów (DocumentListQuery): `gp.name IN ('zwrot', 'zwrotka')` vs `NOT IN
 | `eurzad_pismo` | DocumentListQuery, DocumentQuery, FormQuery |
 | `eurzad_pismo_obieg` | DocumentListQuery, DocumentQuery |
 | `eurzad_form_dane` | CaseListQuery, DocumentListQuery, FormQuery, SuppliantQuery |
+| `eurzad_form` | CaseListQuery, DocumentListQuery |
 | `eurzad_form_struktura` | FormQuery |
 | `eurzad_form_pisma_dane` | DocumentListQuery, FormQuery |
 | `eurzad_petent_search` | CaseListQuery, DocumentListQuery, SuppliantQuery |
@@ -121,21 +123,23 @@ Filtr zwrotów (DocumentListQuery): `gp.name IN ('zwrot', 'zwrotka')` vs `NOT IN
 ```sql
 FROM eurzad_teczka et
 INNER JOIN eurzad_sprawa es ON es.sprawa_uid = et.sprawa_uid
--- dalej: gp, eo (max_status_sprawy_id > 0), ess, gi, esp, users_*
+-- dalej: gp, ef (eurzad_form), eo (max_status_sprawy_id > 0), ess, gi, esp, users_*
 -- LEFT JOIN: fd_petent, pd_petent, ps_petent, fd_pliki (w getList)
 ```
 
 Filtr DNTAS: `et.dntas = {0|1}`.
 
-### B. DocumentListQuery typ 1, 3, 4 — start: `eurzad_sprawa es`
+### B. DocumentListQuery typ 1, 4 — start: `eurzad_sprawa es`
 
 Ten sam rdzeń co A **bez** `eurzad_teczka` w FROM — teczka dołączana osobno:
 
 | Typ | JOIN teczki |
 |-----|-------------|
-| 1 (wiodące) | `et ON es.sprawa_uid = et.sprawa_uid` |
-| 3 (inicjujące w sprawie) | via `teczka_zawartosc`: `etz.teczka_zawartosc_uid = es.sprawa_uid` |
+| 1 (scoped) | `INNER JOIN eurzad_teczka et ON et.teczka_uid = ?` + membership WHERE |
+| 1 (global) | `LEFT JOIN LATERAL` — wybór teczki wiodącej lub via `teczka_zawartosc`; alias `et` |
 | 4 (zwroty / potwierdzenia odbioru) | podwójny self-join `teczka_zawartosc` — szczegóły: [queries/document-queries.md#potwierdzenia-odbioru--zwrotki-typ-4](queries/document-queries.md#potwierdzenia-odbioru--zwrotki-typ-4) |
+
+`znak_sprawy` we wszystkich gałęziach: `et.teczka_znak_sprawy`.
 
 Dodatkowo: filtr procesu `gp.name NOT IN / IN ('zwrot', 'zwrotka')`. Zwrotki to wiersze `eurzad_sprawa` (nie `eurzad_pismo`); powiązanie z dokumentem w sprawie jest pośrednie przez hierarchię `teczka_zawartosc` (Q-06).
 
@@ -155,6 +159,7 @@ INNER JOIN LATERAL ( ... eurzad_pismo_obieg ... LIMIT 1) epo ON true
 
 ```sql
 INNER JOIN galaxia_processes gp ON gp.normalized_name = es.form_name
+INNER JOIN eurzad_form ef ON (gp.normalized_name = ef.form_name)
 INNER JOIN eurzad_obieg eo ON (eo.sprawa_uid = es.sprawa_uid AND eo.max_status_sprawy_id > 0)
 INNER JOIN eurzad_slownik_status ess ON ess.symbol = eo.status
 INNER JOIN galaxia_instances gi ON gi."instanceId" = eo."instanceId"

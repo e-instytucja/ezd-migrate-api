@@ -4,11 +4,15 @@ declare(strict_types=1);
 
 namespace App\Source\V1\DTO;
 
-final readonly class SprawaDanePodstawoweWartosciDto
+use App\Source\V1\Enum\TypFormularza;
+use JsonSerializable;
+
+final readonly class SprawaDanePodstawoweWartosciDto implements JsonSerializable
 {
     public function __construct(
         public ?string $nazwaProcesu = null,
         public ?int $idProcesu = null,
+        public ?TypFormularza $typFormularza = null,
         public ?string $statusPismaWiodacego = null,
         public ?string $dataRejestracji = null,
         public ?string $dataUtworzenia = null,
@@ -16,4 +20,22 @@ final readonly class SprawaDanePodstawoweWartosciDto
         public ?string $tytulSprawy = null,
         public ?string $opisSprawy = null,
     ) {}
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function jsonSerialize(): array
+    {
+        return [
+            'nazwaProcesu' => $this->nazwaProcesu,
+            'idProcesu' => $this->idProcesu,
+            'typFormularza' => $this->typFormularza?->toApi(),
+            'statusPismaWiodacego' => $this->statusPismaWiodacego,
+            'dataRejestracji' => $this->dataRejestracji,
+            'dataUtworzenia' => $this->dataUtworzenia,
+            'terminRealizacji' => $this->terminRealizacji,
+            'tytulSprawy' => $this->tytulSprawy,
+            'opisSprawy' => $this->opisSprawy,
+        ];
+    }
 }

@@ -85,6 +85,10 @@ class CaseListQuery
             $conditions[] = 'eo.status = ' . $this->bind($filtry->statusProcesu);
         }
 
+        if ($filtry->typFormularza !== null) {
+            $conditions[] = 'ef.form_typ = ' . $this->bind($filtry->typFormularza->value);
+        }
+
         if ($filtry->wlascicielStanowisko !== null) {
             $conditions[] = $this->buildWorkstationCondition(
                 [$filtry->wlascicielStanowisko],
@@ -215,6 +219,7 @@ class CaseListQuery
                 gp.name                                                       AS nazwa_procesu,
                 gp.normalized_name                                            AS nazwa_procesu_znormalizowana,
                 gp."pId"                                                      AS id_procesu,
+                ef.form_typ                                                   AS typ_formularza,
                 ess.opis                                                      AS status_procesu,
                 et.teczka_createdate                                          AS data_wszczecia,
                 et.opis_sprawy,
@@ -252,6 +257,7 @@ class CaseListQuery
         return <<<SQL
                 INNER JOIN eurzad_sprawa es ON es.sprawa_uid = et.sprawa_uid
                 INNER JOIN galaxia_processes gp ON gp.normalized_name = es.form_name
+                INNER JOIN eurzad_form ef ON (gp.normalized_name = ef.form_name)
                 INNER JOIN eurzad_obieg eo ON (eo.sprawa_uid = es.sprawa_uid AND eo.max_status_sprawy_id > 0)
                 INNER JOIN eurzad_slownik_status ess ON ess.symbol = eo.status
                 INNER JOIN galaxia_instances gi ON gi."instanceId" = eo."instanceId"

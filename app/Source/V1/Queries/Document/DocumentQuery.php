@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Source\V1\Queries\Document;
 
 use App\Source\V1\DTO\Request\KryteriaWyszukiwaniaDokumentow;
+use App\Source\V1\Enum\TypDokument;
 use Illuminate\Support\Facades\DB;
 use stdClass;
 
@@ -108,7 +109,7 @@ SQL;
     public function getProcessNames(KryteriaWyszukiwaniaDokumentow $criteria): array
     {
         $where = $this->getWhereSql(
-            self::TYP_DOK_PRZYCHODZACY_INICJUJACY,
+            TypDokument::DokPrzychodzacy,
             $criteria->konfiguracja,
             $criteria->filtry
         );

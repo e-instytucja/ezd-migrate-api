@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Source\V1\DTO;
 
+use App\Source\V1\Enum\TypDokument;
+use App\Source\V1\Enum\TypFormularza;
 use JsonSerializable;
 
 final readonly class DokumentDanePodstawoweDto implements JsonSerializable
@@ -23,6 +25,7 @@ final readonly class DokumentDanePodstawoweDto implements JsonSerializable
                 idProcesu: null,
                 statusProcesu: null,
                 typDokumentu: null,
+                typFormularza: null,
                 znakSprawy: null,
                 idDokumentu: null,
                 nrNaPismie: null,
@@ -32,7 +35,6 @@ final readonly class DokumentDanePodstawoweDto implements JsonSerializable
                 dokumentTytul: null,
                 trescWniosku: null,
                 nrKsiegi: null,
-                documentGroupType: null,
             ),
             labels: self::defaultLabels(),
             sectionLabel: 'Dane podstawowe',
@@ -56,7 +58,8 @@ final readonly class DokumentDanePodstawoweDto implements JsonSerializable
                 nazwaProcesu: $row['nazwa_procesu'] ?? null,
                 idProcesu: isset($row['id_procesu']) ? (int) $row['id_procesu'] : null,
                 statusProcesu: $row['status_procesu'] ?? null,
-                typDokumentu: isset($row['typ']) ? (int) $row['typ'] : null,
+                typDokumentu: TypDokument::tryFromWiersza($row['typ_dokumentu'] ?? null),
+                typFormularza: TypFormularza::tryFromWiersza($row['typ_formularza'] ?? null),
                 znakSprawy: $row['znak_sprawy'] ?? null,
                 idDokumentu: $row['id_dokumentu'] ?? null,
                 nrNaPismie: $row['nr_na_pismie'] ?? null,
@@ -66,7 +69,6 @@ final readonly class DokumentDanePodstawoweDto implements JsonSerializable
                 dokumentTytul: $row['dokument_tytul'] ?? null,
                 trescWniosku: $row['tresc_wniosku'] ?? null,
                 nrKsiegi: ($row['nr_ksiegi'] ?? '') !== '' ? $row['nr_ksiegi'] : null,
-                documentGroupType: isset($row['document_group_type']) ? (int) $row['document_group_type'] : null,
             ),
         );
     }
@@ -81,6 +83,7 @@ final readonly class DokumentDanePodstawoweDto implements JsonSerializable
             'idProcesu' => 'Identyfikator procesu',
             'statusProcesu' => 'Status procesu',
             'typDokumentu' => 'Typ dokumentu',
+            'typFormularza' => 'Typ formularza',
             'znakSprawy' => 'Znak sprawy',
             'idDokumentu' => 'Identyfikator dokumentu',
             'nrNaPismie' => 'Numer na piśmie',
@@ -90,7 +93,6 @@ final readonly class DokumentDanePodstawoweDto implements JsonSerializable
             'dokumentTytul' => 'Tytuł dokumentu',
             'trescWniosku' => 'Treść wniosku',
             'nrKsiegi' => 'Numer księgi',
-            'documentGroupType' => 'Typ grupy dokumentu',
         ];
     }
 

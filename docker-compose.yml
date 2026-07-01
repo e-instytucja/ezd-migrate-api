@@ -17,10 +17,10 @@ services:
       IMPORT_DB_DATABASE: "${IMPORT_DB_DATABASE:-importdb}"
       IMPORT_DB_USERNAME: "${IMPORT_DB_USERNAME:-postgres}"
       IMPORT_DB_PASSWORD: "${IMPORT_DB_PASSWORD:-postgres}"
-      XDEBUG_CLIENT_HOST: "${XDEBUG_CLIENT_HOST:-192.168.0.6}"
-      XDEBUG_CLIENT_PORT: "${XDEBUG_CLIENT_PORT:-9004}"
+#      XDEBUG_CLIENT_HOST: "${XDEBUG_CLIENT_HOST:-192.168.0.6}"
+#      XDEBUG_CLIENT_PORT: "${XDEBUG_CLIENT_PORT:-9004}"
       XDEBUG_IDEKEY: "${XDEBUG_IDEKEY:-PHPSTORM}"
-      XDEBUG_CONFIG: "client_host=${XDEBUG_CLIENT_HOST:-192.168.0.6} client_port=${XDEBUG_CLIENT_PORT:-9004} idekey=${XDEBUG_IDEKEY:-PHPSTORM}"
+#      XDEBUG_CONFIG: "client_host=${XDEBUG_CLIENT_HOST:-192.168.0.6} client_port=${XDEBUG_CLIENT_PORT:-9004} idekey=${XDEBUG_IDEKEY:-PHPSTORM}"
     volumes:
       - .:/var/www/html
       - ../../chojnice:/var/www/files:ro

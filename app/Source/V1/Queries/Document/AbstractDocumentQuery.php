@@ -6,40 +6,53 @@ namespace App\Source\V1\Queries\Document;
 
 use App\Source\V1\DTO\Request\ApiKonfiguracja;
 use App\Source\V1\DTO\Request\TypFiltrDokument;
+use App\Source\V1\Enum\TypDokument;
 use InvalidArgumentException;
 
 abstract class AbstractDocumentQuery
 {
-    public const TYP_DOK_PRZYCHODZACY_INICJUJACY = 1;
-    public const TYP_DOK_WYCHADZACY_W_SPRAWIE = 2;
-    public const TYP_DOK_PRZYCHODZACY_W_SPRAWIE = 3;
-    public const TYP_DOK_PRZYCHODZACY_ZPO = 4; // Zwrotne potwierdzenie odbioru
-
     /** @var array<int, mixed> */
     protected array $bindings = [];
 
     protected function getWhereSql(
-        int $unionType,
+        TypDokument $typDokumentu,
         ApiKonfiguracja $konfiguracja,
         TypFiltrDokument $filtry
     ): string {
         if ($filtry->isScopedToTeczka()) {
-            return $this->getScopedWhereSql($filtry);
+            return $this->getScopedWhereSql($typDokumentu, $filtry);
         }
-        return $this->getGlobalWhereSql($unionType, $konfiguracja, $filtry);
+        return $this->getGlobalWhereSql($typDokumentu, $konfiguracja, $filtry);
     }
 
-    protected function getScopedWhereSql(TypFiltrDokument $filtry): string
+    protected function getScopedWhereSql(TypDokument $typDokumentu, TypFiltrDokument $filtry): string
     {
-        $conditions = [
-            'et.teczka_uid = ' . $this->bind($filtry->teczkaUid),
-        ];
+        $teczkaUid = $this->bind($filtry->teczkaUid);
+
+        $conditions = match ($typDokumentu) {
+            TypDokument::DokPrzychodzacy => [
+                <<<SQL
+                (
+                    es.sprawa_uid = et.sprawa_uid
+                    OR EXISTS (
+                        SELECT 1
+                        FROM eurzad_teczka_zawartosc etz
+                        WHERE etz.teczka_zawartosc_uid = es.sprawa_uid
+                          AND etz.teczka_uid = et.teczka_uid
+                    )
+                )
+                SQL,
+            ],
+            default => [
+                'et.teczka_uid = ' . $teczkaUid,
+            ],
+        };
 
         return implode("\n                AND ", $conditions);
     }
 
     protected function getGlobalWhereSql(
-        int $unionType,
+        TypDokument $typDokumentu,
         ApiKonfiguracja $konfiguracja,
         TypFiltrDokument $filtry
     ): string {
@@ -48,25 +61,27 @@ abstract class AbstractDocumentQuery
         $this->appendWorkstationScope($conditions, $konfiguracja, $filtry);
 
         if ($filtry->documentId !== null) {
-            $conditions[] = match ($unionType) {
-                self::TYP_DOK_WYCHADZACY_W_SPRAWIE => 'ep.pismo_uid = ' . $this->bind($filtry->documentId),
-                default => 'es.sprawa_uid = ' . $this->bind($filtry->documentId),
-            };
+            $conditions[] = $typDokumentu->isWychodzacy()
+                ? 'ep.pismo_uid = ' . $this->bind($filtry->documentId)
+                : 'es.sprawa_uid = ' . $this->bind($filtry->documentId);
         }
 
         if ($filtry->rok !== null) {
-            $conditions[] = $this->rokCondition($unionType, $filtry->rok);
+            $conditions[] = $this->rokCondition($typDokumentu, $filtry->rok);
         }
 
         if ($filtry->nazwaProcesu !== null) {
             $conditions[] = 'gp.normalized_name = ' . $this->bind($filtry->nazwaProcesu);
         }
 
+        if ($filtry->typFormularza !== null) {
+            $conditions[] = 'ef.form_typ = ' . $this->bind($filtry->typFormularza->value);
+        }
+
         if ($filtry->statusProcesu !== null) {
-            $conditions[] = match ($unionType) {
-                self::TYP_DOK_WYCHADZACY_W_SPRAWIE => 'epo.status = ' . $this->bind($filtry->statusProcesu),
-                default => 'eo.status = ' . $this->bind($filtry->statusProcesu),
-            };
+            $conditions[] = $typDokumentu->isWychodzacy()
+                ? 'epo.status = ' . $this->bind($filtry->statusProcesu)
+                : 'eo.status = ' . $this->bind($filtry->statusProcesu);
         }
 
         if ($filtry->wlascicielStanowisko !== null) {
@@ -77,15 +92,15 @@ abstract class AbstractDocumentQuery
         }
 
         if ($filtry->dataRejestracjiOd !== null) {
-            $conditions[] = $this->dateFromCondition($unionType, $filtry->dataRejestracjiOd);
+            $conditions[] = $this->dateFromCondition($typDokumentu, $filtry->dataRejestracjiOd);
         }
 
         if ($filtry->dataRejestracjiDo !== null) {
-            $conditions[] = $this->dateToCondition($unionType, $filtry->dataRejestracjiDo);
+            $conditions[] = $this->dateToCondition($typDokumentu, $filtry->dataRejestracjiDo);
         }
 
         if ($filtry->opisDokumentu !== null) {
-            $conditions[] = $this->opisDokumentuCondition($unionType, $filtry->opisDokumentu);
+            $conditions[] = $this->opisDokumentuCondition($typDokumentu, $filtry->opisDokumentu);
         }
 
         if ($filtry->interesant !== null) {
@@ -94,27 +109,28 @@ abstract class AbstractDocumentQuery
         }
 
         if ($filtry->oznaczenie !== null) {
-            $conditions[] = $this->oznaczenieCondition($unionType, $filtry->oznaczenie);
+            $conditions[] = $this->oznaczenieCondition($typDokumentu, $filtry->oznaczenie);
         }
 
         return implode("\n                AND ", $conditions);
     }
 
-    protected function rokCondition(int $unionType, int $rok): string
+    protected function rokCondition(TypDokument $typDokumentu, int $rok): string
     {
-        return match ($unionType) {
-            self::TYP_DOK_WYCHADZACY_W_SPRAWIE => 'EXTRACT(YEAR FROM ep.pismo_createdate) = ' . $this->bind($rok),
-            default => 'EXTRACT(YEAR FROM COALESCE('
-                . "NULLIF(TRIM(fd_data_rej.form_dane_wartosc), '')::timestamp, "
-                . 'esp.sprawa_createdate)) = ' . $this->bind($rok),
-        };
+        if ($typDokumentu->isWychodzacy()) {
+            return 'EXTRACT(YEAR FROM ep.pismo_createdate) = ' . $this->bind($rok);
+        }
+
+        return 'EXTRACT(YEAR FROM COALESCE('
+            . "NULLIF(TRIM(fd_data_rej.form_dane_wartosc), '')::timestamp, "
+            . 'esp.sprawa_createdate)) = ' . $this->bind($rok);
     }
 
-    protected function opisDokumentuCondition(int $unionType, string $opis): string
+    protected function opisDokumentuCondition(TypDokument $typDokumentu, string $opis): string
     {
         $pattern = '%' . $opis . '%';
 
-        if ($unionType === self::TYP_DOK_WYCHADZACY_W_SPRAWIE) {
+        if ($typDokumentu->isWychodzacy()) {
             return "(fd_tytul.wartosc::jsonb)->>'textarea' ILIKE " . $this->bind($pattern);
         }
 
@@ -129,13 +145,13 @@ abstract class AbstractDocumentQuery
 SQL;
     }
 
-    protected function oznaczenieCondition(int $unionType, string $oznaczenie): string
+    protected function oznaczenieCondition(TypDokument $typDokumentu, string $oznaczenie): string
     {
         $parts = [
             'et.teczka_znak_sprawy ILIKE ' . $this->bind('%' . $oznaczenie . '%'),
         ];
 
-        if ($unionType !== self::TYP_DOK_WYCHADZACY_W_SPRAWIE) {
+        if (!$typDokumentu->isWychodzacy()) {
             $parts[] = 'fd_nr_na_pismie.form_dane_wartosc = ' . $this->bind($oznaczenie);
             $parts[] = '(ek.ksiega_numer || \'/\' || ek.ksiega_rok) = ' . $this->bind($oznaczenie);
         }
@@ -147,30 +163,32 @@ SQL;
         return '(' . implode(' OR ', $parts) . ')';
     }
 
-    protected function dateFromCondition(int $unionType, string $dataOd): string
+    protected function dateFromCondition(TypDokument $typDokumentu, string $dataOd): string
     {
-        return match ($unionType) {
-            self::TYP_DOK_WYCHADZACY_W_SPRAWIE => 'ep.pismo_createdate >= ' . $this->bind($dataOd . ' 00:00:00'),
-            default => <<<SQL
+        if ($typDokumentu->isWychodzacy()) {
+            return 'ep.pismo_createdate >= ' . $this->bind($dataOd . ' 00:00:00');
+        }
+
+        return <<<SQL
 COALESCE(
     NULLIF(TRIM(fd_data_rej.form_dane_wartosc), '')::timestamp,
     esp.sprawa_createdate
 ) >=
-SQL  . $this->bind($dataOd . ' 00:00:00'),
-        };
+SQL  . $this->bind($dataOd . ' 00:00:00');
     }
 
-    protected function dateToCondition(int $unionType, string $dataDo): string
+    protected function dateToCondition(TypDokument $typDokumentu, string $dataDo): string
     {
-        return match ($unionType) {
-            self::TYP_DOK_WYCHADZACY_W_SPRAWIE => 'ep.pismo_createdate <= ' . $this->bind($dataDo . ' 23:59:59'),
-            default => <<<SQL
+        if ($typDokumentu->isWychodzacy()) {
+            return 'ep.pismo_createdate <= ' . $this->bind($dataDo . ' 23:59:59');
+        }
+
+        return <<<SQL
 COALESCE(
     NULLIF(TRIM(fd_data_rej.form_dane_wartosc), '')::timestamp,
     esp.sprawa_createdate
 ) <=
-SQL  . $this->bind($dataDo . ' 23:59:59'),
-        };
+SQL  . $this->bind($dataDo . ' 23:59:59');
     }
 
     /**

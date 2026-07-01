@@ -45,4 +45,4 @@ alwaysApply: true
 - `pokaz_udostepnione`: `$filtry->pokazUdostepnione !== null` decyduje o EXISTS — **obecność klucza w JSON**, nie wartość bool (patrz docs/queries/README.md)
 - `TypFiltrDokument::$trescPisma` — pole w DTO, brak WHERE w AbstractDocumentQuery
 - `DocumentQuery::DOCUMENT_TYPE_PISMO` = `eurzad_sprawa`, `DOCUMENT_TYPE_DOKUMENT` = `eurzad_pismo`
-- `DocumentService::mapToDokumentDto` — `getFirstRowFromHistory` zawsze na `eurzad_pismo_obieg`, niezależnie od `document_group_type`
+- `DocumentService::mapToDokumentDto` — `getFirstRowFromHistory` zawsze na `eurzad_pismo_obieg`, niezależnie od `typ_dokumentu` (Q-12)

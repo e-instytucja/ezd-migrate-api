@@ -6,6 +6,8 @@ use App\Shared\Functions;
 use App\Source\V1\DTO\DokumentDanePodstawoweDto;
 use App\Source\V1\DTO\DokumentDto;
 use App\Source\V1\DTO\PracownikDto;
+use App\Source\V1\Enum\TypDokument;
+use App\Source\V1\Enum\TypFormularza;
 use App\Source\V1\DTO\Request\KryteriaWyszukiwaniaDokumentow;
 use App\Source\V1\Queries\Case\CaseQuery;
 use App\Source\V1\Queries\Document\DocumentQuery;
@@ -69,6 +71,7 @@ class DocumentService
         }
         $list = $this->documentListQuery->getList($kryteriaWyszukiwania);
         foreach ($list as &$row) {
+            $this->hydrateDocumentListRowEnums($row);
             $row['zalaczniki_details'] = !empty($row['zalaczniki'])
                 ? $this->attachmentService->getAttachmentsDetails($row['zalaczniki'])
                 : [];
@@ -107,21 +110,22 @@ class DocumentService
      */
     private function mapToDokumentDto(array $row): DokumentDto
     {
-        $historiaObieguRaw = $row['document_group_type'] === DocumentListQuery::TYP_DOK_WYCHADZACY_W_SPRAWIE
+        $danePodstawowe = DokumentDanePodstawoweDto::fromDocumentRow($row);
+        $typDokumentu = $danePodstawowe->values->typDokumentu
+            ?? throw new Exception('Brak typ_dokumentu w wierszu dokumentu');
+
+        $historiaObieguRaw = $typDokumentu->isWychodzacy()
             ? $this->documentHistoryService->getHistory($row['id_dokumentu'])
             : $this->caseHistoryService->getHistory($row['id_dokumentu']);
 
-
-
-        $daneFormularza = $row['document_group_type'] === DocumentListQuery::TYP_DOK_WYCHADZACY_W_SPRAWIE
+        $daneFormularza = $typDokumentu->isWychodzacy()
             ? $this->formService->getFormDocumentValues($row['id_dokumentu'], $row['nazwa_znormalizowana_procesu'])
             : $this->formService->getFormMainDocumentValues($row['id_dokumentu'], $row['nazwa_znormalizowana_procesu']);
 
         $wlasciciel = PracownikDto::fromDocumentRow($row);
-        if($row['typ'] === DocumentQuery::TYP_DOK_WYCHADZACY_W_SPRAWIE) {
+        if ($typDokumentu->isWychodzacy()) {
             $historyRow = $this->documentQuery->getFirstRowFromHistory($row['id_dokumentu']);
-        }
-        else {
+        } else {
             $historyRow = $this->caseQuery->getFirstRowFromHistory($row['id_dokumentu']);
         }
         $utworzyl = PracownikDto::fromWorkstationRow(
@@ -131,7 +135,7 @@ class DocumentService
         $documentId = (string) $row['id_dokumentu'];
 
         return new DokumentDto(
-            danePodstawowe: DokumentDanePodstawoweDto::fromDocumentRow($row),
+            danePodstawowe: $danePodstawowe,
             wlasciciel: $wlasciciel,
             utworzyl: $utworzyl,
             interesanci: $daneFormularza->extractInteresanci(),
@@ -144,12 +148,10 @@ class DocumentService
     }
     public function getTypes(): array
     {
-        return [
-            ['id' => DocumentListQuery::TYP_DOK_WYCHADZACY_W_SPRAWIE, 'label' => 'Dokumenty w sprawie'],
-            ['id' => DocumentListQuery::TYP_DOK_PRZYCHODZACY_W_SPRAWIE, 'label' => 'Pisma inicjujące'],
-            ['id' => DocumentListQuery::TYP_DOK_PRZYCHODZACY_INICJUJACY, 'label' => 'Pisma wiodące w sprawie'],
-            ['id' => DocumentListQuery::TYP_DOK_PRZYCHODZACY_ZPO, 'label' => 'potwierdzenia odbioru'],
-        ];
+        return array_map(
+            static fn (TypDokument $typDokumentu) => $typDokumentu->toFilterOption(),
+            TypDokument::wszystkie(),
+        );
     }
 
     public function getStatuses()
@@ -170,6 +172,7 @@ class DocumentService
         $startedAt = Functions::startTimer();
         $documentList = $this->documentListQuery->getList(KryteriaWyszukiwaniaDokumentow::forTeczkaUid($caseUID));
         foreach ($documentList as &$document) {
+            $this->hydrateDocumentListRowEnums($document);
             $this->supliantService->hydrateSuppliantData($document, $document['id_dokumentu']);
         }
         unset($document);
@@ -181,6 +184,15 @@ class DocumentService
         ]);
 
         return $documentList;
+    }
+
+    /**
+     * @param array<string, mixed> $row
+     */
+    private function hydrateDocumentListRowEnums(array &$row): void
+    {
+        $row['typ_dokumentu'] = TypDokument::tryFromWiersza($row['typ_dokumentu'] ?? null)?->toApi();
+        $row['typ_formularza'] = TypFormularza::tryFromWiersza($row['typ_formularza'] ?? null)?->toApi();
     }
 
 
