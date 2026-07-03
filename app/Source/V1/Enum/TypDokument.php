@@ -10,8 +10,9 @@ use App\Source\V1\Enum\Contracts\PresentsInApi;
 enum TypDokument: string implements PresentsInApi
 {
     use PresentsInApiValue;
-    case DokWychodzacy = 'dok_wychodzacy';
     case DokPrzychodzacy = 'dok_przychodzacy';
+    case DokWewnetrzny = 'dok_wewnetrzny';
+    case DokWychodzacy = 'dok_wychodzacy';
     case DokZpo = 'dok_zpo';
 
     /**
@@ -52,9 +53,14 @@ enum TypDokument: string implements PresentsInApi
         return $this === self::DokWychodzacy;
     }
 
+    public function isNiewychodzacy(): bool
+    {
+        return $this === self::DokPrzychodzacy || $this === self::DokWewnetrzny;
+    }
+
     public function usesSprawaTable(): bool
     {
-        return $this === self::DokPrzychodzacy || $this === self::DokZpo;
+        return $this->isNiewychodzacy() || $this === self::DokZpo;
     }
 
     public function isZpo(): bool
@@ -62,11 +68,21 @@ enum TypDokument: string implements PresentsInApi
         return $this === self::DokZpo;
     }
 
+    public function formTyp(): ?string
+    {
+        return match ($this) {
+            self::DokPrzychodzacy => 'external',
+            self::DokWewnetrzny => 'internal',
+            default => null,
+        };
+    }
+
     public function label(): string
     {
         return match ($this) {
             self::DokWychodzacy => 'Dokumenty wychodzące',
             self::DokPrzychodzacy => 'Dokumenty przychodzące',
+            self::DokWewnetrzny => 'Dokumenty wewnętrzne',
             self::DokZpo => 'Potwierdzenia odbioru',
         };
     }

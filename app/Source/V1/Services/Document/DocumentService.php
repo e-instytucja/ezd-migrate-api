@@ -8,6 +8,7 @@ use App\Source\V1\DTO\DokumentDto;
 use App\Source\V1\DTO\PracownikDto;
 use App\Source\V1\Enum\TypDokument;
 use App\Source\V1\Enum\TypFormularza;
+use App\Source\V1\Enum\TypPowiazaniaDokumentu;
 use App\Source\V1\DTO\Request\KryteriaWyszukiwaniaDokumentow;
 use App\Source\V1\Queries\Case\CaseQuery;
 use App\Source\V1\Queries\Document\DocumentQuery;
@@ -193,6 +194,7 @@ class DocumentService
     {
         $row['typ_dokumentu'] = TypDokument::tryFromWiersza($row['typ_dokumentu'] ?? null)?->toApi();
         $row['typ_formularza'] = TypFormularza::tryFromWiersza($row['typ_formularza'] ?? null)?->toApi();
+        $row['typ_powiazania_dokumentu'] = TypPowiazaniaDokumentu::tryFromWiersza($row['typ_powiazania_dokumentu'] ?? null)?->toApi();
     }
 
 

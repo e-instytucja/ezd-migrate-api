@@ -119,12 +119,12 @@ Kontekst SQL: `docs/queries/`, `docs/database.md`.
 
 ---
 
-### Q-11 — różnica biznesowa typ UNION 1 vs 3 — **ZAMKNIĘTE**
+### Q-11 — różnica biznesowa typów niewychodzących — **ZAMKNIĘTE (ponownie)**
 
 | Pole | Wartość |
 |------|---------|
-| **Status** | Zmergowane w jedną gałąź UNION (`DokPrzychodzacy`): `et_w` + `etz` → `et_z`, COALESCE w SELECT, scoped WHERE z OR. |
-| **Pliki** | `DocumentListQuery.php`, `AbstractDocumentQuery.php`, `TypDokument.php` |
+| **Status** | Rozbito `DokPrzychodzacy` na 3 gałęzie UNION (`TypUnionDokumentu`): inicjujący / w sprawie / bez sprawy. `DokWewnetrzny` = `ef.form_typ = internal`. API: `TypPowiazaniaDokumentu`. |
+| **Pliki** | `DocumentListQuery.php`, `AbstractDocumentQuery.php`, `TypDokument.php`, `TypPowiazaniaDokumentu.php`, `TypUnionDokumentu.php` |
 
 ---
 

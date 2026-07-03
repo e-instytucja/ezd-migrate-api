@@ -6,6 +6,7 @@ namespace App\Source\V1\DTO;
 
 use App\Source\V1\Enum\TypDokument;
 use App\Source\V1\Enum\TypFormularza;
+use App\Source\V1\Enum\TypPowiazaniaDokumentu;
 use JsonSerializable;
 
 final readonly class DokumentDanePodstawoweWartosciDto implements JsonSerializable
@@ -16,6 +17,7 @@ final readonly class DokumentDanePodstawoweWartosciDto implements JsonSerializab
         public ?string $statusProcesu,
         public ?TypDokument $typDokumentu,
         public ?TypFormularza $typFormularza,
+        public ?TypPowiazaniaDokumentu $typPowiazaniaDokumentu,
         public ?string $znakSprawy,
         public string|int|null $idDokumentu,
         public ?string $nrNaPismie,
@@ -38,6 +40,7 @@ final readonly class DokumentDanePodstawoweWartosciDto implements JsonSerializab
             'statusProcesu' => $this->statusProcesu,
             'typDokumentu' => $this->typDokumentu?->toApi(),
             'typFormularza' => $this->typFormularza?->toApi(),
+            'typPowiazaniaDokumentu' => $this->typPowiazaniaDokumentu?->toApi(),
             'znakSprawy' => $this->znakSprawy,
             'idDokumentu' => $this->idDokumentu,
             'nrNaPismie' => $this->nrNaPismie,

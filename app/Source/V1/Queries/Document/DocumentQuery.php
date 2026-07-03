@@ -109,9 +109,10 @@ SQL;
     public function getProcessNames(KryteriaWyszukiwaniaDokumentow $criteria): array
     {
         $where = $this->getWhereSql(
+            TypUnionDokumentu::DokNiewychodzacyInicjujacySprawe,
             TypDokument::DokPrzychodzacy,
             $criteria->konfiguracja,
-            $criteria->filtry
+            $criteria->filtry,
         );
         $sql = <<<SQL
             SELECT normalized_name,

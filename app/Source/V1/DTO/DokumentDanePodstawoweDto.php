@@ -6,6 +6,7 @@ namespace App\Source\V1\DTO;
 
 use App\Source\V1\Enum\TypDokument;
 use App\Source\V1\Enum\TypFormularza;
+use App\Source\V1\Enum\TypPowiazaniaDokumentu;
 use JsonSerializable;
 
 final readonly class DokumentDanePodstawoweDto implements JsonSerializable
@@ -26,6 +27,7 @@ final readonly class DokumentDanePodstawoweDto implements JsonSerializable
                 statusProcesu: null,
                 typDokumentu: null,
                 typFormularza: null,
+                typPowiazaniaDokumentu: null,
                 znakSprawy: null,
                 idDokumentu: null,
                 nrNaPismie: null,
@@ -60,6 +62,7 @@ final readonly class DokumentDanePodstawoweDto implements JsonSerializable
                 statusProcesu: $row['status_procesu'] ?? null,
                 typDokumentu: TypDokument::tryFromWiersza($row['typ_dokumentu'] ?? null),
                 typFormularza: TypFormularza::tryFromWiersza($row['typ_formularza'] ?? null),
+                typPowiazaniaDokumentu: TypPowiazaniaDokumentu::tryFromWiersza($row['typ_powiazania_dokumentu'] ?? null),
                 znakSprawy: $row['znak_sprawy'] ?? null,
                 idDokumentu: $row['id_dokumentu'] ?? null,
                 nrNaPismie: $row['nr_na_pismie'] ?? null,
@@ -84,6 +87,7 @@ final readonly class DokumentDanePodstawoweDto implements JsonSerializable
             'statusProcesu' => 'Status procesu',
             'typDokumentu' => 'Typ dokumentu',
             'typFormularza' => 'Typ formularza',
+            'typPowiazaniaDokumentu' => 'Powiązanie dokumentu',
             'znakSprawy' => 'Znak sprawy',
             'idDokumentu' => 'Identyfikator dokumentu',
             'nrNaPismie' => 'Numer na piśmie',

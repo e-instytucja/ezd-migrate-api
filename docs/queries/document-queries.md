@@ -8,42 +8,63 @@ Konsumenci (grep): `DocumentService`, `Document\HistoryService`, `AttachmentServ
 
 ## AbstractDocumentQuery
 
-Wspólne filtry WHERE dla 3 gałęzi UNION (`TypDokument`).
+Wspólne filtry WHERE dla 5 gałęzi UNION (`TypUnionDokumentu` — wewnętrzny enum w `Queries/Document/`).
 
-### Gałęzie UNION (`TypDokument`)
+### Gałęzie UNION (`TypUnionDokumentu` — SQL)
 
-| Enum | Wartość JSON / filtra | FROM w SQL | Dodatkowy filtr procesu |
-|------|----------------------|------------|-------------------------|
-| `DokPrzychodzacy` | `dok_przychodzacy` | `eurzad_sprawa es` | `gp.name NOT IN ('zwrot','zwrotka')` |
-| `DokWychodzacy` | `dok_wychodzacy` | `eurzad_pismo ep` | — |
-| `DokZpo` | `dok_zpo` | `eurzad_sprawa es` | `gp.name IN ('zwrot','zwrotka')` |
+| Gałąź SQL | FROM | `typ_powiazania_dokumentu` | `typ_dokumentu` | Dodatkowy filtr |
+|-----------|------|---------------------------|-----------------|-----------------|
+| `dok_wychodzacy_w_sprawie` | `eurzad_pismo ep` | `w_sprawie` | `dok_wychodzacy` | — |
+| `dok_niewychodzacy_inicjujacy_sprawe` | `eurzad_sprawa es` | `inicjujacy_sprawe` | `dok_przychodzacy` / `dok_wewnetrzny` (z `ef.form_typ`) | `gp.name NOT IN ('zwrot','zwrotka')`, klasyfikacja EXISTS `teczka.sprawa_uid` |
+| `dok_niewychodzacy_w_sprawie` | `eurzad_sprawa es` | `w_sprawie` | jw. | jw. + via `teczka_zawartosc`, bez wiodącej |
+| `dok_niewychodzacy_bez_sprawy` | `eurzad_sprawa es` | `bez_sprawy` | jw. | jw. + brak powiązania ze sprawą |
+| `dok_zpo` | `eurzad_sprawa es` | `zpo` | `dok_zpo` | `gp.name IN ('zwrot','zwrotka')` |
 
-`DokPrzychodzacy`: jedna gałąź UNION; `znak_sprawy` = `et.teczka_znak_sprawy`. Scoped do teczki: `INNER JOIN eurzad_teczka et` + membership WHERE; globalnie: `LEFT JOIN LATERAL` (wiodąca lub via `teczka_zawartosc`, `LIMIT 1`).
+Mapowanie filtra `filtry.typ_procesu` (`TypDokument`) → gałęzie UNION:
+
+| `TypDokument` | Gałęzie UNION |
+|---------------|---------------|
+| brak filtra | wszystkie 5 |
+| `DokWychodzacy` | `dok_wychodzacy_w_sprawie` |
+| `DokZpo` | `dok_zpo` |
+| `DokPrzychodzacy` | 3 gałęzie niewychodzące + `ef.form_typ = 'external'` |
+| `DokWewnetrzny` | 3 gałęzie niewychodzące + `ef.form_typ = 'internal'` |
 
 ### TypDokument (API — enum string)
 
-Endpoint `GET|POST /api/v1/documents/types` zwraca 3 typy biznesowe (`TypDokument` enum). Filtr `filtry.typ_procesu` przyjmuje te same wartości string.
+Endpoint `GET|POST /api/v1/documents/types` zwraca 4 typy biznesowe (`TypDokument` enum). Filtr `filtry.typ_procesu` przyjmuje te same wartości string.
 
-| Enum | `id` (JSON, filtry) | `name` (JSON, show) | `label` (JSON) |
-|------|---------------------|---------------------|----------------|
-| `DokWychodzacy` | `dok_wychodzacy` | `dok_wychodzacy` | Dokumenty wychodzące |
-| `DokPrzychodzacy` | `dok_przychodzacy` | `dok_przychodzacy` | Dokumenty przychodzące |
-| `DokZpo` | `dok_zpo` | `dok_zpo` | Potwierdzenia odbioru |
+| Enum | `id` (JSON, filtry) | `label` (JSON) |
+|------|---------------------|----------------|
+| `DokPrzychodzacy` | `dok_przychodzacy` | Dokumenty przychodzące |
+| `DokWewnetrzny` | `dok_wewnetrzny` | Dokumenty wewnętrzne |
+| `DokWychodzacy` | `dok_wychodzacy` | Dokumenty wychodzące |
+| `DokZpo` | `dok_zpo` | Potwierdzenia odbioru |
+
+`DokPrzychodzacy` vs `DokWewnetrzny`: rozróżnienie po `ef.form_typ` (`external` / `internal`) w gałęziach niewychodzących.
+
+### TypPowiazaniaDokumentu (API — enum string)
+
+Eksponowany w liście i show dokumentu (`typPowiazaniaDokumentu`). Wartości: `inicjujacy_sprawe`, `w_sprawie`, `bez_sprawy`, `zpo`.
+
+### TypFormularza (bez zmian)
+
+`typFormularza` (`internal` / `external`) nadal zwracany w API dokumentów i spraw. Dla dokumentów: semantycznie istotny przy klasyfikacji niewychodzących (`DokPrzychodzacy` / `DokWewnetrzny`); dla wychodzących i ZPO — informacyjny.
 
 - `/documents/types` (opcje filtra): `{ "id": "…", "label": "…" }` (`toFilterOption()`)
-- `danePodstawowe.values.typDokumentu` / `typFormularza` (show): `{ "name": "…", "label": "…" }` (`toApi()`); `null` gdy brak wartości
+- `danePodstawowe.values`: `typDokumentu`, `typFormularza`, `typPowiazaniaDokumentu` jako `{ "name": "…", "label": "…" }` (`toApi()`)
 
-- Brak filtra `typ_procesu` → `TypDokument::wszystkie()` (wszystkie gałęzie UNION)
-- Poprawny filtr → jedna gałąź (`[$filtry->typProcesu]`)
-- Nieprawidłowa wartość filtra → **422** (`InvalidArgumentException` w `parseTypProcesu`)
+- Brak filtra `typ_procesu` → 5 gałęzi UNION
+- Poprawny filtr `typ_procesu` → podzbiór gałęzi (patrz tabela wyżej)
+- Nieprawidłowa wartość filtra → **422**
 
-Kolumna SQL `typ_dokumentu` → show: `typDokumentu` (`?TypDokument` w `DokumentDanePodstawoweWartosciDto`, JSON: `{name, label}` lub `null`). Lista (`DocumentService::getList`, `getDocumentsListByCaseUID`): `typ_dokumentu` / `typ_formularza` jako `{name, label}` lub `null` — mapowanie w serwisie (`tryFromWiersza` + `toApi()`), nie w Query.
+Kolumny SQL `typ_dokumentu`, `typ_powiazania_dokumentu` → mapowanie w `DocumentService` (`tryFromWiersza` + `toApi()`), nie w Query.
 
 ### Tryby WHERE
 
 | Tryb | Warunek | Efekt |
 |------|---------|-------|
-| Scoped to teczka | `teczka_uid != null` | `DokPrzychodzacy`: `INNER JOIN et` + membership `(es.sprawa_uid = et.sprawa_uid OR EXISTS teczka_zawartosc)`; `DokWychodzacy`/`DokZpo`: `et.teczka_uid = ?`; bez LIMIT/OFFSET w DocumentListQuery |
+| Scoped to teczka | `teczka_uid != null` | per gałąź: inicjujący → `INNER JOIN et` + `et.sprawa_uid = es.sprawa_uid`; w sprawie → `INNER JOIN et` + `etz`; bez sprawy → wykluczony (`1=0`); wychodzący/ZPO → `et.teczka_uid = ?`; bez LIMIT/OFFSET |
 | Globalny | domyślny | pełne filtry + scope stanowisk + paginacja |
 
 ### Filtry (`TypFiltrDokument`)
@@ -63,25 +84,24 @@ Filtr `oznaczenie`: gdy wartość składa się z cyfr (`ctype_digit`), dodawany 
 
 ## DocumentListQuery
 
-### Start zapytania — zależy od `TypDokument`
+### Start zapytania — zależy od gałęzi UNION
 
-| TypDokument | FROM | Obieg |
-|-------------|------|-------|
-| `DokPrzychodzacy`, `DokZpo` | `eurzad_sprawa es` | `eurzad_obieg` (`max_status_sprawy_id > 0`) |
-| `DokWychodzacy` | `eurzad_pismo ep` | LATERAL `eurzad_pismo_obieg` (ostatni wiersz) |
+| Gałąź | FROM | Obieg |
+|-------|------|-------|
+| niewychodzące (3 gałęzie), `DokZpo` | `eurzad_sprawa es` | `eurzad_obieg` (`max_status_sprawy_id > 0`) |
+| `dok_wychodzacy_w_sprawie` | `eurzad_pismo ep` | LATERAL `eurzad_pismo_obieg` (ostatni wiersz) |
 
-**Różnica względem CaseListQuery:** brak startu od `eurzad_teczka`; teczka dołączana osobno (scoped `DokPrzychodzacy`: INNER JOIN; globalnie `DokPrzychodzacy`: LATERAL).
+### JOIN teczki per gałąź (`TypUnionDokumentu`)
 
-### JOIN teczki per typ
+| Gałąź | Globalnie | Scoped (`teczka_uid`) |
+|-------|-----------|------------------------|
+| `dok_wychodzacy_w_sprawie` | `etz` (`teczka_zawartosc_uid = ep.pismo_uid`) → `et` | `INNER JOIN et ON et.teczka_uid = ?` |
+| `dok_niewychodzacy_inicjujacy_sprawe` | `LEFT JOIN et ON et.sprawa_uid = es.sprawa_uid` | `INNER JOIN et ON et.teczka_uid = ?` + WHERE `et.sprawa_uid = es.sprawa_uid` |
+| `dok_niewychodzacy_w_sprawie` | `INNER JOIN etz` (`teczka_zawartosc_uid = es.sprawa_uid`) → `LEFT JOIN et` | `INNER JOIN et` + `INNER JOIN etz` membership |
+| `dok_niewychodzacy_bez_sprawy` | `LEFT JOIN et ON false` (`znak_sprawy` = NULL) | wykluczony (`1=0`) |
+| `dok_zpo` | `etz2` → `etz` → `et` (Q-06) | `INNER JOIN et ON et.teczka_uid = ?` |
 
-| TypDokument | Łańcuch |
-|-------------|---------|
-| `DokPrzychodzacy` (scoped) | `INNER JOIN eurzad_teczka et ON et.teczka_uid = ?` + membership WHERE |
-| `DokPrzychodzacy` (global) | `LEFT JOIN LATERAL (...)` — wiodąca lub via `teczka_zawartosc`, `LIMIT 1`; alias `et` |
-| `DokWychodzacy` | `LEFT JOIN etz` (`teczka_zawartosc_uid = ep.pismo_uid`) → `LEFT JOIN et` |
-| `DokZpo` | `LEFT JOIN etz2` → `etz` → `et` (self-join zawartości, Q-06) |
-
-Wszystkie typy: `znak_sprawy` = `et.teczka_znak_sprawy` (bez COALESCE `et_w`/`et_z`).
+Klasyfikacja niewychodzących (wzajemnie rozłączna, WHERE): EXISTS `teczka.sprawa_uid`; EXISTS `teczka_zawartosc` bez wiodącej; brak obu.
 
 ### Potwierdzenia odbioru — zwrotki (`DokZpo`)
 
@@ -137,7 +157,7 @@ W Queries **brak** jawnej kolumny FK (np. `parent_pismo_uid`) łączącej zwrotk
 
 ### SELECT — różnice es vs ep
 
-Wspólne kolumny z `commonSelectSql()` (wszystkie typy UNION): m.in. `nazwa_procesu`, `id_procesu`, `typ_formularza` (`ef.form_typ` → `TypFormularza`). Każda gałąź dodaje `'…' AS typ_dokumentu` (wartość `TypDokument`).
+Wspólne kolumny z `commonSelectSql()` (wszystkie gałęzie UNION): m.in. `nazwa_procesu`, `id_procesu`, `typ_formularza` (`ef.form_typ`). Każda gałąź dodaje `typ_dokumentu` i `typ_powiazania_dokumentu`.
 
 | Kolumna | es (`DokPrzychodzacy`/`DokZpo`) | ep (`DokWychodzacy`) |
 |---------|----------------|------------|

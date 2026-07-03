@@ -14,8 +14,6 @@ class DocumentListQuery extends AbstractDocumentQuery
 {
     private $idDokumentuSelect = 'DISTINCT ON (id_dokumentu)';
 
-//    private $idDokumentuSelect = 'id_dokumentu';
-
     public function getList(KryteriaWyszukiwaniaDokumentow $criteria): array
     {
         $this->bindings = [];
@@ -30,8 +28,8 @@ class DocumentListQuery extends AbstractDocumentQuery
         $this->bindings = [];
 
         $parts = array_map(
-            fn (TypDokument $typDokumentu) => '(' . $this->buildUnionPart($typDokumentu, $criteria) . ')',
-            $this->resolveDocumentTypes($criteria->filtry),
+            fn (TypUnionDokumentu $unionPart) => '(' . $this->buildUnionBranchSql($unionPart, $criteria) . ')',
+            $this->resolveUnionParts($criteria->filtry),
         );
 
         $sql = <<<SQL
@@ -49,8 +47,8 @@ class DocumentListQuery extends AbstractDocumentQuery
     private function buildUnionsSql(KryteriaWyszukiwaniaDokumentow $criteria): string
     {
         $parts = array_map(
-            fn (TypDokument $typDokumentu) => '(' . $this->buildUnionPart($typDokumentu, $criteria) . ')',
-            $this->resolveDocumentTypes($criteria->filtry),
+            fn (TypUnionDokumentu $unionPart) => '(' . $this->buildUnionBranchSql($unionPart, $criteria) . ')',
+            $this->resolveUnionParts($criteria->filtry),
         );
 
         $sql = <<<SQL
@@ -69,93 +67,164 @@ class DocumentListQuery extends AbstractDocumentQuery
         return $sql;
     }
 
-    private function buildUnionPart(TypDokument $typDokumentu, KryteriaWyszukiwaniaDokumentow $criteria): string
+    private function buildUnionBranchSql(TypUnionDokumentu $unionPart, KryteriaWyszukiwaniaDokumentow $criteria): string
     {
-        return match ($typDokumentu) {
-            TypDokument::DokPrzychodzacy => $this->pismaPrzychodzaceSql($criteria),
-            TypDokument::DokWychodzacy => $this->dokumentyWSprawieSql($criteria),
-            TypDokument::DokZpo => $this->pismaZwrotSql($criteria),
+        return match ($unionPart) {
+            TypUnionDokumentu::DokWychodzacyWSprawie => $this->dokumentyWSprawieSql($unionPart, $criteria),
+            TypUnionDokumentu::DokNiewychodzacyInicjujacySprawe,
+            TypUnionDokumentu::DokNiewychodzacyWSprawie,
+            TypUnionDokumentu::DokNiewychodzacyBezSprawy => $this->niewychodzacySprawaSql($unionPart, $criteria),
+            TypUnionDokumentu::DokZpo => $this->pismaZwrotSql($unionPart, $criteria),
         };
     }
 
-    private function pismaPrzychodzaceSql(KryteriaWyszukiwaniaDokumentow $criteria): string
+    private function dokumentyWSprawieSql(TypUnionDokumentu $unionPart, KryteriaWyszukiwaniaDokumentow $criteria): string
     {
-        $typDokumentu = TypDokument::DokPrzychodzacy->value;
-        $where = $this->getWhereSql(
-            TypDokument::DokPrzychodzacy,
-            $criteria->konfiguracja,
-            $criteria->filtry
-        );
-
-        return <<<SQL
-            SELECT
-                $this->idDokumentuSelect
-                {$this->commonSelectSql()},
-                {$this->pismoSelectSql()},
-                '{$typDokumentu}' AS typ_dokumentu
-            FROM eurzad_sprawa es
-                {$this->pismoInnerJoinsSql()}
-                {$this->commonInnerJoinSql()}
-                {$this->pismoLeftJoinsSql()}
-                {$this->teczkaJoinsSql(TypDokument::DokPrzychodzacy, $criteria->filtry)}
-            WHERE
-                gp.name NOT IN ('zwrot', 'zwrotka') AND
-                {$where}
-            ORDER BY id_dokumentu ASC, eo.status_sprawy_id DESC
-        SQL;
-    }
-
-    private function dokumentyWSprawieSql(KryteriaWyszukiwaniaDokumentow $criteria): string
-    {
+        $typProcesu = $criteria->filtry->typProcesu;
         $typDokumentu = TypDokument::DokWychodzacy->value;
-        $where = $this->getWhereSql(
-            TypDokument::DokWychodzacy,
-            $criteria->konfiguracja,
-            $criteria->filtry
-        );
+        $typPowiazania = $unionPart->powiazanie()->value;
+        $teczkaJoins = $this->teczkaJoinsSql($unionPart, $criteria->filtry);
+        $where = $this->getWhereSql($unionPart, $typProcesu, $criteria->konfiguracja, $criteria->filtry);
 
         return <<<SQL
             SELECT
                 $this->idDokumentuSelect
                 {$this->commonSelectSql()},
                 {$this->dokumentSelectSql()},
-                '{$typDokumentu}' AS typ_dokumentu
+                '{$typDokumentu}' AS typ_dokumentu,
+                '{$typPowiazania}' AS typ_powiazania_dokumentu
             FROM eurzad_pismo ep
                 {$this->dokumentInnerJoinSql()}
                 {$this->commonInnerJoinSql()}
                 {$this->dokumentLeftJoinsSql()}
-                {$this->teczkaJoinsSql(TypDokument::DokWychodzacy, $criteria->filtry)}
+                {$teczkaJoins}
             WHERE
                 {$where}
             ORDER BY id_dokumentu ASC, epo.pismo_obieg_id DESC
         SQL;
     }
 
-    private function pismaZwrotSql(KryteriaWyszukiwaniaDokumentow $criteria): string
+    private function niewychodzacySprawaSql(TypUnionDokumentu $unionPart, KryteriaWyszukiwaniaDokumentow $criteria): string
     {
-        $typDokumentu = TypDokument::DokZpo->value;
-        $where = $this->getWhereSql(
-            TypDokument::DokZpo,
-            $criteria->konfiguracja,
-            $criteria->filtry,
-        );
+        $typProcesu = $criteria->filtry->typProcesu;
+        $typPowiazania = $unionPart->powiazanie()->value;
+        $teczkaJoins = $this->teczkaJoinsSql($unionPart, $criteria->filtry);
+        $where = $this->getWhereSql($unionPart, $typProcesu, $criteria->konfiguracja, $criteria->filtry);
+        $formTypCondition = $this->formTypConditionSql($typProcesu);
+        $classificationCondition = $this->niewychodzacyClassificationConditionSql($unionPart);
+        $typDokumentuSelect = $this->typDokumentuSelectSql($typProcesu);
 
         return <<<SQL
             SELECT
                 $this->idDokumentuSelect
                 {$this->commonSelectSql()},
                 {$this->pismoSelectSql()},
-                '{$typDokumentu}' AS typ_dokumentu
+                {$typDokumentuSelect},
+                '{$typPowiazania}' AS typ_powiazania_dokumentu
             FROM eurzad_sprawa es
                 {$this->pismoInnerJoinsSql()}
                 {$this->commonInnerJoinSql()}
                 {$this->pismoLeftJoinsSql()}
-                {$this->teczkaJoinsSql(TypDokument::DokZpo, $criteria->filtry)}
+                {$teczkaJoins}
+            WHERE
+                gp.name NOT IN ('zwrot', 'zwrotka') AND
+                {$formTypCondition} AND
+                {$classificationCondition} AND
+                {$where}
+            ORDER BY id_dokumentu ASC, eo.status_sprawy_id DESC
+        SQL;
+    }
+
+    private function pismaZwrotSql(TypUnionDokumentu $unionPart, KryteriaWyszukiwaniaDokumentow $criteria): string
+    {
+        $typProcesu = $criteria->filtry->typProcesu;
+        $typDokumentu = TypDokument::DokZpo->value;
+        $typPowiazania = $unionPart->powiazanie()->value;
+        $teczkaJoins = $this->teczkaJoinsSql($unionPart, $criteria->filtry);
+        $where = $this->getWhereSql($unionPart, $typProcesu, $criteria->konfiguracja, $criteria->filtry);
+
+        return <<<SQL
+            SELECT
+                $this->idDokumentuSelect
+                {$this->commonSelectSql()},
+                {$this->pismoSelectSql()},
+                '{$typDokumentu}' AS typ_dokumentu,
+                '{$typPowiazania}' AS typ_powiazania_dokumentu
+            FROM eurzad_sprawa es
+                {$this->pismoInnerJoinsSql()}
+                {$this->commonInnerJoinSql()}
+                {$this->pismoLeftJoinsSql()}
+                {$teczkaJoins}
             WHERE
                 gp.name IN ('zwrot', 'zwrotka') AND
                 {$where}
             ORDER BY id_dokumentu ASC, eo.status_sprawy_id DESC
         SQL;
+    }
+
+    private function formTypConditionSql(?TypDokument $typProcesu): string
+    {
+        return match ($typProcesu) {
+            TypDokument::DokPrzychodzacy => "ef.form_typ = 'external'",
+            TypDokument::DokWewnetrzny => "ef.form_typ = 'internal'",
+            default => "ef.form_typ IN ('external', 'internal')",
+        };
+    }
+
+    private function typDokumentuSelectSql(?TypDokument $typProcesu): string
+    {
+        if ($typProcesu === TypDokument::DokPrzychodzacy) {
+            return "'dok_przychodzacy' AS typ_dokumentu";
+        }
+
+        if ($typProcesu === TypDokument::DokWewnetrzny) {
+            return "'dok_wewnetrzny' AS typ_dokumentu";
+        }
+
+        return <<<SQL
+            CASE ef.form_typ
+                WHEN 'external' THEN 'dok_przychodzacy'
+                WHEN 'internal' THEN 'dok_wewnetrzny'
+            END AS typ_dokumentu
+        SQL;
+    }
+
+    private function niewychodzacyClassificationConditionSql(TypUnionDokumentu $unionPart): string
+    {
+        return match ($unionPart) {
+            TypUnionDokumentu::DokNiewychodzacyInicjujacySprawe => <<<SQL
+                EXISTS (
+                    SELECT 1
+                    FROM eurzad_teczka t_inic
+                    WHERE t_inic.sprawa_uid = es.sprawa_uid
+                )
+            SQL,
+            TypUnionDokumentu::DokNiewychodzacyWSprawie => <<<SQL
+                EXISTS (
+                    SELECT 1
+                    FROM eurzad_teczka_zawartosc etz_w
+                    WHERE etz_w.teczka_zawartosc_uid = es.sprawa_uid
+                )
+                AND NOT EXISTS (
+                    SELECT 1
+                    FROM eurzad_teczka t_inic
+                    WHERE t_inic.sprawa_uid = es.sprawa_uid
+                )
+            SQL,
+            TypUnionDokumentu::DokNiewychodzacyBezSprawy => <<<SQL
+                NOT EXISTS (
+                    SELECT 1
+                    FROM eurzad_teczka t_inic
+                    WHERE t_inic.sprawa_uid = es.sprawa_uid
+                )
+                AND NOT EXISTS (
+                    SELECT 1
+                    FROM eurzad_teczka_zawartosc etz_w
+                    WHERE etz_w.teczka_zawartosc_uid = es.sprawa_uid
+                )
+            SQL,
+            default => '1 = 1',
+        };
     }
 
     private function commonInnerJoinSql(): string
@@ -167,7 +236,6 @@ class DocumentListQuery extends AbstractDocumentQuery
             INNER JOIN users_users uu ON (uu."userId" = uug."userId")
             INNER JOIN eurzad_form ef ON (gp.normalized_name = ef.form_name)
 SQL;
-
     }
 
     private function pismoSelectSql(): string
@@ -193,8 +261,6 @@ SQL;
                       AND NULLIF(TRIM(fd.form_dane_wartosc), '') IS NOT NULL
                 ) AS has_pozostali_interesanci
 SQL;
-
-
     }
 
     private function dokumentSelectSql(): string
@@ -209,10 +275,8 @@ SQL;
                 (NULLIF(fd_tytul.wartosc, '')::jsonb)->>'textarea' AS dokument_tytul,
                 null AS tresc_wniosku,
                 '' AS nr_ksiegi,
-                false AS has_pozostali_interesanci  --dokumenty (decyzja/korespondencja) dołączane do sprawy - nie mają pola interesanci - dlatego ustawiamy na false
-                
+                false AS has_pozostali_interesanci
 SQL;
-
     }
 
     private function dokumentInnerJoinSql(): string
@@ -230,13 +294,14 @@ SQL;
                 INNER JOIN eurzad_slownik_status ess ON ess.symbol = epo.status
 SQL;
     }
+
     private function commonSelectSql(): string
     {
         return <<<SQL
                 gp.name AS nazwa_procesu,
                 gp.normalized_name AS nazwa_znormalizowana_procesu,
                 gp."pId" AS id_procesu,
-                ef.form_typ AS typ_formularza, -- internal | external (eurzad_form.form_typ)
+                ef.form_typ AS typ_formularza,
                 ess.opis AS status_procesu,
                 et.teczka_znak_sprawy as znak_sprawy,
                 gi.workstation as wlasciciel_stanowisko_id,
@@ -258,37 +323,65 @@ SQL;
                 ps_petent.view_podmiot as interesant,
                 ps_petent.view_adres_korespondencyjny as interesant_adres,
                 pd_petent.typ_osoby as interesant_type
-                
 SQL;
-
     }
 
-    private function teczkaJoinsSql(TypDokument $typDokumentu, TypFiltrDokument $filtry): string
+    private function teczkaJoinsSql(TypUnionDokumentu $unionPart, TypFiltrDokument $filtry): string
     {
-        return match ($typDokumentu) {
-            TypDokument::DokPrzychodzacy => $filtry->isScopedToTeczka()
-                ? 'INNER JOIN eurzad_teczka et ON et.teczka_uid = ' . $this->bind($filtry->teczkaUid)
-                : <<<SQL
-                LEFT JOIN LATERAL (
-                    SELECT t.teczka_znak_sprawy, t.teczka_uid
-                    FROM eurzad_teczka t
-                    WHERE t.sprawa_uid = es.sprawa_uid
-                    UNION ALL
-                    SELECT t.teczka_znak_sprawy, t.teczka_uid
-                    FROM eurzad_teczka_zawartosc z
-                    INNER JOIN eurzad_teczka t ON t.teczka_uid = z.teczka_uid
-                    WHERE z.teczka_zawartosc_uid = es.sprawa_uid
-                    LIMIT 1
-                ) et ON true
-            SQL,
-            TypDokument::DokWychodzacy => <<<SQL
+        if ($filtry->isScopedToTeczka()) {
+            return match ($unionPart) {
+                TypUnionDokumentu::DokNiewychodzacyInicjujacySprawe,
+                TypUnionDokumentu::DokNiewychodzacyWSprawie,
+                TypUnionDokumentu::DokNiewychodzacyBezSprawy => $this->scopedTeczkaJoinsSql($unionPart, $filtry),
+                default => $this->globalTeczkaJoinsSql($unionPart),
+            };
+        }
+
+        return $this->globalTeczkaJoinsSql($unionPart);
+    }
+
+    private function globalTeczkaJoinsSql(TypUnionDokumentu $unionPart): string
+    {
+        return match ($unionPart) {
+            TypUnionDokumentu::DokWychodzacyWSprawie => <<<SQL
                 LEFT JOIN eurzad_teczka_zawartosc etz ON etz.teczka_zawartosc_uid = ep.pismo_uid
                 LEFT JOIN eurzad_teczka et ON et.teczka_uid = etz.teczka_uid
             SQL,
-            TypDokument::DokZpo => <<<SQL
+            TypUnionDokumentu::DokNiewychodzacyInicjujacySprawe => <<<SQL
+                LEFT JOIN eurzad_teczka et ON et.sprawa_uid = es.sprawa_uid
+            SQL,
+            TypUnionDokumentu::DokNiewychodzacyWSprawie => <<<SQL
+                INNER JOIN eurzad_teczka_zawartosc etz ON etz.teczka_zawartosc_uid = es.sprawa_uid
+                LEFT JOIN eurzad_teczka et ON et.teczka_uid = etz.teczka_uid
+            SQL,
+            TypUnionDokumentu::DokNiewychodzacyBezSprawy => <<<SQL
+                LEFT JOIN eurzad_teczka et ON false
+            SQL,
+            TypUnionDokumentu::DokZpo => <<<SQL
                 LEFT JOIN eurzad_teczka_zawartosc etz2 ON etz2.teczka_zawartosc_uid = es.sprawa_uid
                 LEFT JOIN eurzad_teczka_zawartosc etz ON etz.teczka_zawartosc_uid = etz2.teczka_uid
                 LEFT JOIN eurzad_teczka et ON et.teczka_uid = etz.teczka_uid
+            SQL,
+        };
+    }
+
+    private function scopedTeczkaJoinsSql(TypUnionDokumentu $unionPart, TypFiltrDokument $filtry): string
+    {
+        $teczkaUid = $this->bind($filtry->teczkaUid);
+
+        return match ($unionPart) {
+            TypUnionDokumentu::DokNiewychodzacyInicjujacySprawe => <<<SQL
+                INNER JOIN eurzad_teczka et ON et.teczka_uid = {$teczkaUid}
+            SQL,
+            TypUnionDokumentu::DokNiewychodzacyWSprawie => <<<SQL
+                INNER JOIN eurzad_teczka et ON et.teczka_uid = {$teczkaUid}
+                INNER JOIN eurzad_teczka_zawartosc etz ON (
+                    etz.teczka_uid = et.teczka_uid
+                    AND etz.teczka_zawartosc_uid = es.sprawa_uid
+                )
+            SQL,
+            TypUnionDokumentu::DokNiewychodzacyBezSprawy => <<<SQL
+                LEFT JOIN eurzad_teczka et ON false
             SQL,
         };
     }
@@ -300,7 +393,7 @@ SQL;
                 INNER JOIN eurzad_sprawa_przedluzanie esp ON esp.sprawa_uid = es.sprawa_uid
                 INNER JOIN eurzad_obieg eo ON (eo.sprawa_uid = es.sprawa_uid AND max_status_sprawy_id > 0)
                 INNER JOIN eurzad_slownik_status ess ON ess.symbol = eo.status
-                INNER JOIN galaxia_instances gi ON gi."instanceId" = eo."instanceId" 
+                INNER JOIN galaxia_instances gi ON gi."instanceId" = eo."instanceId"
                 INNER JOIN eurzad_sprawa_przedluzanie sp ON sp.sprawa_uid = es.sprawa_uid
         SQL;
     }
@@ -321,14 +414,13 @@ SQL;
                 LEFT JOIN eurzad_form_dane fd_petent
                        ON (fd_petent.sprawa_uid = es.sprawa_uid AND fd_petent.form_dane_pole = 'petent_uid' AND fd_petent.form_dane_wartosc != '')
                 LEFT JOIN eurzad_petent_dane pd_petent ON (
-                        pd_petent.main_petent_uid = fd_petent.form_dane_wartosc 
+                        pd_petent.main_petent_uid = fd_petent.form_dane_wartosc
                         AND pd_petent.petent_uid = pd_petent.main_petent_uid
                 )
                 LEFT JOIN eurzad_petent_search ps_petent ON (ps_petent.main_petent_uid = fd_petent.form_dane_wartosc)
                 LEFT JOIN eurzad_form_dane fd_pliki
                        ON (fd_pliki.sprawa_uid = es.sprawa_uid AND fd_pliki.form_dane_pole = 'pliki' AND fd_pliki.form_dane_wartosc != '')
 SQL;
-
     }
 
     private function dokumentLeftJoinsSql(): string
@@ -338,17 +430,16 @@ SQL;
                     ON (fd_tytul.id = ep.id AND fd_tytul.klucz = 'dokument_tytul')
                 LEFT JOIN eurzad_form_pisma_dane fpd_petent
                     ON (fpd_petent.id = ep.id AND fpd_petent.klucz = 'petent_uid')
-                LEFT JOIN eurzad_petent_dane pd_petent 
+                LEFT JOIN eurzad_petent_dane pd_petent
                     ON (
-                        pd_petent.main_petent_uid = fpd_petent.wartosc 
+                        pd_petent.main_petent_uid = fpd_petent.wartosc
                         AND pd_petent.petent_uid = pd_petent.main_petent_uid
                     )
-                LEFT JOIN eurzad_petent_search ps_petent 
+                LEFT JOIN eurzad_petent_search ps_petent
                     ON (ps_petent.main_petent_uid = fpd_petent.wartosc)
                 LEFT JOIN eurzad_form_pisma_dane fd_pliki
                     ON (fd_pliki.id = ep.id AND fd_pliki.klucz = 'pliki')
 SQL;
-
     }
 
     /**
@@ -360,15 +451,20 @@ SQL;
     }
 
     /**
-     * @return list<TypDokument>
+     * @return list<TypUnionDokumentu>
      */
-    private function resolveDocumentTypes(TypFiltrDokument $filtry): array
+    private function resolveUnionParts(TypFiltrDokument $filtry): array
     {
         if ($filtry->typProcesu === null) {
-            return TypDokument::wszystkie();
+            return TypUnionDokumentu::wszystkie();
         }
 
-        return [$filtry->typProcesu];
+        return match ($filtry->typProcesu) {
+            TypDokument::DokWychodzacy => [TypUnionDokumentu::DokWychodzacyWSprawie],
+            TypDokument::DokZpo => [TypUnionDokumentu::DokZpo],
+            TypDokument::DokPrzychodzacy,
+            TypDokument::DokWewnetrzny => TypUnionDokumentu::niewychodzace(),
+        };
     }
 
     private function getOrderSql(SortowanieDokumentow $sortowanie): string
