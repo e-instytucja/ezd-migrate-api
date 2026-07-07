@@ -23,8 +23,8 @@ class CaseListQuery
                 SELECT
                     {$this->getSelectSql()}
                 FROM eurzad_teczka et
-                    {$this->getInnerJoinSql()}
-                    {$this->getLeftJoinSql()}
+                    {$this->getListInnerJoinSql()}
+                    {$this->getLeftJoinSql($criteria->filtry)}
                 WHERE
                     {$this->getWhereSql($criteria->konfiguracja, $criteria->filtry, $criteria->dntas)}
                 ORDER BY
@@ -46,9 +46,9 @@ class CaseListQuery
 
         $sql = <<<SQL
             SELECT
-                COUNT(et.teczka_uid) AS count
+                COUNT(DISTINCT et.teczka_uid) AS count
             FROM eurzad_teczka et
-                {$this->getInnerJoinSql()}
+                {$this->getCountInnerJoinSql()}
                 {$this->getFilterJoinSql($criteria->filtry)}
             WHERE
                 {$this->getWhereSql($criteria->konfiguracja, $criteria->filtry, $criteria->dntas)}
@@ -87,6 +87,30 @@ class CaseListQuery
 
         if ($filtry->typFormularza !== null) {
             $conditions[] = 'ef.form_typ = ' . $this->bind($filtry->typFormularza->value);
+        }
+
+        if ($filtry->typProcesu !== null) {
+            $conditions[] = 'ef.form_typ = ' . $this->bind($filtry->typProcesu->formTyp());
+        }
+
+        if ($filtry->nazwaProcesu !== null) {
+            $conditions[] = 'gp.normalized_name = ' . $this->bind($filtry->nazwaProcesu);
+        }
+
+        if ($filtry->documentId !== null) {
+            $conditions[] = 'es.sprawa_uid = ' . $this->bind($filtry->documentId);
+        }
+
+        if ($filtry->opisDokumentu !== null) {
+            $conditions[] = $this->opisDokumentuCondition($filtry->opisDokumentu);
+        }
+
+        if ($filtry->dataRejestracjiOd !== null) {
+            $conditions[] = $this->dataRejestracjiFromCondition($filtry->dataRejestracjiOd);
+        }
+
+        if ($filtry->dataRejestracjiDo !== null) {
+            $conditions[] = $this->dataRejestracjiToCondition($filtry->dataRejestracjiDo);
         }
 
         if ($filtry->wlascicielStanowisko !== null) {
@@ -173,16 +197,77 @@ class CaseListQuery
 
     private function getFilterJoinSql(TypFiltrSpraw $filtry): string
     {
-        if (!$filtry->requiresInteresantJoin()) {
-            return '';
-        }
+        $joins = '';
 
-        return <<<SQL
+        if ($filtry->requiresInteresantJoin()) {
+            $joins .= <<<SQL
 
                 LEFT JOIN eurzad_form_dane fd_petent
                        ON (fd_petent.sprawa_uid = es.sprawa_uid AND fd_petent.form_dane_pole = 'petent_uid' AND fd_petent.form_dane_wartosc != '')
                 LEFT JOIN eurzad_petent_search ps_petent ON (ps_petent.main_petent_uid = fd_petent.form_dane_wartosc)
-        SQL;
+            SQL;
+        }
+
+        return $joins . $this->getFormDaneJoinSql($filtry);
+    }
+
+    private function getFormDaneJoinSql(TypFiltrSpraw $filtry): string
+    {
+        $joins = '';
+
+        if ($filtry->requiresDataRejJoin()) {
+            $joins .= <<<SQL
+
+                LEFT JOIN eurzad_form_dane fd_data_rej
+                       ON (fd_data_rej.sprawa_uid = es.sprawa_uid AND fd_data_rej.form_dane_pole = 'data' AND fd_data_rej.form_dane_wartosc != '')
+            SQL;
+        }
+
+        if ($filtry->requiresOpisJoin()) {
+            $joins .= <<<SQL
+
+                LEFT JOIN eurzad_form_dane fd_tytul
+                       ON (fd_tytul.sprawa_uid = es.sprawa_uid AND fd_tytul.form_dane_pole = 'dokument_tytul' AND fd_tytul.form_dane_wartosc != '')
+                LEFT JOIN eurzad_form_dane fd_tresc_wniosku
+                       ON (fd_tresc_wniosku.sprawa_uid = es.sprawa_uid AND fd_tresc_wniosku.form_dane_pole = 'tresc_wniosku' AND fd_tresc_wniosku.form_dane_wartosc != '')
+            SQL;
+        }
+
+        return $joins;
+    }
+
+    private function opisDokumentuCondition(string $opis): string
+    {
+        $pattern = '%' . $opis . '%';
+        $bindTresc = $this->bind($pattern);
+        $bindTytul = $this->bind($pattern);
+
+        return <<<SQL
+    (
+        fd_tresc_wniosku.form_dane_wartosc ILIKE {$bindTresc}
+        OR (fd_tytul.form_dane_wartosc::jsonb)->>'textarea' ILIKE {$bindTytul}
+    )
+SQL;
+    }
+
+    private function dataRejestracjiFromCondition(string $dataOd): string
+    {
+        return <<<SQL
+COALESCE(
+    NULLIF(TRIM(fd_data_rej.form_dane_wartosc), '')::timestamp,
+    esp.sprawa_createdate
+) >=
+SQL . $this->bind($dataOd . ' 00:00:00');
+    }
+
+    private function dataRejestracjiToCondition(string $dataDo): string
+    {
+        return <<<SQL
+COALESCE(
+    NULLIF(TRIM(fd_data_rej.form_dane_wartosc), '')::timestamp,
+    esp.sprawa_createdate
+) <=
+SQL . $this->bind($dataDo . ' 23:59:59');
     }
 
     private function bind(mixed $value): string
@@ -252,7 +337,7 @@ class CaseListQuery
         SQL;
     }
 
-    private function getInnerJoinSql(): string
+    private function getCountInnerJoinSql(): string
     {
         return <<<SQL
                 INNER JOIN eurzad_sprawa es ON es.sprawa_uid = et.sprawa_uid
@@ -262,12 +347,26 @@ class CaseListQuery
                 INNER JOIN eurzad_slownik_status ess ON ess.symbol = eo.status
                 INNER JOIN galaxia_instances gi ON gi."instanceId" = eo."instanceId"
                 INNER JOIN eurzad_sprawa_przedluzanie esp ON esp.sprawa_uid = es.sprawa_uid
+        SQL;
+    }
+
+    private function getListInnerJoinSql(): string
+    {
+        return $this->getCountInnerJoinSql() . <<<SQL
+
                 INNER JOIN users_groups ug_w ON (ug_w.group_id = gi.workstation)
                 INNER JOIN users_groups ug_g ON (ug_g.group_id = ug_w.parent_group_id)
                 INNER JOIN users_usergroups uug ON (uug.group_id = ug_w.group_id AND uug.status = 'A' AND uug.typ = 'Z')
                 INNER JOIN users_users uu ON (uu."userId" = uug."userId")
         SQL;
-        /*
+    }
+
+    private function getInnerJoinSql(): string
+    {
+        return $this->getListInnerJoinSql();
+    }
+
+    /*
         musiałem wykonać taki sql - żeby "INNER JOIN eurzad_obieg eo ON (eo.sprawa_uid = es.sprawa_uid AND eo.max_status_sprawy_id > 0)"
         zadziałał prawidłowo.
         był błąd w bazie danych (pewnie w kolejnych wersjach jakaś była na to poprawka)
@@ -292,16 +391,11 @@ UPDATE eurzad_obieg eo
 SET max_status_sprawy_id = CASE WHEN r.rn = 1 THEN 1 ELSE 0 END
 FROM ranked r
 WHERE eo.status_sprawy_id = r.status_sprawy_id;
+    */
 
-         *
-         */
-    }
-
-    private function getLeftJoinSql(): string
+    private function getLeftJoinSql(TypFiltrSpraw $filtry): string
     {
         return <<<SQL
-                -- LEFT JOIN eurzad_form_dane fd_tytul
-                --         ON (fd_tytul.sprawa_uid = es.sprawa_uid AND fd_tytul.form_dane_pole = 'dokument_tytul' AND fd_tytul.form_dane_wartosc != '')
                 LEFT JOIN eurzad_form_dane fd_petent
                        ON (fd_petent.sprawa_uid = es.sprawa_uid AND fd_petent.form_dane_pole = 'petent_uid' AND fd_petent.form_dane_wartosc != '')
                 LEFT JOIN eurzad_petent_dane pd_petent ON (
@@ -311,6 +405,6 @@ WHERE eo.status_sprawy_id = r.status_sprawy_id;
                 LEFT JOIN eurzad_petent_search ps_petent ON (ps_petent.main_petent_uid = fd_petent.form_dane_wartosc)
                 LEFT JOIN eurzad_form_dane fd_pliki
                        ON (fd_pliki.sprawa_uid = es.sprawa_uid AND fd_pliki.form_dane_pole = 'pliki' AND fd_pliki.form_dane_wartosc != '')
-        SQL;
+        SQL . $this->getFormDaneJoinSql($filtry);
     }
 }

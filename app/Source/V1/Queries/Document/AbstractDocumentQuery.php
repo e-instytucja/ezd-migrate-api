@@ -124,13 +124,20 @@ abstract class AbstractDocumentQuery
 
     protected function rokCondition(TypUnionDokumentu $unionPart, int $rok): string
     {
+        $from = $rok . '-01-01 00:00:00';
+        $to = ($rok + 1) . '-01-01 00:00:00';
+
         if ($unionPart->isWychodzacy()) {
-            return 'EXTRACT(YEAR FROM ep.pismo_createdate) = ' . $this->bind($rok);
+            return 'ep.pismo_createdate >= ' . $this->bind($from)
+                . ' AND ep.pismo_createdate < ' . $this->bind($to);
         }
 
-        return 'EXTRACT(YEAR FROM COALESCE('
+        return 'COALESCE('
             . "NULLIF(TRIM(fd_data_rej.form_dane_wartosc), '')::timestamp, "
-            . 'esp.sprawa_createdate)) = ' . $this->bind($rok);
+            . 'esp.sprawa_createdate) >= ' . $this->bind($from)
+            . ' AND COALESCE('
+            . "NULLIF(TRIM(fd_data_rej.form_dane_wartosc), '')::timestamp, "
+            . 'esp.sprawa_createdate) < ' . $this->bind($to);
     }
 
     protected function opisDokumentuCondition(TypUnionDokumentu $unionPart, string $opis): string

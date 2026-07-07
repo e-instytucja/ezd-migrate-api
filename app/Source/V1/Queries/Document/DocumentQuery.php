@@ -166,14 +166,12 @@ SQL;
             o.status,
             ss.opis
         FROM
-            eurzad_sprawa sp
-        INNER JOIN
             eurzad_obieg o
-                ON sp.sprawa_uid = o.sprawa_uid
-               AND o.max_status_sprawy_id > 0
         INNER JOIN
             eurzad_slownik_status ss
                 ON ss.symbol = o.status
+        WHERE
+            o.max_status_sprawy_id > 0
         GROUP BY
             o.status,
             ss.opis
@@ -181,26 +179,23 @@ SQL;
         UNION
 
         SELECT
-            po.status,
+            latest.status,
             ss.opis
-        FROM
-            eurzad_pismo p
-        INNER JOIN
-            eurzad_pismo_obieg po
-                ON po.pismo_uid = p.pismo_uid
-               AND po.createdate = (
-                    SELECT
-                        MAX(po2.createdate)
-                    FROM
-                        eurzad_pismo_obieg po2
-                    WHERE
-                        po2.pismo_uid = p.pismo_uid
-                )
+        FROM (
+            SELECT DISTINCT ON (po.pismo_uid)
+                po.pismo_uid,
+                po.status
+            FROM
+                eurzad_pismo_obieg po
+            ORDER BY
+                po.pismo_uid,
+                po.pismo_obieg_id DESC
+        ) latest
         INNER JOIN
             eurzad_slownik_status ss
-                ON ss.symbol = po.status
+                ON ss.symbol = latest.status
         GROUP BY
-            po.status,
+            latest.status,
             ss.opis
     ) statuses
     ORDER BY

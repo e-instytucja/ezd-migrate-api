@@ -43,6 +43,18 @@ Aktywny pracownik stanowiska: `uug.status = 'A' AND uug.typ = 'Z'` — znaczenie
 | `tytulSprawy` | `filtry.tytu_sprawy` | `et.tytul_sprawy ILIKE ?` |
 | `interesant` | `filtry.interesant` | ILIKE na `ps_petent` |
 | `dataWszczeciaOd/Do` | `filtry.data_wszczecia_od/do` | `et.teczka_createdate` |
+| `typProcesu` | `filtry.typ_procesu` | `ef.form_typ` (`dok_przychodzacy` → `external`, `dok_wewnetrzny` → `internal`; inne wartości → 422) |
+| `nazwaProcesu` | `filtry.nazwa_procesu` | `gp.normalized_name = ?` |
+| `documentId` | `filtry.documentId` | `es.sprawa_uid = ?` (wartość jako string, bez lookup `galaxia_instances`) |
+| `opisDokumentu` | `filtry.opis_dokumentu` | ILIKE na `fd_tresc_wniosku` i `fd_tytul` (JOIN warunkowy) |
+| `dataRejestracjiOd/Do` | `filtry.data_rejestracji_od/do` | `COALESCE(fd_data_rej, esp.sprawa_createdate)` (JOIN warunkowy) |
+
+### JOIN-y warunkowe (filtry dokumentu inicjującego)
+
+| Alias | Tabela | Kiedy |
+|-------|--------|-------|
+| `fd_data_rej` | `eurzad_form_dane` (`form_dane_pole = 'data'`) | `requiresDataRejJoin()` |
+| `fd_tytul`, `fd_tresc_wniosku` | `eurzad_form_dane` | `requiresOpisJoin()` |
 
 ### `pokaz_udostepnione`
 
@@ -66,10 +78,12 @@ Zakomentowany JOIN `dokument_tytul` — tytuł z formularza **nie** w liście.
 
 ### getList vs getListCount
 
-| Metoda | JOIN petenta |
-|--------|--------------|
-| `getList()` | zawsze LEFT (getLeftJoinSql) |
-| `getListCount()` | tylko gdy `TypFiltrSpraw::requiresInteresantJoin()` |
+| Metoda | JOIN petenta / users |
+|--------|----------------------|
+| `getList()` | pełny rdzeń (`getListInnerJoinSql`) z `users_*` + LEFT JOIN petenta/formularza |
+| `getListCount()` | rdzeń bez `users_*` (`getCountInnerJoinSql`) + `COUNT(DISTINCT et.teczka_uid)`; JOIN-y formularza tylko gdy filtr wymaga |
+
+`users_*` w COUNT powodowały mnożenie wierszy (wiele aktywnych użytkowników na stanowisko) i zbędny koszt JOIN-ów.
 
 ---
 
@@ -90,7 +104,7 @@ Query Builder. Metody lookup / historia.
 | `getSprawaUidByTeczkaZawartoscUid` | teczka_zawartosc → teczka → obieg | `status_sprawy_id > 0` (nie max) |
 | `getAllFromTeczkaBySprawaUid` | teczka + podteczki | filtr `dntas` |
 | `getTitleAndDescription` | `eurzad_teczka` | filtr `dntas` |
-| `getStatuses($dntas)` | teczka → obieg | `max_status_sprawy_id > 0` |
+| `getStatuses($dntas)` | `eurzad_obieg` + EXISTS `eurzad_teczka` (`dntas`) | `max_status_sprawy_id > 0`; bez pełnego JOIN teczka×obieg |
 
 ### Niespójność wyboru wiersza obiegu (Q-01)
 

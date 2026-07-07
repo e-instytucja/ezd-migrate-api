@@ -210,13 +210,17 @@ class CaseQuery
      */
     public function getStatuses(int $dntas = 0): array
     {
-        return DB::table('eurzad_teczka as t')
-            ->join('eurzad_obieg as o', function ($join) {
-                $join->on('t.sprawa_uid', '=', 'o.sprawa_uid')
-                    ->where('o.max_status_sprawy_id', '>', 0);
-            })
+        $query = DB::table('eurzad_obieg as o')
             ->join('eurzad_slownik_status as s', 's.symbol', '=', 'o.status')
-            ->where('t.dntas', $dntas)
+            ->where('o.max_status_sprawy_id', '>', 0)
+            ->whereExists(function ($subquery) use ($dntas) {
+                $subquery->select(DB::raw(1))
+                    ->from('eurzad_teczka as t')
+                    ->whereColumn('t.sprawa_uid', 'o.sprawa_uid')
+                    ->where('t.dntas', $dntas);
+            });
+
+        return $query
             ->select('o.status', 's.opis')
             ->groupBy('o.status', 's.opis')
             ->orderBy('s.opis')

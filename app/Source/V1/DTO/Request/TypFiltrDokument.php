@@ -31,7 +31,7 @@ readonly class TypFiltrDokument
     public static function fromArray(array $data): self
     {
         return new self(
-            documentId: self::nullableString($data['documentId'] ?? null),
+            documentId: self::coerceDocumentId($data['documentId'] ?? null),
             teczkaUid: self::nullableString($data['teczka_uid'] ?? null),
             rok: isset($data['rok']) ? (int) $data['rok'] : null,
             typProcesu: self::parseTypProcesu($data['typ_procesu'] ?? null),
@@ -69,7 +69,7 @@ readonly class TypFiltrDokument
         return $this->interesant !== null;
     }
 
-    private static function parseTypProcesu(mixed $value): ?TypDokument
+    public static function parseTypProcesu(mixed $value): ?TypDokument
     {
         if ($value === null || $value === '') {
             return null;
@@ -91,6 +91,25 @@ readonly class TypFiltrDokument
         }
 
         return $typDokumentu;
+    }
+
+    public static function coerceDocumentId(mixed $value): ?string
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        if (is_int($value) || is_float($value)) {
+            $value = (string) $value;
+        }
+
+        if (!is_string($value)) {
+            return null;
+        }
+
+        $value = trim($value);
+
+        return $value === '' ? null : $value;
     }
 
     private static function coerceString(mixed $value): ?string

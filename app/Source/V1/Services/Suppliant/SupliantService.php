@@ -57,7 +57,7 @@ class SupliantService
         $row['pozostali_interesanci_tooltip_count'] = 0;
         $row['pozostali_interesanci_tooltip'] = '';
 
-        if ($row['has_pozostali_interesanci'] === false) {
+        if ($row['has_pozostali_interesanci'] === true) {
             $row['pozostali_interesanci'] = $this->getAdditionalSuppliants($documentUid);
             $row['pozostali_interesanci_tooltip_count'] = count($row['pozostali_interesanci']);
             $row['pozostali_interesanci_tooltip'] = implode(', ', array_column(

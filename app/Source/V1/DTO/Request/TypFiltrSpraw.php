@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Source\V1\DTO\Request;
 
+use App\Source\V1\Enum\TypDokument;
 use App\Source\V1\Enum\TypFormularza;
 
 readonly class TypFiltrSpraw extends \App\Source\V1\DTO\Request\TypFiltrDokument
@@ -21,6 +22,12 @@ readonly class TypFiltrSpraw extends \App\Source\V1\DTO\Request\TypFiltrDokument
         public ?string $dataWszczeciaOd = null,
         public ?string $dataWszczeciaDo = null,
         public ?TypFormularza $typFormularza = null,
+        public ?string $documentId = null,
+        public ?TypDokument $typProcesu = null,
+        public ?string $nazwaProcesu = null,
+        public ?string $opisDokumentu = null,
+        public ?string $dataRejestracjiOd = null,
+        public ?string $dataRejestracjiDo = null,
     ) {
     }
 
@@ -39,12 +46,45 @@ readonly class TypFiltrSpraw extends \App\Source\V1\DTO\Request\TypFiltrDokument
             dataWszczeciaOd: self::nullableString($data['data_wszczecia_od'] ?? null),
             dataWszczeciaDo: self::nullableString($data['data_wszczecia_do'] ?? null),
             typFormularza: TypFormularza::tryFromFiltra($data['typ_formularza'] ?? null),
+            documentId: TypFiltrDokument::coerceDocumentId($data['documentId'] ?? null),
+            typProcesu: self::parseTypProcesuInicjujacy($data['typ_procesu'] ?? null),
+            nazwaProcesu: self::nullableString($data['nazwa_procesu'] ?? null),
+            opisDokumentu: self::nullableString($data['opis_dokumentu'] ?? null),
+            dataRejestracjiOd: self::nullableString($data['data_rejestracji_od'] ?? null),
+            dataRejestracjiDo: self::nullableString($data['data_rejestracji_do'] ?? null),
         );
     }
 
     public function requiresInteresantJoin(): bool
     {
         return $this->interesant !== null;
+    }
+
+    public function requiresOpisJoin(): bool
+    {
+        return $this->opisDokumentu !== null;
+    }
+
+    public function requiresDataRejJoin(): bool
+    {
+        return $this->dataRejestracjiOd !== null || $this->dataRejestracjiDo !== null;
+    }
+
+    private static function parseTypProcesuInicjujacy(mixed $value): ?TypDokument
+    {
+        $typProcesu = TypFiltrDokument::parseTypProcesu($value);
+
+        if ($typProcesu === null) {
+            return null;
+        }
+
+        if (!$typProcesu->isNiewychodzacy()) {
+            throw new \InvalidArgumentException(
+                'Nieprawidłowy filtr filtry.typ_procesu dla spraw — dozwolone: dok_przychodzacy, dok_wewnetrzny.',
+            );
+        }
+
+        return $typProcesu;
     }
 
     private static function parseSprawaUid(array $data): ?string

@@ -37,6 +37,17 @@ final class DocumentsSmokeTest extends ApiTestCase
         $this->assertApiError($response, 422, 'request_failed');
     }
 
+    public function test_list_post_with_document_id_filter_not_server_error(): void
+    {
+        $fixture = $this->apiFixture();
+        $payload = $this->apiListPayload($fixture['workstation_ids']);
+        $payload['filtry']['documentId'] = '12345';
+
+        $response = $this->postApi('/documents', $payload);
+
+        $this->assertNotServerError($response);
+    }
+
     public function test_show_get_not_server_error(): void
     {
         $fixture = $this->apiFixture();

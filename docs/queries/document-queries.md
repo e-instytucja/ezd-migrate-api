@@ -76,6 +76,7 @@ Kolumny SQL `typ_dokumentu`, `typ_powiazania_dokumentu` → mapowanie w `Documen
 | `typFormularza` | `filtry.typ_formularza` | `ef.form_typ = ?` (`TypFormularza`: `internal` \| `external`; tylko tryb globalny) |
 | `trescPisma` | `filtry.tresc_pisma` | **brak WHERE** — Q-03 |
 | `pokazUdostepnione` | `filtry.pokaz_udostepnione` | patrz README — obecność klucza (Q-02) |
+| `rok` | `filtry.rok` | zakres dat: `>= '{rok}-01-01'` i `< '{rok+1}-01-01'` (wychodzące: `ep.pismo_createdate`; niewychodzące: `COALESCE(fd_data_rej, esp.sprawa_createdate)`) |
 | pozostałe | patrz case-queries / kod AbstractDocumentQuery | |
 
 Filtr `oznaczenie`: gdy wartość składa się z cyfr (`ctype_digit`), dodawany warunek `gi."instanceId" = ?` — stąd numeric `\d+` w routes ma sens dla wyszukiwania, niekoniecznie jako PK dokumentu.
@@ -151,6 +152,8 @@ W Queries **brak** jawnej kolumny FK (np. `parent_pismo_uid`) łączącej zwrotk
 
 `DISTINCT ON (id_dokumentu)` w każdej gałęzi; dedup przed zewnętrznym ORDER BY.
 
+`getList()` i `getListCount()` używają tego samego `buildUnionBranchSql()` — COUNT owija pełne gałęzie UNION w podzapytanie.
+
 ### Duplikat JOIN (Q-07)
 
 `pismoInnerJoinsSql`: `eurzad_sprawa_przedluzanie` jako `esp` i `sp` — ten sam warunek JOIN.
@@ -199,7 +202,7 @@ UNION `eurzad_sprawa` + `eurzad_pismo`. W obu gałęziach JOIN `galaxia_instance
 
 ### getStatuses
 
-UNION statusów z obiegu spraw (`max_status_sprawy_id > 0`) i pism (wiersz z MAX `createdate` per pismo). Bez filtrów requestu.
+UNION statusów z obiegu spraw (`eurzad_obieg`, `max_status_sprawy_id > 0`) i pism (`DISTINCT ON (pismo_uid)` po `pismo_obieg_id DESC` — bez skorelowanego `MAX(createdate)` per wiersz). Bez filtrów requestu.
 
 ---
 
