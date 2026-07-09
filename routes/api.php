@@ -144,6 +144,15 @@ Route::prefix('v1')
         */
 
 //        Route::get('/attachments/{attachmentUid}', [AttachmentController::class, 'show'])
+        Route::match(['get', 'post'], '/attachments/epuap/{zalacznikUid}/{fileId}', [AttachmentController::class, 'showEpuapWithZalacznikUid'])
+            ->where('zalacznikUid', '[a-f0-9]{13}')
+            ->where('fileId', '[a-zA-Z0-9._-]+')
+            ->name('attachments.epuap.show.with_zalacznik_uid');
+
+        Route::match(['get', 'post'], '/attachments/epuap/{fileId}', [AttachmentController::class, 'showEpuap'])
+            ->where('fileId', '[a-zA-Z0-9._-]+')
+            ->name('attachments.epuap.show');
+
         Route::match(['get', 'post'], '/attachments/{attachmentUid}', [AttachmentController::class, 'show'])
             ->where('attachmentUid', '[a-f0-9]{13}')
             ->name('attachments.show');

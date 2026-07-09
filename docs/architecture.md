@@ -31,6 +31,7 @@ Identyfikatory w routes:
 | `{caseUid}` | `[a-f0-9]{13}` | |
 | `{documentId}` | `(\d+\|[a-f0-9]{13})` | @TODO: docelowo numeric `instanceId` |
 | `{attachmentUid}` | `[a-f0-9]{13}` | |
+| `{fileId}` | `[a-zA-Z0-9._-]+` | identyfikator ePUAP (`epuap_download_file.file_id`) |
 
 ### 2. Kontrolery (`app/Http/Controllers/Api/V1/`)
 
@@ -39,7 +40,7 @@ Identyfikatory w routes:
 | `CasesController` | `CaseService` | `dntas = 0` |
 | `DntasController` | `CaseService` | `dntas = 1`, `AbstractCaseController` |
 | `DocumentsController` | `DocumentService` | |
-| `AttachmentController` | `AttachmentService` | binary stream (pojedynczy załącznik) |
+| `AttachmentController` | `AttachmentService` | binary stream (`show`, `showEpuap`) |
 | `WorkstationsController` | `WorkstationService` | tylko GET |
 
 ### 3. Request DTO (`app/Source/V1/DTO/Request/`)

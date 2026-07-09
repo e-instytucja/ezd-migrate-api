@@ -25,6 +25,57 @@ class AttachmentController extends BaseApiController
     {
         $file = $this->service->getAttachmentContent($attachmentUid);
 
+        return $this->streamAttachmentFile($file);
+    }
+
+    public function showEpuap(Request $request, string $fileId): SymfonyResponse
+    {
+        $file = $this->service->getEpuapAttachmentContent($fileId);
+
+        return $this->streamAttachmentFile($file);
+    }
+
+    public function showEpuapWithZalacznikUid(Request $request, string $zalacznikUid, string $fileId): SymfonyResponse
+    {
+        return $this->showEpuap($request, $fileId);
+    }
+
+    public function caseAttachments(Request $request, string $caseUid): Response
+    {
+        return $this->renderResponse(
+            $request,
+            $this->service->getCaseAttachments($caseUid)
+        );
+    }
+
+    public function dntasCaseAttachments(Request $request, string $caseUid): Response
+    {
+        return $this->renderResponse(
+            $request,
+            $this->service->getCaseAttachments($caseUid)
+        );
+    }
+
+    public function documentAttachments(Request $request, string $documentId): Response
+    {
+        return $this->renderResponse(
+            $request,
+            $this->service->getDocumentAttachments($documentId)
+        );
+    }
+
+    /**
+     * @param array{
+     *     path: string,
+     *     mime: string,
+     *     filename: string,
+     *     content_length: int,
+     *     extension: string,
+     *     md5: string
+     * } $file
+     */
+    private function streamAttachmentFile(array $file): SymfonyResponse
+    {
         $safeHeaderFilename = str_replace(["\r", "\n", '"'], '', $file['filename']);
         $headers = [
             'Content-Type' => $file['mime'],
@@ -61,30 +112,6 @@ class AttachmentController extends BaseApiController
             },
             $safeHeaderFilename,
             $headers
-        );
-    }
-
-    public function caseAttachments(Request $request, string $caseUid): Response
-    {
-        return $this->renderResponse(
-            $request,
-            $this->service->getCaseAttachments($caseUid)
-        );
-    }
-
-    public function dntasCaseAttachments(Request $request, string $caseUid): Response
-    {
-        return $this->renderResponse(
-            $request,
-            $this->service->getCaseAttachments($caseUid)
-        );
-    }
-
-    public function documentAttachments(Request $request, string $documentId): Response
-    {
-        return $this->renderResponse(
-            $request,
-            $this->service->getDocumentAttachments($documentId)
         );
     }
 }

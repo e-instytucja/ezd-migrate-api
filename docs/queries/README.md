@@ -89,6 +89,7 @@ Warunek w Query: `$filtry->pokazUdostepnione !== null` przekazywany jako `$inclu
 - [document-queries.md](document-queries.md)
 - [registry-assignment-queries.md](registry-assignment-queries.md)
 - [registry-assignment-rpw-queries.md](registry-assignment-rpw-queries.md)
+- [attachment-queries.md](attachment-queries.md)
 
 ## Otwarte kwestie
 

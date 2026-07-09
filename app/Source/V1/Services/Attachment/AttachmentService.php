@@ -3,6 +3,7 @@ declare(strict_types=1);
 namespace App\Source\V1\Services\Attachment;
 use App\Source\V1\DTO\ZalacznikDto;
 use App\Source\V1\Queries\Attachment\AttachmentQuery;
+use App\Source\V1\Services\Attachment\Exception\AttachmentPendingDownloadException;
 use App\Source\V1\Queries\Case\CaseQuery;
 use App\Source\V1\Queries\Document\DocumentQuery;
 use App\Source\V1\Queries\Form\FormQuery;
@@ -18,6 +19,7 @@ class AttachmentService
 
     public function __construct(
         private readonly AttachmentQuery $attachmentQuery,
+        private readonly AttachmentPathResolver $attachmentPathResolver,
         private readonly CaseQuery $caseQuery,
         private readonly DocumentQuery $documentQuery,
         private readonly FormQuery $formQuery
@@ -142,6 +144,102 @@ class AttachmentService
             'content_length' => $fileSize,
             'extension' => $attachmentDetails->extension,
             'md5' => $attachmentDetails->md5,
+        ];
+    }
+
+    /**
+     * @return array{
+     *     path: string,
+     *     mime: string,
+     *     filename: string,
+     *     content_length: int,
+     *     extension: string,
+     *     md5: string
+     * }
+     */
+    public function getEpuapAttachmentContent(string $fileId): array
+    {
+        Log::notice('ATTACHMENT.epuap.start', [
+            'file_id_prefix' => substr($fileId, 0, 8),
+        ]);
+        $startedAt = Functions::startTimer();
+
+        if ($fileId === '') {
+            Log::error('ATTACHMENT.epuap.error', ['error' => 'empty_file_id']);
+            throw new RuntimeException('Attachment details not found');
+        }
+
+        $epuapDownloadRow = $this->attachmentQuery->getEpuapDownloadFileRowByFileId($fileId);
+        if ($epuapDownloadRow === null) {
+            Log::error('ATTACHMENT.epuap.error', [
+                'file_id_prefix' => substr($fileId, 0, 8),
+                'error' => 'epuap_download_not_found',
+            ]);
+            throw new RuntimeException('Attachment details not found');
+        }
+
+        $zalacznikUid = (string) $epuapDownloadRow->zalacznik_uid;
+
+        // Opcjonalna walidacja pary (tymczasowo wyłączona):
+        // $expectedZalacznikUid = trim((string) $requestZalacznikUid);
+        // if ($expectedZalacznikUid !== '' && $zalacznikUid !== $expectedZalacznikUid) {
+        //     throw new RuntimeException('Attachment details not found');
+        // }
+
+        $attachmentRow = $this->attachmentQuery->getAttachmentRow($zalacznikUid);
+        if ($attachmentRow === null) {
+            Log::error('ATTACHMENT.epuap.error', [
+                'zalacznik_uid' => $zalacznikUid,
+                'error' => 'details_not_found',
+            ]);
+            throw new RuntimeException('Attachment details not found');
+        }
+
+        $path = $this->attachmentPathResolver->resolve(
+            $attachmentRow,
+            (string) env('FILES_URL')
+        );
+
+        if (!is_file($path) || !is_readable($path)) {
+            Log::warning('ATTACHMENT.epuap.pending', [
+                'zalacznik_uid' => $zalacznikUid,
+                'file_id_prefix' => substr($fileId, 0, 8),
+                'path' => $path,
+            ]);
+            throw new AttachmentPendingDownloadException();
+        }
+
+        $fileSize = filesize($path);
+        if ($fileSize === false) {
+            Log::error('ATTACHMENT.epuap.error', [
+                'zalacznik_uid' => $zalacznikUid,
+                'error' => 'cannot_resolve_filesize',
+            ]);
+            throw new RuntimeException('Cannot resolve file size');
+        }
+
+        $fileInfo = $this->resolveFileInfo((string) ($attachmentRow->zalacznik_original_filename ?? ''));
+        $downloadFilename = $this->resolveDownloadFilename(
+            originalName: (string) ($attachmentRow->zalacznik_original_filename ?? ''),
+            storedFilename: (string) ($attachmentRow->zalacznik_filename ?? ''),
+            extension: $fileInfo['extension']
+        );
+
+        Log::info('[' . Functions::elapsedMs($startedAt) . '] ATTACHMENT.epuap.ok', [
+            'zalacznik_uid' => $zalacznikUid,
+            'file_id_prefix' => substr($fileId, 0, 8),
+            'filename' => $downloadFilename,
+            'mime' => $fileInfo['mime'],
+            'size_bytes' => $fileSize,
+        ]);
+
+        return [
+            'path' => $path,
+            'mime' => $fileInfo['mime'] !== '' ? $fileInfo['mime'] : 'application/octet-stream',
+            'filename' => $downloadFilename,
+            'content_length' => $fileSize,
+            'extension' => $fileInfo['extension'],
+            'md5' => (string) ($attachmentRow->zalacznik_md5_sum ?? ''),
         ];
     }
 

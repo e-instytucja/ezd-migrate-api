@@ -106,6 +106,7 @@ Filtr zwrotów (DocumentListQuery): `gp.name IN ('zwrot', 'zwrotka')` vs `NOT IN
 | `eurzad_petent_dane` | CaseListQuery, DocumentListQuery |
 | `eurzad_petent_roles` | SuppliantQuery |
 | `eurzad_zalacznik` | AttachmentQuery |
+| `epuap_download_file` | AttachmentQuery |
 | `eurzad_ksiega` / `eurzad_ksiega_sprawa` | DocumentListQuery |
 | `eurzad_slownik_status` | CaseListQuery, CaseQuery, DocumentListQuery, DocumentQuery |
 | `eurzad_dictionary_content` | DoctionaryQuery |

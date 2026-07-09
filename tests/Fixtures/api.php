@@ -16,6 +16,8 @@ return [
     'document_rpw_id' => '100288',
     'document_rpw_sprawa_id' => '100247',
     'attachment_uid' => '6311cc3caa81e',
+    // Opcjonalnie: file_id z epuap_download_file (dev DB) — test showEpuap
+    'epuap_file_id' => '',
     'invalid_document_id' => '999999999',
     'unknown_case_uid' => '0000000000000',
     'malformed_case_uid' => 'not-a-valid-uid',
