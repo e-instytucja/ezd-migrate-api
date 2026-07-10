@@ -97,9 +97,39 @@ Format: `?format=json|xml|html` (domyślnie JSON). Obsługiwane formaty: `Format
 
 | Middleware | Rola |
 |------------|------|
-| `ApiAccessLogMiddleware` | logowanie dostępu API |
+| `ApiAccessLogMiddleware` | logowanie dostępu API (`API_ACCESS`) |
 
 Brak auth middleware w kodzie.
+
+### Diagnostyka czasów SQL (opcjonalna)
+
+Sterowana flagami `.env` — **domyślnie wyłączona** (`LOG_SQL_QUERIES=false`).
+
+| Komponent | Plik | Rola |
+|-----------|------|------|
+| `QueryTimingCollector` | `app/Shared/QueryTimingCollector.php` | singleton na request — suma czasu i liczba zapytań DB |
+| `AppServiceProvider` | `app/Providers/AppServiceProvider.php` | `DB::listen` → kolektor + log `SQL.slow` |
+| `ApiAccessLogMiddleware` | `app/Http/Middleware/ApiAccessLogMiddleware.php` | pola `query_count`, `db_total_ms`, `php_overhead_ms` w `API_ACCESS` |
+| `CaseService` / `DocumentService` | `getList()` | logi faz `CASE_LIST.phase` / `DOCUMENT_LIST.phase` (`count`, `list`, `hydrate`) |
+
+Klucze logów (gdy włączone):
+
+| Klucz | Poziom | Zawartość |
+|-------|--------|-----------|
+| `API_ACCESS` | info | jak dotychczas + opcjonalnie statystyki DB per request |
+| `SQL.slow` | notice | pojedyncze zapytanie ≥ `LOG_SQL_SLOW_MS` (sql, bindings, time_ms) |
+| `CASE_LIST.phase` / `DOCUMENT_LIST.phase` | info | czas wall-clock fazy serwisu (ms) |
+| `CASE_LIST.ok` / `DOCUMENT_LIST.ok` | info | pole `phases: {count_ms, list_ms, hydrate_ms}` |
+
+Zmienne środowiskowe:
+
+| Zmienna | Domyślnie | Opis |
+|---------|-----------|------|
+| `LOG_SQL_QUERIES` | `false` | włącza listener, statystyki w `API_ACCESS`, fazy w serwisach |
+| `LOG_SQL_SLOW_MS` | `100` | próg logu `SQL.slow` (ms) |
+| `LOG_SQL_QUERIES_DETAIL` | `false` | pełna lista zapytań w `API_ACCESS` (duże logi) |
+
+Interpretacja: `db_total_ms` ≈ czas w PostgreSQL; `php_overhead_ms` = czas requestu minus suma czasów zapytań (PHP, serializacja, Xdebug itd.).
 
 ## Console / scheduler
 
@@ -109,9 +139,9 @@ Brak auth middleware w kodzie.
 
 | Plik | Ustawienia |
 |------|------------|
-| `config/app.php` | locale `pl`, timezone `Europe/Warsaw` |
+| `config/app.php` | locale `pl`, timezone `Europe/Warsaw`, `log_sql_*` (diagnostyka SQL) |
 | `config/database.php` | `pgsql` |
-| `.env.example` | `DB_*`, `FILES_URL`, `CACHE_STORE=array` |
+| `.env.example` | `DB_*`, `FILES_URL`, `CACHE_STORE=array`, `LOG_SQL_*` |
 | `docker-compose.yml` | `FILES` mount `:ro`, postgres:16, port 8080 |
 
 ## Poza aplikacją

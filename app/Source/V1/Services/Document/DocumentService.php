@@ -58,19 +58,43 @@ class DocumentService
             'sort_direction' => $kryteriaWyszukiwania->sortowanie->direction,
         ]);
         $startedAt = Functions::startTimer();
+        $logSql = (bool) config('app.log_sql_queries');
+        /** @var array<string, float> $phases */
+        $phases = [];
 
+        $tCount = Functions::startTimer();
         $count = $this->documentListQuery->getListCount($kryteriaWyszukiwania);
-        if (empty($count)) {
-            Log::info('DOCUMENT_LIST.empty', [
+        if ($logSql) {
+            $phases['count_ms'] = round((microtime(true) - $tCount) * 1000, 2);
+            Log::info('DOCUMENT_LIST.phase', [
+                'phase' => 'count',
+                'elapsed_ms' => $phases['count_ms'],
                 'offset' => $kryteriaWyszukiwania->paginacja->offset,
                 'limit' => $kryteriaWyszukiwania->paginacja->limit,
             ]);
+        }
+        if (empty($count)) {
+            Log::info('DOCUMENT_LIST.empty', array_filter([
+                'offset' => $kryteriaWyszukiwania->paginacja->offset,
+                'limit' => $kryteriaWyszukiwania->paginacja->limit,
+                'phases' => $logSql ? $phases : null,
+            ]));
             return [
                 'data' => [],
                 'count' => $count,
             ];
         }
+        $tList = Functions::startTimer();
         $list = $this->documentListQuery->getList($kryteriaWyszukiwania);
+        if ($logSql) {
+            $phases['list_ms'] = round((microtime(true) - $tList) * 1000, 2);
+            Log::info('DOCUMENT_LIST.phase', [
+                'phase' => 'list',
+                'elapsed_ms' => $phases['list_ms'],
+                'returned_count' => count($list),
+            ]);
+        }
+        $tHydrate = Functions::startTimer();
         foreach ($list as &$row) {
             $this->hydrateDocumentListRowEnums($row);
             $row['zalaczniki_details'] = !empty($row['zalaczniki'])
@@ -79,11 +103,20 @@ class DocumentService
             $this->supliantService->hydrateSuppliantData($row, $row['id_dokumentu']);
         }
         unset($row);
+        if ($logSql) {
+            $phases['hydrate_ms'] = round((microtime(true) - $tHydrate) * 1000, 2);
+            Log::info('DOCUMENT_LIST.phase', [
+                'phase' => 'hydrate',
+                'elapsed_ms' => $phases['hydrate_ms'],
+                'returned_count' => count($list),
+            ]);
+        }
 
-        Log::info('[' . Functions::elapsedMs($startedAt) . 'ms] DOCUMENT_LIST.ok', [
+        Log::info('[' . Functions::elapsedMs($startedAt) . '] DOCUMENT_LIST.ok', array_filter([
             'count' => $count,
             'returned' => count($list),
-        ]);
+            'phases' => $logSql ? $phases : null,
+        ]));
 
         return [
             'data' => $list,

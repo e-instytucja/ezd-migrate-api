@@ -115,19 +115,43 @@ class CaseService
             'dntas' => $kryteriaWyszukiwania->dntas,
         ]);
         $startedAt = Functions::startTimer();
+        $logSql = (bool) config('app.log_sql_queries');
+        /** @var array<string, float> $phases */
+        $phases = [];
 
+        $tCount = Functions::startTimer();
         $count = $this->caseListQuery->getListCount($kryteriaWyszukiwania);
-        if (empty($count)) {
-            Log::info('CASE_LIST.empty', [
+        if ($logSql) {
+            $phases['count_ms'] = round((microtime(true) - $tCount) * 1000, 2);
+            Log::info('CASE_LIST.phase', [
+                'phase' => 'count',
+                'elapsed_ms' => $phases['count_ms'],
                 'offset' => $kryteriaWyszukiwania->paginacja->offset,
                 'limit' => $kryteriaWyszukiwania->paginacja->limit,
             ]);
+        }
+        if (empty($count)) {
+            Log::info('CASE_LIST.empty', array_filter([
+                'offset' => $kryteriaWyszukiwania->paginacja->offset,
+                'limit' => $kryteriaWyszukiwania->paginacja->limit,
+                'phases' => $logSql ? $phases : null,
+            ]));
             return [
                 'data' => [],
                 'count' => $count,
             ];
         }
+        $tList = Functions::startTimer();
         $list = $this->caseListQuery->getList($kryteriaWyszukiwania);
+        if ($logSql) {
+            $phases['list_ms'] = round((microtime(true) - $tList) * 1000, 2);
+            Log::info('CASE_LIST.phase', [
+                'phase' => 'list',
+                'elapsed_ms' => $phases['list_ms'],
+                'returned_count' => count($list),
+            ]);
+        }
+        $tHydrate = Functions::startTimer();
         foreach ($list as &$row) {
             $row['zalaczniki_details'] = !empty($row['zalaczniki'])
                 ? $this->attachmentService->getAttachmentsDetails($row['zalaczniki'])
@@ -137,12 +161,21 @@ class CaseService
 
         }
         unset($row);
-        Log::info('[' . Functions::elapsedMs($startedAt) . 'ms] CASE_LIST.ok', [
+        if ($logSql) {
+            $phases['hydrate_ms'] = round((microtime(true) - $tHydrate) * 1000, 2);
+            Log::info('CASE_LIST.phase', [
+                'phase' => 'hydrate',
+                'elapsed_ms' => $phases['hydrate_ms'],
+                'returned_count' => count($list),
+            ]);
+        }
+        Log::info('[' . Functions::elapsedMs($startedAt) . '] CASE_LIST.ok', array_filter([
             'total_count' => $count,
             'returned_count' => count($list),
             'offset' => $kryteriaWyszukiwania->paginacja->offset,
             'limit' => $kryteriaWyszukiwania->paginacja->limit,
-        ]);
+            'phases' => $logSql ? $phases : null,
+        ]));
 
         return [
             'data' => $list,

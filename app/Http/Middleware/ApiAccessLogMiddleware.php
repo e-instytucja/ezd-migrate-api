@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace App\Http\Middleware;
 
 use App\Shared\Functions;
+use App\Shared\QueryTimingCollector;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -17,7 +18,6 @@ class ApiAccessLogMiddleware
     {
         $startedAt = Functions::startTimer();
         $response = $next($request);
-        $durationMs = Functions::elapsedMs($startedAt);
 
         $route = $request->route();
         $endpoint = $route === null
@@ -27,7 +27,7 @@ class ApiAccessLogMiddleware
         $routeParams = $route?->parameters() ?? [];
         $payload = $request->all();
 
-        Log::info('[' . $durationMs . 'ms] ' . self::LOG_KEY, [
+        $logContext = [
             'log_key' => self::LOG_KEY,
             'endpoint' => $endpoint,
             'method' => $request->method(),
@@ -36,7 +36,24 @@ class ApiAccessLogMiddleware
             'route_params' => $routeParams,
             'payload' => $payload,
             'status' => $response->getStatusCode(),
-        ]);
+        ];
+
+        if (config('app.log_sql_queries')) {
+            $requestMs = (microtime(true) - $startedAt) * 1000;
+            $summary = app(QueryTimingCollector::class)->summary(
+                (bool) config('app.log_sql_queries_detail'),
+            );
+
+            $logContext['query_count'] = $summary['query_count'];
+            $logContext['db_total_ms'] = $summary['db_total_ms'];
+            $logContext['php_overhead_ms'] = round(max(0, $requestMs - $summary['db_total_ms']), 2);
+
+            if (isset($summary['queries'])) {
+                $logContext['queries'] = $summary['queries'];
+            }
+        }
+
+        Log::info('[' . Functions::elapsedMs($startedAt) . '] ' . self::LOG_KEY, $logContext);
 
         return $response;
     }

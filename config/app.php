@@ -24,4 +24,8 @@ return [
 
     'maintenance' => ['driver' => 'file'],
 
+    'log_sql_queries' => (bool) env('LOG_SQL_QUERIES', false),
+    'log_sql_slow_ms' => (float) env('LOG_SQL_SLOW_MS', 100),
+    'log_sql_queries_detail' => (bool) env('LOG_SQL_QUERIES_DETAIL', false),
+
 ];
