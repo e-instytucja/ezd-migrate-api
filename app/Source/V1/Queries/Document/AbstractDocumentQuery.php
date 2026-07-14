@@ -29,28 +29,24 @@ abstract class AbstractDocumentQuery
 
     protected function getScopedWhereSql(TypUnionDokumentu $unionPart, TypFiltrDokument $filtry): string
     {
-        $teczkaUid = $this->bind($filtry->teczkaUid);
-
         $conditions = match ($unionPart) {
             TypUnionDokumentu::DokNiewychodzacyInicjujacySprawe => [
                 'et.sprawa_uid = es.sprawa_uid',
-                'et.teczka_uid = ' . $teczkaUid,
+                'et.teczka_uid = ' . $this->bind($filtry->teczkaUid),
             ],
             TypUnionDokumentu::DokNiewychodzacyWSprawie => [
-                <<<SQL
-                EXISTS (
+                'EXISTS (
                     SELECT 1
                     FROM eurzad_teczka_zawartosc etz_scope
                     WHERE etz_scope.teczka_zawartosc_uid = es.sprawa_uid
-                      AND etz_scope.teczka_uid = {$teczkaUid}
-                )
-                SQL,
+                      AND etz_scope.teczka_uid = ' . $this->bind($filtry->teczkaUid) . '
+                )',
             ],
             TypUnionDokumentu::DokNiewychodzacyBezSprawy => [
                 '1 = 0',
             ],
             default => [
-                'et.teczka_uid = ' . $teczkaUid,
+                'et.teczka_uid = ' . $this->bind($filtry->teczkaUid),
             ],
         };
 

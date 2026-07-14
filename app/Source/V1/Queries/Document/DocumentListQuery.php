@@ -27,10 +27,7 @@ class DocumentListQuery extends AbstractDocumentQuery
     {
         $this->bindings = [];
 
-        $parts = array_map(
-            fn (TypUnionDokumentu $unionPart) => '(' . $this->buildUnionBranchSql($unionPart, $criteria) . ')',
-            $this->resolveUnionParts($criteria->filtry),
-        );
+        $parts = $this->buildUnionParts($criteria);
 
         $sql = <<<SQL
             SELECT COUNT(*) AS count
@@ -46,10 +43,7 @@ class DocumentListQuery extends AbstractDocumentQuery
 
     private function buildUnionsSql(KryteriaWyszukiwaniaDokumentow $criteria): string
     {
-        $parts = array_map(
-            fn (TypUnionDokumentu $unionPart) => '(' . $this->buildUnionBranchSql($unionPart, $criteria) . ')',
-            $this->resolveUnionParts($criteria->filtry),
-        );
+        $parts = $this->buildUnionParts($criteria);
 
         $sql = <<<SQL
             SELECT * FROM (
@@ -65,6 +59,17 @@ class DocumentListQuery extends AbstractDocumentQuery
         }
 
         return $sql;
+    }
+
+    private function buildUnionParts(KryteriaWyszukiwaniaDokumentow $criteria): array
+    {
+        $parts = [];
+
+        foreach ($this->resolveUnionParts($criteria->filtry) as $unionPart) {
+            $parts[] = '(' . $this->buildUnionBranchSql($unionPart, $criteria) . ')';
+        }
+
+        return $parts;
     }
 
     private function buildUnionBranchSql(TypUnionDokumentu $unionPart, KryteriaWyszukiwaniaDokumentow $criteria): string
@@ -367,14 +372,14 @@ SQL;
 
     private function scopedTeczkaJoinsSql(TypUnionDokumentu $unionPart, TypFiltrDokument $filtry): string
     {
-        $teczkaUid = $this->bind($filtry->teczkaUid);
-
         return match ($unionPart) {
             TypUnionDokumentu::DokNiewychodzacyInicjujacySprawe => <<<SQL
-                INNER JOIN eurzad_teczka et ON et.teczka_uid = {$teczkaUid}
-            SQL,
+                INNER JOIN eurzad_teczka et ON et.teczka_uid = 
+            SQL . $this->bind($filtry->teczkaUid),
             TypUnionDokumentu::DokNiewychodzacyWSprawie => <<<SQL
-                INNER JOIN eurzad_teczka et ON et.teczka_uid = {$teczkaUid}
+                INNER JOIN eurzad_teczka et ON et.teczka_uid = 
+            SQL . $this->bind($filtry->teczkaUid) . <<<SQL
+
                 INNER JOIN eurzad_teczka_zawartosc etz ON (
                     etz.teczka_uid = et.teczka_uid
                     AND etz.teczka_zawartosc_uid = es.sprawa_uid
