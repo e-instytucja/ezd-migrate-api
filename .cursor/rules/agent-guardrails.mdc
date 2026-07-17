@@ -27,6 +27,7 @@ alwaysApply: true
 - NIE mieszaj Cases (`dntas=0`, `/cases`) z DNTAS (`dntas=1`, `/dntas`)
 - NIE zmieniaj nazw polskich pól API ani kolumn SQL bez koordynacji z konsumentami
 - NIE masowo poprawiaj typo (`DoctionaryQuery`, `SupliantService`) — osobny refaktor
+- Przy zmianie `CaseListQuery` zsynchronizuj ścieżkę MV (`ApiCaseListMaterializedView`, `CaseListQueryMV`, `docs/queries/case-queries.md`) jeśli prod używa `CASE_LIST_SOURCE=mv`; po imporcie dumpa uruchom `cases:refresh-list-mv`
 
 ## Testy API (`tests/`)
 

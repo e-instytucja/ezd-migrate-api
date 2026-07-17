@@ -57,6 +57,8 @@ Aktywna wersja: **V1** (`/api/v1/`). Plan V2/V3: kopia katalogów (opis w README
 
 Setup: [README.md](../README.md). Import DB: `scripts/` (poza Laravel).
 
+Po imporcie dumpa EZD, gdy używasz `CASE_LIST_SOURCE=mv`: `php artisan cases:refresh-list-mv` (szczegóły: [queries/case-queries.md](queries/case-queries.md)).
+
 **DO WYJAŚNIENIA (Q-23):** README wspomina `php artisan migrate`, plików migracji w repo nie ma.
 
 ## Testy API (PHPUnit)

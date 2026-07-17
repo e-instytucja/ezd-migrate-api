@@ -17,6 +17,21 @@ alwaysApply: false
 
 **CaseListQuery** — start od `eurzad_teczka et`, zawsze JOIN do `eurzad_sprawa es`.
 
+**Case list — legacy vs MV** (`CASE_LIST_SOURCE`, domyślnie `legacy`):
+- `legacy` → `CaseListQuery` (JOIN-y na `eurzad_*`)
+- `mv` → `CaseListQueryMV` z materialized view `api_case_list` (`CaseListQueryFactory`)
+- Definicja widoku: `ApiCaseListMaterializedView` — jedyne źródło SQL CREATE/REFRESH
+- Refresh: `php artisan cases:refresh-list-mv` (`--drop` przy zmianie kształtu kolumn widoku)
+- Przełącznik: env `CASE_LIST_SOURCE`; status: `GET|POST /api/v1/system/case-list-source`
+- Przy `pokaz_udostepnione` w trybie MV nadal EXISTS na `galaxia_instance_users` (nie w kolumnach MV)
+
+Po zmianie SELECT / JOIN / filtrów / sortu w `CaseListQuery`:
+1. Zaktualizuj `ApiCaseListMaterializedView` (kolumny widoku)
+2. Zaktualizuj `CaseListQueryMV` (WHERE, ORDER BY — własna mapa kolumn, nie `SortowanieSpraw::toOrderBySql()`)
+3. Zaktualizuj `docs/queries/case-queries.md`
+4. Na środowisku z `CASE_LIST_SOURCE=mv`: `php artisan cases:refresh-list-mv` (lub `--drop` po zmianie schematu widoku)
+5. NIE dodawaj migracji Laravel na `api_case_list`
+
 **DocumentListQuery** — 5 gałęzi UNION (`TypUnionDokumentu`); niewychodzące start od `eurzad_sprawa es`; wychodzące od `eurzad_pismo ep`; ZPO od `eurzad_sprawa es`.
 
 Wspólny rdzeń pisma wiodącego (es): `galaxia_processes` → `eurzad_obieg` (`max_status_sprawy_id > 0`) → `galaxia_instances` → `users_*`.

@@ -1,8 +1,25 @@
 # Queries — Sprawy (Case)
 
-Pliki: `CaseListQuery.php`, `CaseQuery.php`
+Pliki: `CaseListQuery.php`, `CaseListQueryMV.php`, `CaseQuery.php`, `ApiCaseListMaterializedView.php`
 
 Konsumenci (grep): `CaseService`, `Case\HistoryService`, `AttachmentService`
+
+---
+
+## Źródło list (legacy vs MV)
+
+| Element | Wartość |
+|---------|---------|
+| Env | `CASE_LIST_SOURCE=legacy\|mv` (domyślnie `legacy`) |
+| Config | `config('app.case_list_source')` |
+| Factory | `CaseListQueryFactory` → `CaseListQuery` lub `CaseListQueryMV` |
+| MV | `api_case_list` (1 wiersz / `teczka_uid`, `DISTINCT ON`) |
+| Refresh | `php artisan cases:refresh-list-mv` (`--drop` = DROP + CREATE) |
+| Status / przełącznik | `GET\|POST /api/v1/system/case-list-source` (`{"source":"mv\|legacy"}`) — POST zapisuje do `.env` |
+
+Przed `CASE_LIST_SOURCE=mv` wymagany jest zbudowany widok. POST na `mv` bez MV → 422.
+
+`CaseService` wywołuje factory **per request** (`caseListQuery()`).
 
 ---
 
@@ -84,6 +101,16 @@ Zakomentowany JOIN `dokument_tytul` — tytuł z formularza **nie** w liście.
 | `getListCount()` | rdzeń bez `users_*` (`getCountInnerJoinSql`) + `COUNT(DISTINCT et.teczka_uid)`; JOIN-y formularza tylko gdy filtr wymaga |
 
 `users_*` w COUNT powodowały mnożenie wierszy (wiele aktywnych użytkowników na stanowisko) i zbędny koszt JOIN-ów.
+
+---
+
+## CaseListQueryMV
+
+`FROM api_case_list acl` — bez JOIN-ów `eurzad_*` (poza `EXISTS` na `galaxia_instance_users` przy `pokaz_udostepnione`).
+
+Filtry mapowane na kolumny MV (`dntas`, `rok`, `status`, `typ_formularza`, `data_rejestracji`, `dokument_tytul`, `tresc_wniosku`, …). COUNT = `COUNT(*)` (MV 1:1 z teczką).
+
+Budowa MV: `ApiCaseListMaterializedView` + `CaseListMvRefreshService` / `cases:refresh-list-mv`.
 
 ---
 

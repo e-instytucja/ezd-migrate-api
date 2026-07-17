@@ -28,4 +28,17 @@ return [
     'log_sql_slow_ms' => (float) env('LOG_SQL_SLOW_MS', 100),
     'log_sql_queries_detail' => (bool) env('LOG_SQL_QUERIES_DETAIL', false),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Case list data source
+    |--------------------------------------------------------------------------
+    |
+    | legacy = CaseListQuery (joins na eurzad_*)
+    | mv     = CaseListQueryMV (materialized view api_case_list)
+    |
+    | Wymaga: php artisan cases:refresh-list-mv przed CASE_LIST_SOURCE=mv
+    |
+    */
+    'case_list_source' => env('CASE_LIST_SOURCE', 'legacy'),
+
 ];

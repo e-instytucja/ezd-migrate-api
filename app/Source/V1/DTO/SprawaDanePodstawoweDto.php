@@ -59,6 +59,7 @@ final readonly class SprawaDanePodstawoweDto implements JsonSerializable
 
         return self::fromValues(
             new SprawaDanePodstawoweWartosciDto(
+                idSprawy: $row['id_sprawy'] ?? null,
                 nazwaProcesu: $row['nazwa_procesu'],
                 idProcesu: $row['id_procesu'],
                 typFormularza: TypFormularza::tryFromWiersza($row['typ_formularza'] ?? null),
@@ -78,6 +79,7 @@ final readonly class SprawaDanePodstawoweDto implements JsonSerializable
     public static function defaultLabels(): array
     {
         return [
+            'idSprawy' => 'Identyfikator sprawy',
             'nazwaProcesu' => 'Nazwa procesu',
             'idProcesu' => 'Identyfikator procesu',
             'typFormularza' => 'Typ formularza',

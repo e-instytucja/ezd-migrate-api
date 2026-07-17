@@ -63,7 +63,9 @@ Walidacja ręczna w DTO. `SearchRequest` istnieje, **nie jest podpięty** do tra
 
 Orkiestracja: Queries → mapowanie DTO → wywołania innych serwisów.
 
-Zależności `CaseService` (konstruktor): `CaseListQuery`, `CaseQuery`, `FormQuery`, `WorkstationQuery`, `UugQuery`, `DocumentService`, `FormService`, `AttachmentService`, `SupliantService`, `CaseHistoryService`.
+Zależności `CaseService` (konstruktor): `CaseListQueryFactory`, `CaseListSource`, `CaseQuery`, `FormQuery`, `WorkstationQuery`, `UugQuery`, `DocumentService`, `FormService`, `AttachmentService`, `SupliantService`, `CaseHistoryService`.
+
+Źródło list spraw: `CASE_LIST_SOURCE` (`legacy` \| `mv`) — szczegóły [queries/case-queries.md](queries/case-queries.md).
 
 ### 5. Queries
 
@@ -133,15 +135,17 @@ Interpretacja: `db_total_ms` ≈ czas w PostgreSQL; `php_overhead_ms` = czas req
 
 ## Console / scheduler
 
-`routes/console.php` — `attachments:test-main-document-attachments-exists` (schedule: codziennie 02:00).
+`routes/console.php`:
+- `attachments:test-main-document-attachments-exists` — schedule: codziennie 02:00 (klasa w `app/Console/Commands/Attachment/`)
+- `cases:refresh-list-mv` — materialized view `api_case_list` (po imporcie dumpa, gdy `CASE_LIST_SOURCE=mv`)
 
 ## Konfiguracja
 
 | Plik | Ustawienia |
 |------|------------|
-| `config/app.php` | locale `pl`, timezone `Europe/Warsaw`, `log_sql_*` (diagnostyka SQL) |
+| `config/app.php` | locale `pl`, timezone `Europe/Warsaw`, `log_sql_*`, `case_list_source` (`CASE_LIST_SOURCE`) |
 | `config/database.php` | `pgsql` |
-| `.env.example` | `DB_*`, `FILES_URL`, `CACHE_STORE=array`, `LOG_SQL_*` |
+| `.env.example` | `DB_*`, `FILES_URL`, `CACHE_STORE=array`, `LOG_SQL_*`, `CASE_LIST_SOURCE` |
 | `docker-compose.yml` | `FILES` mount `:ro`, postgres:16, port 8080 |
 
 ## Poza aplikacją

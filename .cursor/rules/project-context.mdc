@@ -48,3 +48,4 @@ routes/api.php → Controllers/Api/V1 → Source/V1/Services → Source/V1/Queri
 - **Sprawa (API)** = teczka (`eurzad_teczka.teczka_uid`) powiązana z pismem wiodącym (`eurzad_sprawa.sprawa_uid`) — **WNIOSEK Z SQL, NIE Z DDL**
 - **DNTAS** = `eurzad_teczka.dntas = 1` (osobny kontroler, ta sama logika serwisu)
 - W `DocumentQuery`: `DOCUMENT_TYPE_PISMO` = wiersz w `eurzad_sprawa`; `DOCUMENT_TYPE_DOKUMENT` = wiersz w `eurzad_pismo`
+- Listy spraw: `CASE_LIST_SOURCE=legacy|mv` — factory `CaseListQueryFactory`; widok `api_case_list` + `cases:refresh-list-mv` (patrz `docs/queries/case-queries.md`)

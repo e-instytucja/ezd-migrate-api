@@ -10,6 +10,7 @@ use JsonSerializable;
 final readonly class SprawaDanePodstawoweWartosciDto implements JsonSerializable
 {
     public function __construct(
+        public ?string $idSprawy = null,
         public ?string $nazwaProcesu = null,
         public ?int $idProcesu = null,
         public ?TypFormularza $typFormularza = null,
@@ -27,6 +28,7 @@ final readonly class SprawaDanePodstawoweWartosciDto implements JsonSerializable
     public function jsonSerialize(): array
     {
         return [
+            'idSprawy' => $this->idSprawy,
             'nazwaProcesu' => $this->nazwaProcesu,
             'idProcesu' => $this->idProcesu,
             'typFormularza' => $this->typFormularza?->toApi(),

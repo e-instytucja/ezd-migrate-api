@@ -8,7 +8,8 @@ use App\Source\V1\DTO\PracownikDto;
 use App\Source\V1\DTO\Request\KryteriaWyszukiwaniaSpraw;
 use App\Source\V1\DTO\SprawaDto;
 use App\Source\V1\DTO\SprawaZnakDto;
-use App\Source\V1\Queries\Case\CaseListQuery;
+use App\Source\V1\Queries\Case\CaseListQueryFactory;
+use App\Source\V1\Queries\Case\CaseListQueryInterface;
 use App\Source\V1\Queries\Case\CaseQuery;
 use App\Source\V1\Queries\Form\FormQuery;
 use App\Source\V1\Queries\Structure\UugQuery;
@@ -18,6 +19,7 @@ use App\Source\V1\Services\Case\HistoryService as CaseHistoryService;
 use App\Source\V1\Services\Document\DocumentService;
 use App\Source\V1\Services\Form\FormService;
 use App\Source\V1\Services\Suppliant\SupliantService;
+use App\Source\V1\Support\CaseListSource;
 use Exception;
 use Illuminate\Support\Facades\Log;
 
@@ -25,18 +27,24 @@ class CaseService
 {
 
     public function __construct(
-        private readonly CaseQuery          $caseQuery,
-        private readonly CaseListQuery      $caseListQuery,
-        private readonly DocumentService    $documentService,
-        private readonly FormService        $formService,
-        private readonly CaseHistoryService $caseHistoryService,
-        private readonly SupliantService    $supliantService,
-        private readonly FormQuery              $formQuery,
-        private readonly AttachmentService      $attachmentService,
-        private readonly WorkstationQuery   $workstationQuery,
-        private readonly UugQuery           $uugQuery
+        private readonly CaseQuery             $caseQuery,
+        private readonly CaseListQueryFactory  $caseListQueryFactory,
+        private readonly CaseListSource        $caseListSource,
+        private readonly DocumentService       $documentService,
+        private readonly FormService           $formService,
+        private readonly CaseHistoryService    $caseHistoryService,
+        private readonly SupliantService       $supliantService,
+        private readonly FormQuery             $formQuery,
+        private readonly AttachmentService     $attachmentService,
+        private readonly WorkstationQuery      $workstationQuery,
+        private readonly UugQuery              $uugQuery
     )
     {
+    }
+
+    private function caseListQuery(): CaseListQueryInterface
+    {
+        return $this->caseListQueryFactory->make();
     }
 
     /**
@@ -49,7 +57,7 @@ class CaseService
         $startedAt = Functions::startTimer();
 
         $caseUid = $kryteriaWyszukiwania->filtry->sprawaUid;
-        $caseRow = $this->caseListQuery->getList($kryteriaWyszukiwania)[0];
+        $caseRow = $this->caseListQuery()->getList($kryteriaWyszukiwania)[0];
 
         $sprawa = $this->mapToSprawaDto($caseRow, $caseUid, $dntas);
 
@@ -113,14 +121,16 @@ class CaseService
             'sort_field' => $kryteriaWyszukiwania->sortowanie->field,
             'sort_direction' => $kryteriaWyszukiwania->sortowanie->direction,
             'dntas' => $kryteriaWyszukiwania->dntas,
+            'source' => $this->caseListSource->get(),
         ]);
         $startedAt = Functions::startTimer();
         $logSql = (bool) config('app.log_sql_queries');
         /** @var array<string, float> $phases */
         $phases = [];
 
+        $caseListQuery = $this->caseListQuery();
         $tCount = Functions::startTimer();
-        $count = $this->caseListQuery->getListCount($kryteriaWyszukiwania);
+        $count = $caseListQuery->getListCount($kryteriaWyszukiwania);
         if ($logSql) {
             $phases['count_ms'] = round((microtime(true) - $tCount) * 1000, 2);
             Log::info('CASE_LIST.phase', [
@@ -142,7 +152,7 @@ class CaseService
             ];
         }
         $tList = Functions::startTimer();
-        $list = $this->caseListQuery->getList($kryteriaWyszukiwania);
+        $list = $caseListQuery->getList($kryteriaWyszukiwania);
         if ($logSql) {
             $phases['list_ms'] = round((microtime(true) - $tList) * 1000, 2);
             Log::info('CASE_LIST.phase', [

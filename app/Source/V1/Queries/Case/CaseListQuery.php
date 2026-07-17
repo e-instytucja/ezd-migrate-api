@@ -10,7 +10,7 @@ use App\Source\V1\DTO\Request\SortowanieSpraw;
 use App\Source\V1\DTO\Request\TypFiltrSpraw;
 use Illuminate\Support\Facades\DB;
 
-class CaseListQuery
+class CaseListQuery implements CaseListQueryInterface
 {
     /** @var array<int, mixed> */
     private array $bindings = [];

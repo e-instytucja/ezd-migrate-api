@@ -24,6 +24,7 @@ API integracyjne EZD. Dokumentacja techniczna w `docs/`. Pytania otwarte: [docs/
 | `{caseUid}` | hex 13 znaków `[a-f0-9]{13}` |
 | `{documentId}` | numeric `\d+` **lub** hex 13 znaków (@TODO → tylko `instanceId`) |
 | Listy spraw/dokumentów | wymagane `konfiguracja.madkomWorkstationIds` (niepusta tablica) |
+| `CASE_LIST_SOURCE` | `legacy` (domyślnie) \| `mv` — listy spraw; MV: `php artisan cases:refresh-list-mv`; szczegóły [case-queries.md](docs/queries/case-queries.md) |
 | Cases vs DNTAS | ta sama logika serwisu, `dntas` 0 vs 1 |
 | `einstytucjaUserId` | pole w `ApiKonfiguracja`, **niewykorzystywane** w Services/Queries |
 | Testy API | `tests/Feature/Api/` — PHPUnit Feature, **tylko odczyt HTTP**; uruchom: `composer test` / `composer test:report`; raport: `/test-reports/` ([tests/README.md](tests/README.md), [api-tests.mdc](.cursor/rules/api-tests.mdc)) |

@@ -41,7 +41,6 @@
 *.sql.gz
 /storage/files/source/xml/big.xml
 /storage/files/source/xml/bigFile300MB
-/app/Source/V1/Services/Case/CommandTests/MainDocumentAttachmentsExistsTest.php
 /storage/files/source/xml/source.xml
 /storage/files/source/xml/UPP.xml
 /storage/files/source/zip/Wniosek_definicja_chwili.zip

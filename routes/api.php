@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\Api\V1\AttachmentController;
+use App\Http\Controllers\Api\V1\CaseListSourceController;
 use App\Http\Controllers\Api\V1\CasesController;
 use App\Http\Controllers\Api\V1\DntasController;
 use App\Http\Controllers\Api\V1\DocumentsController;
@@ -166,4 +167,16 @@ Route::prefix('v1')
 
         Route::get('/workstations', [WorkstationsController::class, 'list'])
             ->name('workstations.list');
+
+        /*
+        |--------------------------------------------------------------------------
+        | System
+        |--------------------------------------------------------------------------
+        */
+
+        Route::get('/system/case-list-source', [CaseListSourceController::class, 'show'])
+            ->name('system.case-list-source.show');
+
+        Route::post('/system/case-list-source', [CaseListSourceController::class, 'update'])
+            ->name('system.case-list-source.update');
     });
