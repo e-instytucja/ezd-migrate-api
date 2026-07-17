@@ -1,8 +1,29 @@
 # Queries — Dokumenty (Document)
 
-Pliki: `AbstractDocumentQuery.php`, `DocumentListQuery.php`, `DocumentQuery.php`
+Pliki: `AbstractDocumentQuery.php`, `DocumentListQuery.php`, `DocumentListQueryMV.php`, `ApiDocumentListMaterializedView.php`, `DocumentQuery.php`
 
 Konsumenci (grep): `DocumentService`, `Document\HistoryService`, `AttachmentService`
+
+---
+
+## Źródło list (live SQL vs MV)
+
+Globalny przełącznik: **`USE_MATERIALIZED_VIEWS`** — patrz [case-queries.md](case-queries.md#źródło-list-live-sql-vs-mv) (wspólny dla wszystkich list API).
+
+| Element (dokumenty) | Wartość |
+|---------|---------|
+| Factory | `DocumentListQueryFactory::make(TypFiltrDokument $filtry)` |
+| MV | `api_document_list` (1 wiersz / `id_dokumentu`, UNION 5 gałęzi + `DISTINCT ON`) |
+| Refresh | `php artisan documents:refresh-list-mv` lub `materialized-views:refresh` (`--drop`) |
+
+`DocumentService::getList()` wywołuje factory **per request**. Show (`getDocumentDetails`) i lista w sprawie (`getDocumentsListByCaseUID`) zawsze używają legacy `DocumentListQuery`.
+
+**Guard `teczka_uid`:** Factory zawsze zwraca legacy gdy `isScopedToTeczka()` — MV nie obsługuje scoped.
+
+Po zmianie SELECT/JOIN w `DocumentListQuery` (gdy prod ma `USE_MATERIALIZED_VIEWS=true`):
+1. `ApiDocumentListMaterializedView` (kolumny widoku)
+2. `DocumentListQueryMV` (WHERE; sort: `SortowanieDokumentow::toOrderBySql()` na kolumnach MV)
+3. `docs/queries/document-queries.md`
 
 ---
 
@@ -152,6 +173,8 @@ W Queries **brak** jawnej kolumny FK (np. `parent_pismo_uid`) łączącej zwrotk
 
 `DISTINCT ON (id_dokumentu)` w każdej gałęzi; dedup przed zewnętrznym ORDER BY.
 
+Każda gałęź z własnym `ORDER BY` musi być w nawiasach przed `UNION` (PostgreSQL) — `DocumentListQuery::buildUnionParts()` i `ApiDocumentListMaterializedView::definitionSql()`.
+
 `getList()` i `getListCount()` używają tego samego `buildUnionBranchSql()` — COUNT owija pełne gałęzie UNION w podzapytanie.
 
 ### Duplikat JOIN (Q-07)
@@ -169,6 +192,20 @@ Wspólne kolumny z `commonSelectSql()` (wszystkie gałęzie UNION): m.in. `nazwa
 | `has_pozostali_interesanci` | EXISTS | literal `false` (komentarz w kodzie) |
 
 Join `eurzad_form ef`: `INNER JOIN ef ON (gp.normalized_name = ef.form_name)` w `commonInnerJoinSql()` (wspólny dla wszystkich gałęzi UNION).
+
+---
+
+## DocumentListQueryMV
+
+`FROM api_document_list adl` — bez JOIN-ów `eurzad_*` (poza `EXISTS` na `galaxia_instance_users` przy `pokaz_udostepnione`).
+
+Filtry mapowane na kolumny MV (`typ_dokumentu`, `status`, `data_rejestracji`, `dokument_tytul`, `tresc_wniosku`, `instance_id`, …). `filtry.typ_procesu` → `adl.typ_dokumentu = ?`. COUNT = `COUNT(*)` na MV.
+
+Sortowanie: `SortowanieDokumentow::toOrderBySql()` + `id_dokumentu ASC` (tiebreaker).
+
+Budowa MV: `ApiDocumentListMaterializedView` + `DocumentListMvRefreshService` / `documents:refresh-list-mv`.
+
+Kolumny MV tylko pod filtry (nie w SELECT API): `status` (symbol `eo`/`epo`), `instance_id`.
 
 ---
 

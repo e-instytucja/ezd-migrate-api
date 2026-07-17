@@ -2,17 +2,17 @@
 
 declare(strict_types=1);
 
-namespace App\Source\V1\Services\Case;
+namespace App\Source\V1\Services\Document;
 
-use App\Source\V1\Queries\Case\ApiCaseListMaterializedView;
+use App\Source\V1\Queries\Document\ApiDocumentListMaterializedView;
 use App\Source\V1\Support\MaterializedViews\MaterializedViewRegistry;
 use Illuminate\Support\Facades\DB;
 use Throwable;
 
-final class CaseListMvRefreshService
+final class DocumentListMvRefreshService
 {
     public function __construct(
-        private readonly ApiCaseListMaterializedView $definition,
+        private readonly ApiDocumentListMaterializedView $definition,
         private readonly MaterializedViewRegistry $materializedViewRegistry,
     ) {
     }
@@ -23,7 +23,7 @@ final class CaseListMvRefreshService
     public function refresh(bool $drop = false): array
     {
         $startedAt = microtime(true);
-        $view = ApiCaseListMaterializedView::NAME;
+        $view = ApiDocumentListMaterializedView::NAME;
         $existed = $this->materializedViewRegistry->exists($view);
         $created = false;
         $refreshed = false;

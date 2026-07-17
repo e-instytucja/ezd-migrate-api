@@ -8,7 +8,8 @@ use App\Source\V1\DTO\Request\ApiKonfiguracja;
 use App\Source\V1\DTO\Request\KryteriaWyszukiwaniaSpraw;
 use App\Source\V1\DTO\Request\SortowanieSpraw;
 use App\Source\V1\DTO\Request\TypFiltrSpraw;
-use App\Source\V1\Support\CaseListSource;
+use App\Source\V1\Support\MaterializedViews\CaseListMaterializedView;
+use App\Source\V1\Support\MaterializedViews\MaterializedViewRegistry;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -38,7 +39,7 @@ class CaseListQueryMV implements CaseListQueryInterface
     private array $bindings = [];
 
     public function __construct(
-        private readonly CaseListSource $caseListSource,
+        private readonly MaterializedViewRegistry $materializedViewRegistry,
     ) {
     }
 
@@ -85,7 +86,7 @@ class CaseListQueryMV implements CaseListQueryInterface
 
     private function assertMvReady(): void
     {
-        if (!$this->caseListSource->materializedViewExists()) {
+        if (!$this->materializedViewRegistry->exists(CaseListMaterializedView::NAME)) {
             throw new RuntimeException(
                 'Materialized view api_case_list nie istnieje. Uruchom: php artisan cases:refresh-list-mv',
             );
@@ -94,7 +95,7 @@ class CaseListQueryMV implements CaseListQueryInterface
 
     private function viewName(): string
     {
-        return CaseListSource::VIEW_NAME;
+        return CaseListMaterializedView::NAME;
     }
 
     private function getSelectSql(): string
@@ -105,6 +106,8 @@ class CaseListQueryMV implements CaseListQueryInterface
                 acl.main_document_uid,
                 acl.data_rejestracji_dokumentu,
                 acl.czas_realizacji,
+                acl.sprawa_finishdate,
+                acl.status,
                 acl.data_utworzenia_dokumentu,
                 acl.nazwa_procesu,
                 acl.nazwa_procesu_znormalizowana,

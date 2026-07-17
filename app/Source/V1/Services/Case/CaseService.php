@@ -19,7 +19,7 @@ use App\Source\V1\Services\Case\HistoryService as CaseHistoryService;
 use App\Source\V1\Services\Document\DocumentService;
 use App\Source\V1\Services\Form\FormService;
 use App\Source\V1\Services\Suppliant\SupliantService;
-use App\Source\V1\Support\CaseListSource;
+use App\Source\V1\Support\MaterializedViews\MaterializedViewsMode;
 use Exception;
 use Illuminate\Support\Facades\Log;
 
@@ -29,7 +29,7 @@ class CaseService
     public function __construct(
         private readonly CaseQuery             $caseQuery,
         private readonly CaseListQueryFactory  $caseListQueryFactory,
-        private readonly CaseListSource        $caseListSource,
+        private readonly MaterializedViewsMode $materializedViewsMode,
         private readonly DocumentService       $documentService,
         private readonly FormService           $formService,
         private readonly CaseHistoryService    $caseHistoryService,
@@ -121,7 +121,7 @@ class CaseService
             'sort_field' => $kryteriaWyszukiwania->sortowanie->field,
             'sort_direction' => $kryteriaWyszukiwania->sortowanie->direction,
             'dntas' => $kryteriaWyszukiwania->dntas,
-            'source' => $this->caseListSource->get(),
+            'use_materialized_views' => $this->materializedViewsMode->isEnabled(),
         ]);
         $startedAt = Functions::startTimer();
         $logSql = (bool) config('app.log_sql_queries');

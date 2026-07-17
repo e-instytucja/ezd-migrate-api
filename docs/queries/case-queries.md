@@ -6,18 +6,17 @@ Konsumenci (grep): `CaseService`, `Case\HistoryService`, `AttachmentService`
 
 ---
 
-## Źródło list (legacy vs MV)
+## Źródło list (live SQL vs MV)
 
-| Element | Wartość |
+Globalny przełącznik: **`USE_MATERIALIZED_VIEWS`** (`config('app.use_materialized_views')`, domyślnie `false`). Dotyczy wszystkich list API z MV — szczegóły i status widoków: `GET|POST /api/v1/system/materialized-views` (`{"enabled":true|false}`).
+
+| Element (sprawy) | Wartość |
 |---------|---------|
-| Env | `CASE_LIST_SOURCE=legacy\|mv` (domyślnie `legacy`) |
-| Config | `config('app.case_list_source')` |
-| Factory | `CaseListQueryFactory` → `CaseListQuery` lub `CaseListQueryMV` |
+| Factory | `CaseListQueryFactory` → `CaseListQuery` lub `CaseListQueryMV` gdy `USE_MATERIALIZED_VIEWS=true` |
 | MV | `api_case_list` (1 wiersz / `teczka_uid`, `DISTINCT ON`) |
-| Refresh | `php artisan cases:refresh-list-mv` (`--drop` = DROP + CREATE) |
-| Status / przełącznik | `GET\|POST /api/v1/system/case-list-source` (`{"source":"mv\|legacy"}`) — POST zapisuje do `.env` |
+| Refresh | `php artisan cases:refresh-list-mv` lub `materialized-views:refresh` (`--drop`) |
 
-Przed `CASE_LIST_SOURCE=mv` wymagany jest zbudowany widok. POST na `mv` bez MV → 422.
+Przed `USE_MATERIALIZED_VIEWS=true` wymagane są **wszystkie** zarejestrowane widoki. POST `enabled:true` bez MV → 422.
 
 `CaseService` wywołuje factory **per request** (`caseListQuery()`).
 
@@ -90,6 +89,28 @@ Patrz [README.md](README.md#pokaz_udostepnione--semantyka-w-kodzie) — decyduje
 | `typ_formularza` | `ef.form_typ` (`TypFormularza`: `internal` \| `external`) |
 | `has_pozostali_interesanci` | EXISTS `form_dane_pole = 'interesanci'` |
 | `zalaczniki` | `fd_pliki.form_dane_wartosc` |
+| `czas_realizacji` | `esp.czas_realizacji` |
+| `sprawa_finishdate` | `esp.sprawa_finishdate` |
+| `status` | `eo.status` (symbol; w MV `api_case_list`; w live `CaseListQuery` od 2026-07) |
+
+### `terminRealizacji` (endpoint show — `SprawaDanePodstawoweDto`)
+
+Pole API **zawsze** zawiera datę ISO 8601; `null` niedozwolone.
+
+| `czas_realizacji` | Źródło `terminRealizacji` |
+|-------------------|---------------------------|
+| `>= 0` | `data_rejestracji_dokumentu` (`esp.sprawa_createdate`) + N dni |
+| `-1` lub `-2` | `esp.sprawa_finishdate`, jeśli wypełnione |
+| `-1` lub `-2`, brak `sprawa_finishdate` | błąd HTTP 422 (`request_failed`) |
+
+Komunikaty błędu (brak `sprawa_finishdate` przy `czas_realizacji` ujemnym):
+
+| Status sprawy (`eo.status`) | Komunikat |
+|-----------------------------|-----------|
+| niezakończona (symbol ∉ `Z`, `ZS`, `ZA`, `T`) | `brak czasu realizacji dla sprawy niezakończonej` |
+| zakończona (`Z`, `ZS`, `ZA`, `T`) | `brak czasu realizacji dla sprawy zakończonej` |
+
+Wartości `-1` / `-2` w EZD3: „Nieokreślony” / „Zgodnie z przepisami” — bez konkretnej liczby dni; przy braku `sprawa_finishdate` API nie zgaduje terminu.
 
 Zakomentowany JOIN `dokument_tytul` — tytuł z formularza **nie** w liście.
 

@@ -63,9 +63,9 @@ Walidacja ręczna w DTO. `SearchRequest` istnieje, **nie jest podpięty** do tra
 
 Orkiestracja: Queries → mapowanie DTO → wywołania innych serwisów.
 
-Zależności `CaseService` (konstruktor): `CaseListQueryFactory`, `CaseListSource`, `CaseQuery`, `FormQuery`, `WorkstationQuery`, `UugQuery`, `DocumentService`, `FormService`, `AttachmentService`, `SupliantService`, `CaseHistoryService`.
+Zależności `CaseService` (konstruktor): `CaseListQueryFactory`, `MaterializedViewsMode`, `CaseQuery`, `FormQuery`, `WorkstationQuery`, `UugQuery`, `DocumentService`, `FormService`, `AttachmentService`, `SupliantService`, `CaseHistoryService`.
 
-Źródło list spraw: `CASE_LIST_SOURCE` (`legacy` \| `mv`) — szczegóły [queries/case-queries.md](queries/case-queries.md).
+Listy API (sprawy, dokumenty global): `USE_MATERIALIZED_VIEWS` (`true` \| `false`) — szczegóły [queries/case-queries.md](queries/case-queries.md), [queries/document-queries.md](queries/document-queries.md).
 
 ### 5. Queries
 
@@ -137,15 +137,19 @@ Interpretacja: `db_total_ms` ≈ czas w PostgreSQL; `php_overhead_ms` = czas req
 
 `routes/console.php`:
 - `attachments:test-main-document-attachments-exists` — schedule: codziennie 02:00 (klasa w `app/Console/Commands/Attachment/`)
-- `cases:refresh-list-mv` — materialized view `api_case_list` (po imporcie dumpa, gdy `CASE_LIST_SOURCE=mv`)
+- `materialized-views:refresh` — wszystkie widoki list API (`api_case_list`, `api_document_list`)
+- `cases:refresh-list-mv` — tylko `api_case_list`
+- `documents:refresh-list-mv` — tylko `api_document_list`
+
+Po imporcie dumpa, gdy `USE_MATERIALIZED_VIEWS=true`: uruchom `materialized-views:refresh`.
 
 ## Konfiguracja
 
 | Plik | Ustawienia |
 |------|------------|
-| `config/app.php` | locale `pl`, timezone `Europe/Warsaw`, `log_sql_*`, `case_list_source` (`CASE_LIST_SOURCE`) |
+| `config/app.php` | locale `pl`, timezone `Europe/Warsaw`, `log_sql_*`, `use_materialized_views` (`USE_MATERIALIZED_VIEWS`) |
 | `config/database.php` | `pgsql` |
-| `.env.example` | `DB_*`, `FILES_URL`, `CACHE_STORE=array`, `LOG_SQL_*`, `CASE_LIST_SOURCE` |
+| `.env.example` | `DB_*`, `FILES_URL`, `CACHE_STORE=array`, `LOG_SQL_*`, `USE_MATERIALIZED_VIEWS` |
 | `docker-compose.yml` | `FILES` mount `:ro`, postgres:16, port 8080 |
 
 ## Poza aplikacją

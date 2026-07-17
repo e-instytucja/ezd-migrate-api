@@ -7,6 +7,9 @@ alwaysApply: true
 
 ## Architektura i baza
 
+- NIE wykonuj `INSERT` / `UPDATE` / `DELETE` / `TRUNCATE` na tabelach danych EZD (`eurzad_*`, `galaxia_*`, `users_*`, `front_office_*` itd.) — runtime API = wyłącznie `SELECT`
+- **Jedyny dozwolony zapis do PostgreSQL (poza logami):** DDL widoków zmaterializowanych list API (`CREATE` / `REFRESH` / `DROP MATERIALIZED VIEW`, indeksy na MV: `api_case_list`, `api_document_list`) — **wyłącznie** z linii poleceń: `php artisan materialized-views:refresh`, `cases:refresh-list-mv`, `documents:refresh-list-mv` (opcjonalnie `--drop`); **nie** przez endpointy HTTP (`GET|POST /api/v1/system/materialized-views` tylko przełącza `USE_MATERIALIZED_VIEWS` w `.env`)
+- NIE modyfikuj repozytorium **ezd3** w celu zmiany danych lub logiki zapisu — EZD3 to źródło prawdy o danych; site tylko czyta legacy schemat
 - NIE dodawaj migracji Laravel ani Eloquent modeli dla tabel `eurzad_*` / `galaxia_*` / `users_*`
 - NIE zakładaj, że schemat DB jest w repo — pochodzi z dumpa EZD (`scripts/import-*.sh`)
 - NIE buduj „import service" w aplikacji — import = skrypty shell + Docker Postgres
@@ -27,7 +30,8 @@ alwaysApply: true
 - NIE mieszaj Cases (`dntas=0`, `/cases`) z DNTAS (`dntas=1`, `/dntas`)
 - NIE zmieniaj nazw polskich pól API ani kolumn SQL bez koordynacji z konsumentami
 - NIE masowo poprawiaj typo (`DoctionaryQuery`, `SupliantService`) — osobny refaktor
-- Przy zmianie `CaseListQuery` zsynchronizuj ścieżkę MV (`ApiCaseListMaterializedView`, `CaseListQueryMV`, `docs/queries/case-queries.md`) jeśli prod używa `CASE_LIST_SOURCE=mv`; po imporcie dumpa uruchom `cases:refresh-list-mv`
+- Przy zmianie `CaseListQuery` zsynchronizuj ścieżkę MV (`ApiCaseListMaterializedView`, `CaseListQueryMV`, `docs/queries/case-queries.md`) jeśli prod używa `USE_MATERIALIZED_VIEWS=true`; po imporcie dumpa uruchom `materialized-views:refresh` (lub per-widok `cases:refresh-list-mv`)
+- Przy zmianie `DocumentListQuery` zsynchronizuj ścieżkę MV (`ApiDocumentListMaterializedView`, `DocumentListQueryMV`, `docs/queries/document-queries.md`) jeśli prod używa `USE_MATERIALIZED_VIEWS=true`; po imporcie dumpa uruchom `materialized-views:refresh` (lub per-widok `documents:refresh-list-mv`)
 
 ## Testy API (`tests/`)
 

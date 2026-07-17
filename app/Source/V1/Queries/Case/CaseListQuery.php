@@ -300,6 +300,8 @@ SQL . $this->bind($dataDo . ' 23:59:59');
                 et.sprawa_uid                                                 AS main_document_uid,
                 esp.sprawa_createdate                                         AS data_rejestracji_dokumentu,
                 esp.czas_realizacji                                           AS czas_realizacji,
+                esp.sprawa_finishdate                                         AS sprawa_finishdate,
+                eo.status                                                     AS status,
                 es.sprawa_createdate                                          AS data_utworzenia_dokumentu,
                 gp.name                                                       AS nazwa_procesu,
                 gp.normalized_name                                            AS nazwa_procesu_znormalizowana,

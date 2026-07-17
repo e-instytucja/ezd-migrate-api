@@ -6,17 +6,17 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Api\BaseApiController;
 use App\Http\Response\ApiResponseRenderer;
-use App\Source\V1\Support\CaseListSource;
+use App\Source\V1\Support\MaterializedViews\MaterializedViewsMode;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use InvalidArgumentException;
 use RuntimeException;
 use Throwable;
 
-final class CaseListSourceController extends BaseApiController
+final class MaterializedViewsController extends BaseApiController
 {
     public function __construct(
-        private readonly CaseListSource $caseListSource,
+        private readonly MaterializedViewsMode $materializedViewsMode,
         ApiResponseRenderer $renderer,
     ) {
         parent::__construct($renderer);
@@ -24,19 +24,14 @@ final class CaseListSourceController extends BaseApiController
 
     public function show(Request $request): Response
     {
-        return $this->renderResponse($request, $this->caseListSource->status());
+        return $this->renderResponse($request, $this->materializedViewsMode->status());
     }
 
     public function update(Request $request): Response
     {
-        $source = $request->input('source');
-
-        if (!is_string($source) || $source === '') {
-            return $this->renderUnprocessable($request, 'Wymagane pole source (legacy|mv).');
-        }
-
         try {
-            $this->caseListSource->set($source);
+            $enabled = MaterializedViewsMode::parseEnabled($request->input('enabled'));
+            $this->materializedViewsMode->set($enabled);
         } catch (InvalidArgumentException $e) {
             return $this->renderUnprocessable($request, $e->getMessage());
         } catch (RuntimeException $e) {
@@ -47,8 +42,8 @@ final class CaseListSourceController extends BaseApiController
 
         return $this->renderResponse(
             $request,
-            $this->caseListSource->status(),
-            message: 'Zaktualizowano CASE_LIST_SOURCE w .env',
+            $this->materializedViewsMode->status(),
+            message: 'Zaktualizowano USE_MATERIALIZED_VIEWS w .env',
         );
     }
 }

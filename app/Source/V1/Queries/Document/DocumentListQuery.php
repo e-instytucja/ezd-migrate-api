@@ -10,7 +10,7 @@ use App\Source\V1\DTO\Request\TypFiltrDokument;
 use App\Source\V1\Enum\TypDokument;
 use Illuminate\Support\Facades\DB;
 
-class DocumentListQuery extends AbstractDocumentQuery
+class DocumentListQuery extends AbstractDocumentQuery implements DocumentListQueryInterface
 {
     private $idDokumentuSelect = 'DISTINCT ON (id_dokumentu)';
 

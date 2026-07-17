@@ -17,7 +17,7 @@ final readonly class SprawaDanePodstawoweWartosciDto implements JsonSerializable
         public ?string $statusPismaWiodacego = null,
         public ?string $dataRejestracji = null,
         public ?string $dataUtworzenia = null,
-        public ?string $terminRealizacji = null,
+        public string $terminRealizacji = '',
         public ?string $tytulSprawy = null,
         public ?string $opisSprawy = null,
     ) {}

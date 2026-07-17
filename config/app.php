@@ -30,15 +30,15 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Case list data source
+    | Materialized views (listy API)
     |--------------------------------------------------------------------------
     |
-    | legacy = CaseListQuery (joins na eurzad_*)
-    | mv     = CaseListQueryMV (materialized view api_case_list)
+    | false = live SQL (CaseListQuery, DocumentListQuery, …)
+    | true  = materialized views (CaseListQueryMV, DocumentListQueryMV, …)
     |
-    | Wymaga: php artisan cases:refresh-list-mv przed CASE_LIST_SOURCE=mv
+    | Wymaga: php artisan materialized-views:refresh przed USE_MATERIALIZED_VIEWS=true
     |
     */
-    'case_list_source' => env('CASE_LIST_SOURCE', 'legacy'),
+    'use_materialized_views' => (bool) env('USE_MATERIALIZED_VIEWS', false),
 
 ];

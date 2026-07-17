@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\Api\V1\AttachmentController;
-use App\Http\Controllers\Api\V1\CaseListSourceController;
+use App\Http\Controllers\Api\V1\MaterializedViewsController;
 use App\Http\Controllers\Api\V1\CasesController;
 use App\Http\Controllers\Api\V1\DntasController;
 use App\Http\Controllers\Api\V1\DocumentsController;
@@ -174,9 +174,9 @@ Route::prefix('v1')
         |--------------------------------------------------------------------------
         */
 
-        Route::get('/system/case-list-source', [CaseListSourceController::class, 'show'])
-            ->name('system.case-list-source.show');
+        Route::get('/system/materialized-views', [MaterializedViewsController::class, 'show'])
+            ->name('system.materialized-views.show');
 
-        Route::post('/system/case-list-source', [CaseListSourceController::class, 'update'])
-            ->name('system.case-list-source.update');
+        Route::post('/system/materialized-views', [MaterializedViewsController::class, 'update'])
+            ->name('system.materialized-views.update');
     });

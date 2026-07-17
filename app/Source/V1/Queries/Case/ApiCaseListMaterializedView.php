@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace App\Source\V1\Queries\Case;
 
-use App\Source\V1\Support\CaseListSource;
+use App\Source\V1\Support\MaterializedViews\CaseListMaterializedView;
 
 /**
  * Definicja SQL materialized view api_case_list (1 wiersz / teczka_uid).
  */
 final class ApiCaseListMaterializedView
 {
-    public const NAME = CaseListSource::VIEW_NAME;
+    public const NAME = CaseListMaterializedView::NAME;
 
     public function definitionSql(): string
     {
@@ -22,6 +22,7 @@ final class ApiCaseListMaterializedView
                 et.sprawa_uid                                                 AS main_document_uid,
                 esp.sprawa_createdate                                         AS data_rejestracji_dokumentu,
                 esp.czas_realizacji                                           AS czas_realizacji,
+                esp.sprawa_finishdate                                         AS sprawa_finishdate,
                 es.sprawa_createdate                                          AS data_utworzenia_dokumentu,
                 gp.name                                                       AS nazwa_procesu,
                 gp.normalized_name                                            AS nazwa_procesu_znormalizowana,

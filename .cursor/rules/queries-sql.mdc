@@ -17,20 +17,35 @@ alwaysApply: false
 
 **CaseListQuery** — start od `eurzad_teczka et`, zawsze JOIN do `eurzad_sprawa es`.
 
-**Case list — legacy vs MV** (`CASE_LIST_SOURCE`, domyślnie `legacy`):
-- `legacy` → `CaseListQuery` (JOIN-y na `eurzad_*`)
-- `mv` → `CaseListQueryMV` z materialized view `api_case_list` (`CaseListQueryFactory`)
+**Case list — live SQL vs MV** (`USE_MATERIALIZED_VIEWS`, domyślnie `false`):
+- `false` → `CaseListQuery` (JOIN-y na `eurzad_*`)
+- `true` → `CaseListQueryMV` z materialized view `api_case_list` (`CaseListQueryFactory`)
 - Definicja widoku: `ApiCaseListMaterializedView` — jedyne źródło SQL CREATE/REFRESH
-- Refresh: `php artisan cases:refresh-list-mv` (`--drop` przy zmianie kształtu kolumn widoku)
-- Przełącznik: env `CASE_LIST_SOURCE`; status: `GET|POST /api/v1/system/case-list-source`
+- Refresh: `php artisan cases:refresh-list-mv` lub `materialized-views:refresh` (`--drop` przy zmianie kształtu kolumn widoku)
+- Przełącznik globalny: env `USE_MATERIALIZED_VIEWS`; status: `GET|POST /api/v1/system/materialized-views`
 - Przy `pokaz_udostepnione` w trybie MV nadal EXISTS na `galaxia_instance_users` (nie w kolumnach MV)
 
 Po zmianie SELECT / JOIN / filtrów / sortu w `CaseListQuery`:
 1. Zaktualizuj `ApiCaseListMaterializedView` (kolumny widoku)
 2. Zaktualizuj `CaseListQueryMV` (WHERE, ORDER BY — własna mapa kolumn, nie `SortowanieSpraw::toOrderBySql()`)
 3. Zaktualizuj `docs/queries/case-queries.md`
-4. Na środowisku z `CASE_LIST_SOURCE=mv`: `php artisan cases:refresh-list-mv` (lub `--drop` po zmianie schematu widoku)
+4. Na środowisku z `USE_MATERIALIZED_VIEWS=true`: `php artisan materialized-views:refresh` (lub `--drop` po zmianie schematu widoku)
 5. NIE dodawaj migracji Laravel na `api_case_list`
+
+**Document list — live SQL vs MV** (ten sam `USE_MATERIALIZED_VIEWS`):
+- `false` → `DocumentListQuery` (UNION 5 gałęzi na `eurzad_*`)
+- `true` → `DocumentListQueryMV` z `api_document_list` (`DocumentListQueryFactory::make($filtry)`)
+- Scoped (`filtry.teczka_uid`) → zawsze legacy (guard w factory)
+- Definicja widoku: `ApiDocumentListMaterializedView`
+- Refresh: `php artisan documents:refresh-list-mv` lub `materialized-views:refresh`
+- Rejestr widoków: `MaterializedViewRegistry` — nowe MV dodawaj tam
+
+Po zmianie SELECT / JOIN / filtrów / sortu w `DocumentListQuery`:
+1. Zaktualizuj `ApiDocumentListMaterializedView` (kolumny widoku)
+2. Zaktualizuj `DocumentListQueryMV` (WHERE — sort: `SortowanieDokumentow::toOrderBySql()`)
+3. Zaktualizuj `docs/queries/document-queries.md`
+4. Na środowisku z `USE_MATERIALIZED_VIEWS=true`: `php artisan materialized-views:refresh` (lub `--drop` po zmianie schematu widoku)
+5. NIE dodawaj migracji Laravel na `api_document_list`
 
 **DocumentListQuery** — 5 gałęzi UNION (`TypUnionDokumentu`); niewychodzące start od `eurzad_sprawa es`; wychodzące od `eurzad_pismo ep`; ZPO od `eurzad_sprawa es`.
 

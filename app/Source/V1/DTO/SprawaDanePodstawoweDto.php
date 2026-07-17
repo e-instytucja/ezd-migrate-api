@@ -6,10 +6,13 @@ namespace App\Source\V1\DTO;
 
 use App\Shared\Functions;
 use App\Source\V1\Enum\TypFormularza;
+use Exception;
 use JsonSerializable;
 
 final readonly class SprawaDanePodstawoweDto implements JsonSerializable
 {
+    private const STATUSY_ZAKONCZONE = ['Z', 'ZS', 'ZA', 'T'];
+
     public function __construct(
         public SprawaDanePodstawoweWartosciDto $values,
         /** @var array<string, string> */
@@ -26,7 +29,7 @@ final readonly class SprawaDanePodstawoweDto implements JsonSerializable
 //                statusPismaWiodacego: '',
 //                dataRejestracji: '',
 //                dataUtworzenia: '',
-//                terminRealizacji: null,
+//                terminRealizacji: '',
 //                tytulSprawy: '',
 //                opisSprawy: '',
             ),
@@ -44,19 +47,11 @@ final readonly class SprawaDanePodstawoweDto implements JsonSerializable
 
     /**
      * @param array<string, mixed> $row
+     *
+     * @throws Exception
      */
     public static function fromCaseRow(array $row, object $titleAndDesc): self
     {
-        $registerDate = $row['data_rejestracji_dokumentu'];
-        $realizationTime = $row['czas_realizacji'];
-        $terminRealizacji = null;
-
-        if ($realizationTime >= 0) {
-            $terminRealizacji = Functions::convertToISO8601(
-                Functions::extendDateByDays($registerDate, $realizationTime),
-            );
-        }
-
         return self::fromValues(
             new SprawaDanePodstawoweWartosciDto(
                 idSprawy: $row['id_sprawy'] ?? null,
@@ -64,13 +59,47 @@ final readonly class SprawaDanePodstawoweDto implements JsonSerializable
                 idProcesu: $row['id_procesu'],
                 typFormularza: TypFormularza::tryFromWiersza($row['typ_formularza'] ?? null),
                 statusPismaWiodacego: $row['status_procesu'],
-                dataRejestracji: Functions::convertToISO8601($registerDate),
+                dataRejestracji: Functions::convertToISO8601($row['data_rejestracji_dokumentu']),
                 dataUtworzenia: Functions::convertToISO8601($row['data_utworzenia_dokumentu']),
-                terminRealizacji: $terminRealizacji,
+                terminRealizacji: self::resolveTerminRealizacji($row),
                 tytulSprawy: $titleAndDesc->tytul_sprawy,
                 opisSprawy: $titleAndDesc->opis_sprawy,
             ),
         );
+    }
+
+    /**
+     * @param array<string, mixed> $row
+     *
+     * @throws Exception
+     */
+    private static function resolveTerminRealizacji(array $row): string
+    {
+        $czasRealizacji = (int) $row['czas_realizacji'];
+        $dataRejestracji = $row['data_rejestracji_dokumentu'];
+        $sprawaFinishdate = $row['sprawa_finishdate'] ?? null;
+        $status = isset($row['status']) ? (string) $row['status'] : null;
+
+        if ($czasRealizacji >= 0) {
+            return Functions::convertToISO8601(
+                Functions::extendDateByDays($dataRejestracji, $czasRealizacji),
+            );
+        }
+
+        if (!empty($sprawaFinishdate)) {
+            return Functions::convertToISO8601($sprawaFinishdate);
+        }
+
+        if (self::isSprawaNiezakonczona($status)) {
+            throw new Exception('brak czasu realizacji dla sprawy niezakończonej');
+        }
+
+        throw new Exception('brak czasu realizacji dla sprawy zakończonej');
+    }
+
+    private static function isSprawaNiezakonczona(?string $status): bool
+    {
+        return $status === null || !in_array($status, self::STATUSY_ZAKONCZONE, true);
     }
 
     /**

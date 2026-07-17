@@ -59,7 +59,7 @@ Kolumny = te używane w Queries. Pełny DDL poza repo.
 | `eurzad_teczka_podteczki` | `tp` | LEFT JOIN w CaseQuery | `id`, `opis` |
 | `eurzad_teczka_zawartosc` | `tz`, `etz` | Powiązanie zawartości teczki | `teczka_uid`, `teczka_zawartosc_uid` |
 | `eurzad_sprawa` | `es`, `sp` | Pismo wiodące; start DocumentListQuery typ 1/3/4 | `sprawa_uid`, `form_name`, `sprawa_createdate` |
-| `eurzad_sprawa_przedluzanie` | `esp`, `sp` | Daty w SELECT (kolumny: `sprawa_createdate`, `czas_realizacji`) | `sprawa_uid` |
+| `eurzad_sprawa_przedluzanie` | `esp`, `sp` | Terminy sprawy w SELECT | `sprawa_uid`, `sprawa_createdate`, `czas_realizacji`, `sprawa_finishdate` |
 | `eurzad_obieg` | `eo`, `o` | Obieg sprawy | `sprawa_uid`, `instanceId`, `status`, `status_sprawy_id`, `max_status_sprawy_id`, `uugid_from`, `uugid_to`, `createdate`, `added_automatically` |
 
 ### Dokumenty w sprawie

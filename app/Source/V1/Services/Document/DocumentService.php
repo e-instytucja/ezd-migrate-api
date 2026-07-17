@@ -13,6 +13,8 @@ use App\Source\V1\DTO\Request\KryteriaWyszukiwaniaDokumentow;
 use App\Source\V1\Queries\Case\CaseQuery;
 use App\Source\V1\Queries\Document\DocumentQuery;
 use App\Source\V1\Queries\Document\DocumentListQuery;
+use App\Source\V1\Queries\Document\DocumentListQueryFactory;
+use App\Source\V1\Queries\Document\DocumentListQueryInterface;
 use App\Source\V1\Queries\Structure\UugQuery;
 use App\Source\V1\Services\Attachment\AttachmentService;
 use App\Source\V1\Services\Form\FormService;
@@ -33,6 +35,7 @@ class DocumentService
         private readonly DocumentQuery $documentQuery,
         private readonly CaseQuery $caseQuery,
         private readonly DocumentListQuery $documentListQuery,
+        private readonly DocumentListQueryFactory $documentListQueryFactory,
         private readonly UugQuery $uugQuery,
         private readonly SupliantService $supliantService,
         private readonly AttachmentService $attachmentService,
@@ -48,6 +51,11 @@ class DocumentService
     /**
      * @throws \JsonException
      */
+    private function documentListQueryFor(KryteriaWyszukiwaniaDokumentow $kryteriaWyszukiwania): DocumentListQueryInterface
+    {
+        return $this->documentListQueryFactory->make($kryteriaWyszukiwania->filtry);
+    }
+
     public function getList(KryteriaWyszukiwaniaDokumentow $kryteriaWyszukiwania): array
     {
         Log::notice('DOCUMENT_LIST.start', [
@@ -63,7 +71,8 @@ class DocumentService
         $phases = [];
 
         $tCount = Functions::startTimer();
-        $count = $this->documentListQuery->getListCount($kryteriaWyszukiwania);
+        $documentListQuery = $this->documentListQueryFor($kryteriaWyszukiwania);
+        $count = $documentListQuery->getListCount($kryteriaWyszukiwania);
         if ($logSql) {
             $phases['count_ms'] = round((microtime(true) - $tCount) * 1000, 2);
             Log::info('DOCUMENT_LIST.phase', [
@@ -85,7 +94,7 @@ class DocumentService
             ];
         }
         $tList = Functions::startTimer();
-        $list = $this->documentListQuery->getList($kryteriaWyszukiwania);
+        $list = $documentListQuery->getList($kryteriaWyszukiwania);
         if ($logSql) {
             $phases['list_ms'] = round((microtime(true) - $tList) * 1000, 2);
             Log::info('DOCUMENT_LIST.phase', [

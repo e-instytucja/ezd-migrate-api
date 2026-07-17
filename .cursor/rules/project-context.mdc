@@ -7,7 +7,7 @@ alwaysApply: true
 
 Laravel 11 API nad legacy schematem PostgreSQL (EZD). Brak migracji i Eloquent. Testy: PHPUnit Feature w `tests/` (read-only względem bazy).
 
-**Read-only:** konwencja projektu (Queries = SELECT). Kod **nie blokuje** zapisów do DB ani plików — brak technicznej gwarancji read-only.
+**Read-only:** konwencja projektu (Queries = SELECT). Kod **nie blokuje** zapisów do DB ani plików — brak technicznej gwarancji read-only. **Zakaz** modyfikacji danych EZD (`INSERT`/`UPDATE`/`DELETE`/`TRUNCATE` na tabelach `eurzad_*` itd.). **Wyjątek:** DDL MV list API (`api_case_list`, `api_document_list`) — tylko artisan (`materialized-views:refresh`, `cases:refresh-list-mv`, `documents:refresh-list-mv`), nie HTTP. Nie zmieniaj ezd3 w celu zapisu danych.
 
 ## Stack
 
@@ -48,4 +48,4 @@ routes/api.php → Controllers/Api/V1 → Source/V1/Services → Source/V1/Queri
 - **Sprawa (API)** = teczka (`eurzad_teczka.teczka_uid`) powiązana z pismem wiodącym (`eurzad_sprawa.sprawa_uid`) — **WNIOSEK Z SQL, NIE Z DDL**
 - **DNTAS** = `eurzad_teczka.dntas = 1` (osobny kontroler, ta sama logika serwisu)
 - W `DocumentQuery`: `DOCUMENT_TYPE_PISMO` = wiersz w `eurzad_sprawa`; `DOCUMENT_TYPE_DOKUMENT` = wiersz w `eurzad_pismo`
-- Listy spraw: `CASE_LIST_SOURCE=legacy|mv` — factory `CaseListQueryFactory`; widok `api_case_list` + `cases:refresh-list-mv` (patrz `docs/queries/case-queries.md`)
+- Listy API z MV: `USE_MATERIALIZED_VIEWS=true|false` — `MaterializedViewsMode` + `MaterializedViewRegistry`; widoki `api_case_list`, `api_document_list`; refresh: `materialized-views:refresh` (patrz `docs/queries/case-queries.md`, `document-queries.md`)
