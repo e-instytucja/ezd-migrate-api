@@ -61,6 +61,7 @@ final readonly class SprawaDanePodstawoweDto implements JsonSerializable
                 statusPismaWiodacego: $row['status_procesu'],
                 dataRejestracji: Functions::convertToISO8601($row['data_rejestracji_dokumentu']),
                 dataUtworzenia: Functions::convertToISO8601($row['data_utworzenia_dokumentu']),
+                dataWszczecia: Functions::convertToISO8601($row['data_wszczecia']),
                 terminRealizacji: self::resolveTerminRealizacji($row),
                 tytulSprawy: $titleAndDesc->tytul_sprawy,
                 opisSprawy: $titleAndDesc->opis_sprawy,
@@ -76,13 +77,13 @@ final readonly class SprawaDanePodstawoweDto implements JsonSerializable
     private static function resolveTerminRealizacji(array $row): string
     {
         $czasRealizacji = (int) $row['czas_realizacji'];
-        $dataRejestracji = $row['data_rejestracji_dokumentu'];
+        $dataWszczecia = $row['data_wszczecia'];
         $sprawaFinishdate = $row['sprawa_finishdate'] ?? null;
         $status = isset($row['status']) ? (string) $row['status'] : null;
 
         if ($czasRealizacji >= 0) {
             return Functions::convertToISO8601(
-                Functions::extendDateByDays($dataRejestracji, $czasRealizacji),
+                Functions::extendDateByDays($dataWszczecia, $czasRealizacji),
             );
         }
 
@@ -115,6 +116,7 @@ final readonly class SprawaDanePodstawoweDto implements JsonSerializable
             'statusPismaWiodacego' => 'Status pisma wiodącego',
             'dataRejestracji' => 'Data rejestracji',
             'dataUtworzenia' => 'Data utworzenia',
+            'dataWszczecia' => 'Data wszczęcia',
             'terminRealizacji' => 'Termin realizacji',
             'tytulSprawy' => 'Tytuł sprawy',
             'opisSprawy' => 'Opis sprawy',

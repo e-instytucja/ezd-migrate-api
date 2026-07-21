@@ -92,6 +92,18 @@ Patrz [README.md](README.md#pokaz_udostepnione--semantyka-w-kodzie) — decyduje
 | `czas_realizacji` | `esp.czas_realizacji` |
 | `sprawa_finishdate` | `esp.sprawa_finishdate` |
 | `status` | `eo.status` (symbol; w MV `api_case_list`; w live `CaseListQuery` od 2026-07) |
+| `data_wszczecia` | `et.teczka_createdate` |
+| `data_rejestracji_dokumentu` | `esp.sprawa_createdate` (pismo wiodące; nie mapowane do show) |
+| `data_utworzenia_dokumentu` | `es.sprawa_createdate` (pismo wiodące; nie mapowane do show) |
+
+### `danePodstawowe.values` (endpoint show — `SprawaDanePodstawoweDto`)
+
+| Pole API | Alias SQL | Źródło DB |
+|----------|-----------|-----------|
+| `dataRejestracji` | `data_wszczecia` | `et.teczka_createdate` |
+| `dataUtworzenia` | `data_wszczecia` | `et.teczka_createdate` |
+
+Daty w show dotyczą **teczki/sprawy**, nie pisma wiodącego. Aliasy `data_rejestracji_dokumentu` / `data_utworzenia_dokumentu` pozostają w SELECT listy (filtry, inne ścieżki).
 
 ### `terminRealizacji` (endpoint show — `SprawaDanePodstawoweDto`)
 
@@ -99,7 +111,7 @@ Pole API **zawsze** zawiera datę ISO 8601; `null` niedozwolone.
 
 | `czas_realizacji` | Źródło `terminRealizacji` |
 |-------------------|---------------------------|
-| `>= 0` | `data_rejestracji_dokumentu` (`esp.sprawa_createdate`) + N dni |
+| `>= 0` | `data_wszczecia` (`et.teczka_createdate`) + N dni |
 | `-1` lub `-2` | `esp.sprawa_finishdate`, jeśli wypełnione |
 | `-1` lub `-2`, brak `sprawa_finishdate` | błąd HTTP 422 (`request_failed`) |
 
