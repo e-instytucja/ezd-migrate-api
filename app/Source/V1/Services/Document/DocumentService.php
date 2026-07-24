@@ -9,6 +9,7 @@ use App\Source\V1\DTO\PracownikDto;
 use App\Source\V1\Enum\TypDokument;
 use App\Source\V1\Enum\TypFormularza;
 use App\Source\V1\Enum\TypPowiazaniaDokumentu;
+use App\Source\V1\DTO\Request\AktaSprawyPaginacja;
 use App\Source\V1\DTO\Request\KryteriaWyszukiwaniaDokumentow;
 use App\Source\V1\Queries\Case\CaseQuery;
 use App\Source\V1\Queries\Document\DocumentQuery;
@@ -213,7 +214,8 @@ class DocumentService
     {
         Log::notice('DOCUMENT_LIST.start', ['case_uid' => $caseUID]);
         $startedAt = Functions::startTimer();
-        $documentList = $this->documentListQuery->getList(KryteriaWyszukiwaniaDokumentow::forTeczkaUid($caseUID));
+        $kryteria = KryteriaWyszukiwaniaDokumentow::forTeczkaUid($caseUID);
+        $documentList = $this->documentListQueryFor($kryteria)->getList($kryteria);
         foreach ($documentList as &$document) {
             $this->hydrateDocumentListRowEnums($document);
             $this->supliantService->hydrateSuppliantData($document, $document['id_dokumentu']);
@@ -227,6 +229,39 @@ class DocumentService
         ]);
 
         return $documentList;
+    }
+
+    /**
+     * @return array{list: list<array<string, mixed>>, count: int}
+     */
+    public function getDocumentsListByCaseUIDPaginated(string $caseUID, AktaSprawyPaginacja $aktaPaginacja): array
+    {
+        Log::notice('DOCUMENT_LIST.start', [
+            'case_uid' => $caseUID,
+            'page' => $aktaPaginacja->page,
+            'limit' => $aktaPaginacja->limit,
+        ]);
+        $startedAt = Functions::startTimer();
+        $kryteria = KryteriaWyszukiwaniaDokumentow::forTeczkaUidPaginated($caseUID, $aktaPaginacja);
+        $documentListQuery = $this->documentListQueryFor($kryteria);
+        $documentList = $documentListQuery->getList($kryteria);
+        $count = $documentListQuery->getListCount($kryteria);
+        foreach ($documentList as &$document) {
+            $this->hydrateDocumentListRowEnums($document);
+            $this->supliantService->hydrateSuppliantData($document, $document['id_dokumentu']);
+        }
+        unset($document);
+
+        Log::info('[' . Functions::elapsedMs($startedAt) . 'ms] DOCUMENT_LIST.ok', [
+            'case_uid' => $caseUID,
+            'count' => $count,
+            'page_count' => count($documentList),
+        ]);
+
+        return [
+            'list' => $documentList,
+            'count' => $count,
+        ];
     }
 
     /**

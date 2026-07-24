@@ -16,9 +16,11 @@ Globalny przełącznik: **`USE_MATERIALIZED_VIEWS`** — patrz [case-queries.md]
 | MV | `api_document_list` (1 wiersz / `id_dokumentu`, UNION 5 gałęzi + `DISTINCT ON`) |
 | Refresh | `php artisan documents:refresh-list-mv` lub `materialized-views:refresh` (`--drop`) |
 
-`DocumentService::getList()` wywołuje factory **per request**. Show (`getDocumentDetails`) i lista w sprawie (`getDocumentsListByCaseUID`) zawsze używają legacy `DocumentListQuery`.
+`DocumentService::getList()` i lista akt w sprawie (`getDocumentsListByCaseUID`, `getDocumentsListByCaseUIDPaginated`) wywołują factory **per request** — przy `USE_MATERIALIZED_VIEWS=true` także scoped (`teczka_uid`). Show (`getDocumentDetails`) nadal używa legacy `DocumentQuery`.
 
-**Guard `teczka_uid`:** Factory zawsze zwraca legacy gdy `isScopedToTeczka()` — MV nie obsługuje scoped.
+**Scoped (`teczka_uid`):** `DocumentListQueryMV` filtruje `adl.teczka_uid = ?` (bez workstation scope). Kolumna `teczka_uid` w MV pochodzi z `et.teczka_uid` (gałąź `bez_sprawy` → `NULL`). LIMIT/OFFSET stosowane także dla scoped (pełna lista akt: `limit: 10000`; paginacja show sprawy: `aktaSprawy.page/limit` — patrz [case-queries.md](case-queries.md#paginacja-akt-sprawy-endpoint-show)).
+
+Po dodaniu kolumny do istniejącego widoku wymagany `php artisan documents:refresh-list-mv --drop`.
 
 Po zmianie SELECT/JOIN w `DocumentListQuery` (gdy prod ma `USE_MATERIALIZED_VIEWS=true`):
 1. `ApiDocumentListMaterializedView` (kolumny widoku)
@@ -85,7 +87,7 @@ Kolumny SQL `typ_dokumentu`, `typ_powiazania_dokumentu` → mapowanie w `Documen
 
 | Tryb | Warunek | Efekt |
 |------|---------|-------|
-| Scoped to teczka | `teczka_uid != null` | per gałąź: inicjujący → `INNER JOIN et` + `et.sprawa_uid = es.sprawa_uid`; w sprawie → `INNER JOIN et` + `etz`; bez sprawy → wykluczony (`1=0`); wychodzący/ZPO → `et.teczka_uid = ?`; bez LIMIT/OFFSET |
+| Scoped to teczka | `teczka_uid != null` | per gałąź: inicjujący → `INNER JOIN et` + `et.sprawa_uid = es.sprawa_uid`; w sprawie → `INNER JOIN et` + `etz`; bez sprawy → wykluczony (`1=0`); wychodzący/ZPO → `et.teczka_uid = ?`; LIMIT/OFFSET z `paginacja` |
 | Globalny | domyślny | pełne filtry + scope stanowisk + paginacja |
 
 ### Filtry (`TypFiltrDokument`)
@@ -205,7 +207,9 @@ Sortowanie: `SortowanieDokumentow::toOrderBySql()` + `id_dokumentu ASC` (tiebrea
 
 Budowa MV: `ApiDocumentListMaterializedView` + `DocumentListMvRefreshService` / `documents:refresh-list-mv`.
 
-Kolumny MV tylko pod filtry (nie w SELECT API): `status` (symbol `eo`/`epo`), `instance_id`.
+Kolumny MV tylko pod filtry (nie w SELECT API): `status` (symbol `eo`/`epo`), `instance_id`, `teczka_uid` (scoped akt sprawy).
+
+Indeks scoped: `api_document_list_teczka_data_rej_idx (teczka_uid, data_rejestracji DESC)`.
 
 ---
 

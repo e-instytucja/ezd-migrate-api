@@ -52,11 +52,8 @@ class DocumentListQuery extends AbstractDocumentQuery implements DocumentListQue
         SQL;
         $sql .= "\nORDER BY " . $this->getOrderSql($criteria->sortowanie);
         $sql .= ", id_dokumentu ASC";
-
-        if (!$criteria->filtry->isScopedToTeczka()) {
-            $sql .= "\nLIMIT " . $this->getLimitSql($criteria->paginacja->limit);
-            $sql .= "\nOFFSET " . $this->getOffsetSql($criteria->paginacja->offset);
-        }
+        $sql .= "\nLIMIT " . $this->getLimitSql($criteria->paginacja->limit);
+        $sql .= "\nOFFSET " . $this->getOffsetSql($criteria->paginacja->offset);
 
         return $sql;
     }

@@ -48,10 +48,11 @@ class CaseService
     }
 
     /**
+     * @return array{sprawa: SprawaDto, aktaMeta: ?array<string, mixed>}
      * @throws Exception
      * @throws \ReflectionException
      */
-    public function getCaseDetails(KryteriaWyszukiwaniaSpraw $kryteriaWyszukiwania, int $dntas = 0): SprawaDto
+    public function getCaseDetails(KryteriaWyszukiwaniaSpraw $kryteriaWyszukiwania, int $dntas = 0): array
     {
         Log::notice('CASE_DETAILS.start', ['kryteriaWyszukiwania' => json_encode($kryteriaWyszukiwania), 'dntas' => $dntas]);
         $startedAt = Functions::startTimer();
@@ -59,23 +60,43 @@ class CaseService
         $caseUid = $kryteriaWyszukiwania->filtry->sprawaUid;
         $caseRow = $this->caseListQuery()->getList($kryteriaWyszukiwania)[0];
 
-        $sprawa = $this->mapToSprawaDto($caseRow, $caseUid, $dntas);
+        $aktaPaginacja = $kryteriaWyszukiwania->aktaPaginacja;
+        $aktaMeta = null;
+
+        if ($dntas === 0 && $aktaPaginacja !== null) {
+            $sprawa = $this->mapToSprawaDto($caseRow, $caseUid, $dntas, loadAkta: false);
+            $aktaResult = $this->documentService->getDocumentsListByCaseUIDPaginated($caseUid, $aktaPaginacja);
+            $sprawa->aktaSprawy = $aktaResult['list'];
+            $aktaMeta = [
+                'count' => $aktaResult['count'],
+                'page' => $aktaPaginacja->page,
+                'limit' => $aktaPaginacja->limit,
+                'has_prev' => $aktaPaginacja->page > 1,
+                'has_next' => ($aktaPaginacja->page * $aktaPaginacja->limit) < $aktaResult['count'],
+            ];
+        } else {
+            $sprawa = $this->mapToSprawaDto($caseRow, $caseUid, $dntas);
+        }
 
         Log::info('[' . Functions::elapsedMs($startedAt) . 'ms] CASE_DETAILS.ok', [
             'case_uid' => $caseUid,
             'main_document_uid' => $caseRow['main_document_uid'],
             'process_id' => $sprawa->danePodstawowe->values->idProcesu,
             'documents_count' => count($sprawa->aktaSprawy ?? []),
+            'akta_paginated' => $aktaMeta !== null,
         ]);
 
-        return $sprawa;
+        return [
+            'sprawa' => $sprawa,
+            'aktaMeta' => $aktaMeta,
+        ];
     }
 
     /**
      * @param array<string, mixed> $row
      * @throws Exception
      */
-    private function mapToSprawaDto(array $row, string $caseUid, int $dntas): SprawaDto
+    private function mapToSprawaDto(array $row, string $caseUid, int $dntas, bool $loadAkta = true): SprawaDto
     {
         $mainDocumentUid = $row['main_document_uid'];
         $normalizedProcessName = $row['nazwa_procesu_znormalizowana'];
@@ -101,7 +122,7 @@ class CaseService
         $sprawa->danePodstawowe = SprawaDanePodstawoweDto::fromCaseRow($row, $titleAndDesc);
         $sprawa->wlasciciel = $wlasciciel;
         $sprawa->utworzyl = $utworzyl;
-        $sprawa->aktaSprawy = $dntas
+        $sprawa->aktaSprawy = ($dntas || !$loadAkta)
             ? []
             : $this->documentService->getDocumentsListByCaseUID($caseUid);
         $sprawa->daneFormularza = $daneFormularza;

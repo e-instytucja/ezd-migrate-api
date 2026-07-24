@@ -194,6 +194,23 @@ Query Builder. Metody lookup / historia.
 
 ---
 
+## Paginacja akt sprawy (endpoint show)
+
+Opcjonalny payload `aktaSprawy: { page, limit }` w `POST /api/v1/cases/{caseUid}` (tylko `dntas=0`).
+
+| Pole | Domyślnie | Zakres |
+|------|-----------|--------|
+| `page` | 1 | min 1 |
+| `limit` | 20 | 10–100 |
+
+- **Brak `aktaSprawy`** — pełna lista akt (`limit: 10000`, sort `data_rejestracji desc`).
+- **Z `aktaSprawy`** — jedna strona akt + `meta.aktaSprawy`: `count`, `page`, `limit`, `has_prev`, `has_next`.
+- **DNTAS** (`dntas=1`) — `aktaSprawy` zawsze `[]`; paginacja ignorowana.
+
+Implementacja: `AktaSprawyPaginacja` → `KryteriaWyszukiwaniaDokumentow::forTeczkaUidPaginated` → `DocumentListQueryFactory` → `getList` + `getListCount` (przy `USE_MATERIALIZED_VIEWS=true`: `api_document_list WHERE teczka_uid = ?`).
+
+---
+
 ## Otwarte kwestie
 
 Q-01, Q-02, Q-10 — [open-questions.md](../open-questions.md)

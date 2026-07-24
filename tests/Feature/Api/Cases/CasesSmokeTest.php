@@ -80,6 +80,42 @@ final class CasesSmokeTest extends ApiTestCase
         $this->assertNotServerError($response);
     }
 
+    public function test_show_post_with_akta_sprawy_pagination_not_server_error(): void
+    {
+        $fixture = $this->apiFixture();
+        $payload = $this->apiListPayload($fixture['workstation_ids']);
+        $payload['aktaSprawy'] = ['page' => 1, 'limit' => 10];
+
+        $response = $this->postApi('/cases/' . $fixture['case_uid'], $payload);
+
+        $this->assertNotServerError($response);
+    }
+
+    public function test_show_post_with_akta_sprawy_pagination_envelope(): void
+    {
+        $fixture = $this->apiFixture();
+        $payload = $this->apiListPayload($fixture['workstation_ids']);
+        $payload['aktaSprawy'] = ['page' => 1, 'limit' => 10];
+
+        $response = $this->postApi('/cases/' . $fixture['case_uid'], $payload);
+
+        if ($response->getStatusCode() !== 200) {
+            $this->markTestSkipped('Case show unavailable in this environment.');
+        }
+
+        $data = $this->assertApiShow($response);
+        $response->assertJsonStructure([
+            'meta' => [
+                'aktaSprawy' => ['count', 'page', 'limit', 'has_prev', 'has_next'],
+            ],
+        ]);
+
+        $akta = $data['aktaSprawy'] ?? [];
+        $this->assertIsArray($akta);
+        $this->assertLessThanOrEqual(10, count($akta));
+        $this->assertGreaterThanOrEqual(count($akta), (int) $response->json('meta.aktaSprawy.count'));
+    }
+
     public function test_attachments_get_not_server_error(): void
     {
         $fixture = $this->apiFixture();

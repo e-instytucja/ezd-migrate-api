@@ -18,7 +18,7 @@ final class DocumentListQueryFactory
 
     public function make(TypFiltrDokument $filtry): DocumentListQueryInterface
     {
-        if ($filtry->isScopedToTeczka() || !$this->materializedViewsMode->isEnabled()) {
+        if (!$this->materializedViewsMode->isEnabled()) {
             return $this->legacyQuery;
         }
 

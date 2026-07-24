@@ -49,13 +49,14 @@ abstract class AbstractCaseController extends BaseApiController
             $requestAll,
             $this->dntas(),
         );
-        $data = $this->caseService->getCaseDetails($kryteriaWyszukiwania, $this->dntas());
+        $result = $this->caseService->getCaseDetails($kryteriaWyszukiwania, $this->dntas());
 
-        if ($data === null) {
-            return $this->renderNotFound($request, "Case '{$caseUid}' not found.");
+        $meta = [];
+        if ($result['aktaMeta'] !== null) {
+            $meta['aktaSprawy'] = $result['aktaMeta'];
         }
 
-        return $this->renderResponse($request, $data);
+        return $this->renderResponse($request, $result['sprawa'], meta: $meta);
     }
 
     public function statuses(Request $request): Response

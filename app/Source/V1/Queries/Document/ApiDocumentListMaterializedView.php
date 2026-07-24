@@ -42,6 +42,7 @@ final class ApiDocumentListMaterializedView
             "CREATE INDEX IF NOT EXISTS {$view}_typ_dok_idx ON {$view} (typ_dokumentu)",
             "CREATE INDEX IF NOT EXISTS {$view}_nazwa_proc_idx ON {$view} (nazwa_znormalizowana_procesu)",
             "CREATE INDEX IF NOT EXISTS {$view}_instance_idx ON {$view} (instance_id)",
+            "CREATE INDEX IF NOT EXISTS {$view}_teczka_data_rej_idx ON {$view} (teczka_uid, data_rejestracji DESC)",
         ];
     }
 
@@ -197,6 +198,7 @@ final class ApiDocumentListMaterializedView
                 gp."pId" AS id_procesu,
                 ef.form_typ AS typ_formularza,
                 ess.opis AS status_procesu,
+                et.teczka_uid AS teczka_uid,
                 et.teczka_znak_sprawy AS znak_sprawy,
                 gi.workstation AS wlasciciel_stanowisko_id,
                 ug_w."groupName" AS wlasciciel_stanowisko_skrot,

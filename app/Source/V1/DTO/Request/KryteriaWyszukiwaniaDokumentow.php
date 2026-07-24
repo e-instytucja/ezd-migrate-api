@@ -33,4 +33,18 @@ readonly class KryteriaWyszukiwaniaDokumentow
             sortowanie: new SortowanieDokumentow('data_rejestracji', 'desc')
         );
     }
+
+    public static function forTeczkaUidPaginated(string $teczkaUid, AktaSprawyPaginacja $aktaPaginacja): self
+    {
+        return new self(
+            konfiguracja: new ApiKonfiguracja(),
+            filtry: TypFiltrDokument::forTeczkaUid($teczkaUid),
+            paginacja: new Paginacja(
+                page: $aktaPaginacja->page,
+                limit: $aktaPaginacja->limit,
+                offset: $aktaPaginacja->offset,
+            ),
+            sortowanie: new SortowanieDokumentow('data_rejestracji', 'desc')
+        );
+    }
 }

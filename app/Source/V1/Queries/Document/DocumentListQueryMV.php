@@ -66,12 +66,6 @@ class DocumentListQueryMV implements DocumentListQueryInterface
 
     private function assertMvReady(KryteriaWyszukiwaniaDokumentow $criteria): void
     {
-        if ($criteria->filtry->isScopedToTeczka()) {
-            throw new RuntimeException(
-                'DocumentListQueryMV nie obsługuje zapytań scoped (teczka_uid).',
-            );
-        }
-
         if (!$this->materializedViewRegistry->exists(DocumentListMaterializedView::NAME)) {
             throw new RuntimeException(
                 'Materialized view api_document_list nie istnieje. Uruchom: php artisan documents:refresh-list-mv',
@@ -123,6 +117,10 @@ class DocumentListQueryMV implements DocumentListQueryInterface
 
     private function getWhereSql(ApiKonfiguracja $konfiguracja, TypFiltrDokument $filtry): string
     {
+        if ($filtry->isScopedToTeczka()) {
+            return 'adl.teczka_uid = ' . $this->bind($filtry->teczkaUid);
+        }
+
         $conditions = [];
 
         $this->appendWorkstationScope($conditions, $konfiguracja, $filtry);

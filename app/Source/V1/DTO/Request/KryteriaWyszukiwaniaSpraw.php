@@ -12,6 +12,7 @@ readonly class KryteriaWyszukiwaniaSpraw
         public Paginacja       $paginacja,
         public SortowanieSpraw $sortowanie,
         public int             $dntas = 0,
+        public ?AktaSprawyPaginacja $aktaPaginacja = null,
     ) {
     }
 
@@ -23,6 +24,7 @@ readonly class KryteriaWyszukiwaniaSpraw
             paginacja: Paginacja::fromPayload($payload),
             sortowanie: SortowanieSpraw::fromPayload($payload),
             dntas: self::normalizeDntas($dntas),
+            aktaPaginacja: AktaSprawyPaginacja::fromPayload($payload),
         );
     }
 
