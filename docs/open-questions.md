@@ -258,11 +258,10 @@ Kontekst SQL: `docs/queries/`, `docs/database.md`.
 
 | Pole | Wartość |
 |------|---------|
-| **Opis** | Tylko `ApiAccessLogMiddleware`; brak auth na `/api/v1/*`. |
-| **Priorytet** | **Wysoki** (prod) |
-| **Ryzyko** | Publiczny odczyt danych EZD i załączników w deployment bez reverse-proxy auth. |
-| **Sugerowane działanie** | ADR: auth na poziomie nginx/API gateway vs Laravel middleware; wymagania compliance. |
-| **Pliki** | `bootstrap/app.php`, `routes/api.php`, `docker/nginx/default.conf` |
+| **Status** | **Rozwiązane** — shared secret `madkom-api-token` / `MADKOM_API_TOKEN` (wymagany) |
+| **Opis** | Middleware `ApiTokenMiddleware` na `/api/v1/*`. Pusty env → **503** `configuration_error`. Błędny/brak nagłówka → **401**. Token z EZD (Migracje/Madkom/Konfiguracja). |
+| **Priorytet** | — |
+| **Pliki** | `app/Http/Middleware/ApiTokenMiddleware.php`, `bootstrap/app.php`, `config/app.php` |
 
 ---
 
@@ -306,7 +305,7 @@ Kontekst SQL: `docs/queries/`, `docs/database.md`.
 
 | Priorytet | ID |
 |-----------|-----|
-| **Wysoki** | Q-01, Q-02, Q-12, Q-13, Q-16, Q-18 |
+| **Wysoki** | Q-01, Q-02, Q-12, Q-13, Q-16 |
 | **Średni** | Q-03, Q-06, Q-08, Q-15, Q-20, Q-19, Q-27 |
 | **Niski** | Q-04, Q-05, Q-07, Q-09, Q-10, Q-14, Q-17, Q-21, Q-22, Q-23 |
 

@@ -30,7 +30,7 @@ Opis w `composer.json`: *„API integracyjne EZD – odczyt danych starego syste
 - Brak migracji w repo — schemat DB z dumpa EZD (`scripts/import-*.sh`)
 - Brak Eloquent — dostęp przez `Queries` + raw SQL / Query Builder
 - Testy automatyczne: PHPUnit Feature w `tests/Feature/Api/` (integracja HTTP, read-only względem bazy — patrz [tests/README.md](../tests/README.md))
-- Brak middleware autoryzacji — tylko `ApiAccessLogMiddleware` (DO WYJAŚNIENIA: Q-18)
+- Auth API: `ApiTokenMiddleware` + wymagany `MADKOM_API_TOKEN` (nagłówek `madkom-api-token`); pusty env → 503
 
 ## Struktura repozytorium
 

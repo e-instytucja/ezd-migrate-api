@@ -25,6 +25,7 @@ API integracyjne EZD. Dokumentacja techniczna w `docs/`. Pytania otwarte: [docs/
 | `{documentId}` | numeric `\d+` **lub** hex 13 znaków (@TODO → tylko `instanceId`) |
 | Listy spraw/dokumentów | wymagane `konfiguracja.madkomWorkstationIds` (niepusta tablica) |
 | `USE_MATERIALIZED_VIEWS` | `false` (domyślnie) \| `true` — wszystkie listy API z MV; refresh: `php artisan materialized-views:refresh`; status: `GET\|POST /api/v1/system/materialized-views`; szczegóły [case-queries.md](docs/queries/case-queries.md), [document-queries.md](docs/queries/document-queries.md) |
+| `MADKOM_API_TOKEN` | wymagany shared secret; nagłówek `madkom-api-token`; pusty → 503 |
 | Cases vs DNTAS | ta sama logika serwisu, `dntas` 0 vs 1 |
 | `einstytucjaUserId` | pole w `ApiKonfiguracja`, **niewykorzystywane** w Services/Queries |
 | Testy API | `tests/Feature/Api/` — PHPUnit Feature, **tylko odczyt HTTP**; uruchom: `composer test` / `composer test:report`; raport: `/test-reports/` ([tests/README.md](tests/README.md), [api-tests.mdc](.cursor/rules/api-tests.mdc)) |

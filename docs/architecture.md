@@ -99,9 +99,10 @@ Format: `?format=json|xml|html` (domyślnie JSON). Obsługiwane formaty: `Format
 
 | Middleware | Rola |
 |------------|------|
+| `ApiTokenMiddleware` | wymagany `MADKOM_API_TOKEN`; nagłówek `madkom-api-token`; pusty env → 503; mismatch → 401 |
 | `ApiAccessLogMiddleware` | logowanie dostępu API (`API_ACCESS`) |
 
-Brak auth middleware w kodzie.
+Kolejność: najpierw token, potem access log. `GET /health` (web) poza grupą `api` — bez tokena.
 
 ### Diagnostyka czasów SQL (opcjonalna)
 

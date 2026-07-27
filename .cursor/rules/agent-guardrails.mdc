@@ -20,7 +20,8 @@ alwaysApply: true
 
 - NIE usuwaj POST z endpointów list/show — routes używają `Route::match(['get', 'post'], ...)`
 - NIE zmieniaj envelope odpowiedzi bez decyzji — pola: `success`, `status_code`, opcjonalnie `message`, `error` (tylko przy błędzie), `meta`, `data`
-- NIE dodawaj auth middleware bez jawnego polecenia — w kodzie tylko `ApiAccessLogMiddleware`
+- NIE zmieniaj auth middleware (`ApiTokenMiddleware` / wymagany `MADKOM_API_TOKEN`) ani envelope 401/503 bez jawnego polecenia
+- NIE dodawaj innego auth (Sanctum/JWT/session) bez jawnego polecenia — poza `ApiTokenMiddleware` + `ApiAccessLogMiddleware`
 - NIE zmieniaj constraintów `documentId` w routes — @TODO: przejście na numeric `instanceId`
 
 ## Zapytania i domena

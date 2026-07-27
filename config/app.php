@@ -41,4 +41,15 @@ return [
     */
     'use_materialized_views' => (bool) env('USE_MATERIALIZED_VIEWS', false),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Madkom API token (shared secret z EZD)
+    |--------------------------------------------------------------------------
+    |
+    | Wymagany. Pusty = HTTP 503 configuration_error na /api/v1/*.
+    | Nagłówek HTTP: madkom-api-token
+    |
+    */
+    'madkom_api_token' => (string) env('MADKOM_API_TOKEN', ''),
+
 ];

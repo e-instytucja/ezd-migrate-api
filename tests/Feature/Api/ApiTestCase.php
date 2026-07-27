@@ -31,9 +31,22 @@ abstract class ApiTestCase extends TestCase
         ];
     }
 
+    /**
+     * @return array<string, string>
+     */
+    protected function apiHeaders(): array
+    {
+        $token = (string) config('app.madkom_api_token', '');
+        if ($token === '') {
+            return [];
+        }
+
+        return ['madkom-api-token' => $token];
+    }
+
     protected function getApi(string $uri): TestResponse
     {
-        return $this->getJson('/api/v1' . $uri);
+        return $this->withHeaders($this->apiHeaders())->getJson('/api/v1' . $uri);
     }
 
     /**
@@ -41,7 +54,7 @@ abstract class ApiTestCase extends TestCase
      */
     protected function postApi(string $uri, array $payload = []): TestResponse
     {
-        return $this->postJson('/api/v1' . $uri, $payload);
+        return $this->withHeaders($this->apiHeaders())->postJson('/api/v1' . $uri, $payload);
     }
 
     /**
