@@ -31,7 +31,7 @@ final class MaterializedViewRegistry
     {
         $result = DB::selectOne(
             'SELECT to_regclass(?) AS regclass',
-            ['public.' . $viewName],
+            [MaterializedViewNaming::qualified($viewName)],
         );
 
         return $result !== null && $result->regclass !== null;
@@ -43,7 +43,9 @@ final class MaterializedViewRegistry
             return null;
         }
 
-        $result = DB::selectOne('SELECT COUNT(*) AS count FROM ' . $viewName);
+        $result = DB::selectOne(
+            'SELECT COUNT(*) AS count FROM ' . MaterializedViewNaming::qualified($viewName),
+        );
 
         return (int) $result->count;
     }
@@ -76,17 +78,19 @@ final class MaterializedViewRegistry
     }
 
     /**
-     * @return list<array{key: string, name: string, exists: bool, row_count: int|null, refresh_command: string}>
+     * @return list<array{key: string, name: string, schema: string, exists: bool, row_count: int|null, refresh_command: string}>
      */
     public function viewsStatus(): array
     {
         $status = [];
+        $schema = MaterializedViewNaming::schema();
 
         foreach ($this->definitions() as $definition) {
             $exists = $this->exists($definition->name);
             $status[] = [
                 'key' => $definition->key,
                 'name' => $definition->name,
+                'schema' => $schema,
                 'exists' => $exists,
                 'row_count' => $exists ? $this->rowCount($definition->name) : null,
                 'refresh_command' => $definition->refreshCommand,

@@ -104,17 +104,17 @@ final class ApiCaseListMaterializedView
     /**
      * @return list<string>
      */
-    public function indexStatements(): array
+    public function indexStatements(string $qualifiedView): array
     {
         $view = self::NAME;
 
         return [
-            "CREATE UNIQUE INDEX IF NOT EXISTS {$view}_id_sprawy_uidx ON {$view} (id_sprawy)",
-            "CREATE INDEX IF NOT EXISTS {$view}_dntas_ws_idx ON {$view} (dntas, wlasciciel_stanowisko_id)",
-            "CREATE INDEX IF NOT EXISTS {$view}_dntas_data_idx ON {$view} (dntas, data_wszczecia DESC)",
-            "CREATE INDEX IF NOT EXISTS {$view}_rok_idx ON {$view} (dntas, rok)",
-            "CREATE INDEX IF NOT EXISTS {$view}_main_doc_idx ON {$view} (main_document_uid)",
-            "CREATE INDEX IF NOT EXISTS {$view}_instance_idx ON {$view} (instance_id)",
+            "CREATE UNIQUE INDEX IF NOT EXISTS {$view}_id_sprawy_uidx ON {$qualifiedView} (id_sprawy)",
+            "CREATE INDEX IF NOT EXISTS {$view}_dntas_ws_idx ON {$qualifiedView} (dntas, wlasciciel_stanowisko_id)",
+            "CREATE INDEX IF NOT EXISTS {$view}_dntas_data_idx ON {$qualifiedView} (dntas, data_wszczecia DESC)",
+            "CREATE INDEX IF NOT EXISTS {$view}_rok_idx ON {$qualifiedView} (dntas, rok)",
+            "CREATE INDEX IF NOT EXISTS {$view}_main_doc_idx ON {$qualifiedView} (main_document_uid)",
+            "CREATE INDEX IF NOT EXISTS {$view}_instance_idx ON {$qualifiedView} (instance_id)",
         ];
     }
 }

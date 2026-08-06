@@ -13,7 +13,7 @@ Globalny przełącznik: **`USE_MATERIALIZED_VIEWS`** — patrz [case-queries.md]
 | Element (dokumenty) | Wartość |
 |---------|---------|
 | Factory | `DocumentListQueryFactory::make(TypFiltrDokument $filtry)` |
-| MV | `api_document_list` (1 wiersz / `id_dokumentu`, UNION 5 gałęzi + `DISTINCT ON`) |
+| MV | `api_cache.api_document_list` (1 wiersz / `id_dokumentu`, UNION 5 gałęzi + `DISTINCT ON`; schemat: `DB_MV_SCHEMA`) |
 | Refresh | `php artisan documents:refresh-list-mv` lub `materialized-views:refresh` (`--drop`) |
 
 `DocumentService::getList()` i lista akt w sprawie (`getDocumentsListByCaseUID`, `getDocumentsListByCaseUIDPaginated`) wywołują factory **per request** — przy `USE_MATERIALIZED_VIEWS=true` także scoped (`teczka_uid`). Show (`getDocumentDetails`) nadal używa legacy `DocumentQuery`.
@@ -199,7 +199,7 @@ Join `eurzad_form ef`: `INNER JOIN ef ON (gp.normalized_name = ef.form_name)` w 
 
 ## DocumentListQueryMV
 
-`FROM api_document_list adl` — bez JOIN-ów `eurzad_*` (poza `EXISTS` na `galaxia_instance_users` przy `pokaz_udostepnione`).
+`FROM api_cache.api_document_list adl` — bez JOIN-ów `eurzad_*` (poza `EXISTS` na `galaxia_instance_users` przy `pokaz_udostepnione`).
 
 Filtry mapowane na kolumny MV (`typ_dokumentu`, `status`, `data_rejestracji`, `dokument_tytul`, `tresc_wniosku`, `instance_id`, …). `filtry.typ_procesu` → `adl.typ_dokumentu = ?`. COUNT = `COUNT(*)` na MV.
 

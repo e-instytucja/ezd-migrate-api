@@ -65,7 +65,7 @@ Orkiestracja: Queries → mapowanie DTO → wywołania innych serwisów.
 
 Zależności `CaseService` (konstruktor): `CaseListQueryFactory`, `MaterializedViewsMode`, `CaseQuery`, `FormQuery`, `WorkstationQuery`, `UugQuery`, `DocumentService`, `FormService`, `AttachmentService`, `SupliantService`, `CaseHistoryService`.
 
-Listy API (sprawy, dokumenty global): `USE_MATERIALIZED_VIEWS` (`true` \| `false`) — szczegóły [queries/case-queries.md](queries/case-queries.md), [queries/document-queries.md](queries/document-queries.md).
+Listy API (sprawy, dokumenty global): `USE_MATERIALIZED_VIEWS` (`true` \| `false`) — widoki w schemacie `api_cache` (`DB_MV_SCHEMA`); szczegóły [queries/case-queries.md](queries/case-queries.md), [queries/document-queries.md](queries/document-queries.md).
 
 ### 5. Queries
 
@@ -138,19 +138,25 @@ Interpretacja: `db_total_ms` ≈ czas w PostgreSQL; `php_overhead_ms` = czas req
 
 `routes/console.php`:
 - `attachments:test-main-document-attachments-exists` — schedule: codziennie 02:00 (klasa w `app/Console/Commands/Attachment/`)
-- `materialized-views:refresh` — wszystkie widoki list API (`api_case_list`, `api_document_list`)
+- `materialized-views:refresh` — wszystkie widoki list API (`api_cache.api_case_list`, `api_cache.api_document_list`)
 - `cases:refresh-list-mv` — tylko `api_case_list`
 - `documents:refresh-list-mv` — tylko `api_document_list`
 
-Po imporcie dumpa, gdy `USE_MATERIALIZED_VIEWS=true`: uruchom `materialized-views:refresh`.
+Po imporcie dumpa, gdy `USE_MATERIALIZED_VIEWS=true`: `php artisan migrate` (schemat `api_cache`) → opcjonalnie `scripts/setup-ezd-readonly-privileges.sh` (prod) → `materialized-views:refresh` — patrz [database.md](database.md).
+
+## System API
+
+- `GET /api/v1/system/materialized-views` — status MV + przełącznik `USE_MATERIALIZED_VIEWS`
+- `GET /api/v1/system/db-privileges` — uprawnienia DB (`EzdDatabasePrivilegesGuard`)
+- `ENFORCE_EZD_DB_READ_ONLY=true` — middleware 503 gdy user DB ma zapis do EZD lub CREATE na `public`
 
 ## Konfiguracja
 
 | Plik | Ustawienia |
 |------|------------|
-| `config/app.php` | locale `pl`, timezone `Europe/Warsaw`, `log_sql_*`, `use_materialized_views` (`USE_MATERIALIZED_VIEWS`) |
+| `config/app.php` | locale `pl`, timezone `Europe/Warsaw`, `log_sql_*`, `use_materialized_views`, `materialized_views_schema`, `enforce_ezd_db_read_only`, `ezd_privileges_probe_table` |
 | `config/database.php` | `pgsql` |
-| `.env.example` | `DB_*`, `FILES_URL`, `CACHE_STORE=array`, `LOG_SQL_*`, `USE_MATERIALIZED_VIEWS` |
+| `.env.example` | `DB_*`, `FILES_URL`, `CACHE_STORE=array`, `LOG_SQL_*`, `USE_MATERIALIZED_VIEWS`, `DB_MV_SCHEMA`, `ENFORCE_EZD_DB_READ_ONLY` |
 | `docker-compose.yml` | `FILES` mount `:ro`, postgres:16, port 8080 |
 
 ## Poza aplikacją

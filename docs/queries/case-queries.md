@@ -13,10 +13,10 @@ Globalny przełącznik: **`USE_MATERIALIZED_VIEWS`** (`config('app.use_materiali
 | Element (sprawy) | Wartość |
 |---------|---------|
 | Factory | `CaseListQueryFactory` → `CaseListQuery` lub `CaseListQueryMV` gdy `USE_MATERIALIZED_VIEWS=true` |
-| MV | `api_case_list` (1 wiersz / `teczka_uid`, `DISTINCT ON`) |
+| MV | `api_cache.api_case_list` (1 wiersz / `teczka_uid`, `DISTINCT ON`; schemat: `DB_MV_SCHEMA`, domyślnie `api_cache`) |
 | Refresh | `php artisan cases:refresh-list-mv` lub `materialized-views:refresh` (`--drop`) |
 
-Przed `USE_MATERIALIZED_VIEWS=true` wymagane są **wszystkie** zarejestrowane widoki. POST `enabled:true` bez MV → 422.
+Przed `USE_MATERIALIZED_VIEWS=true` wymagane są **wszystkie** zarejestrowane widoki w schemacie `api_cache` (schemat musi istnieć w DB — patrz [database.md](../database.md)). POST `enabled:true` bez MV → 422.
 
 `CaseService` wywołuje factory **per request** (`caseListQuery()`).
 
@@ -139,7 +139,7 @@ Zakomentowany JOIN `dokument_tytul` — tytuł z formularza **nie** w liście.
 
 ## CaseListQueryMV
 
-`FROM api_case_list acl` — bez JOIN-ów `eurzad_*` (poza `EXISTS` na `galaxia_instance_users` przy `pokaz_udostepnione`).
+`FROM api_cache.api_case_list acl` — bez JOIN-ów `eurzad_*` (poza `EXISTS` na `galaxia_instance_users` przy `pokaz_udostepnione`).
 
 Filtry mapowane na kolumny MV (`dntas`, `rok`, `status`, `typ_formularza`, `data_rejestracji`, `dokument_tytul`, `tresc_wniosku`, …). COUNT = `COUNT(*)` (MV 1:1 z teczką).
 
@@ -207,7 +207,7 @@ Opcjonalny payload `aktaSprawy: { page, limit }` w `POST /api/v1/cases/{caseUid}
 - **Z `aktaSprawy`** — jedna strona akt + `meta.aktaSprawy`: `count`, `page`, `limit`, `has_prev`, `has_next`.
 - **DNTAS** (`dntas=1`) — `aktaSprawy` zawsze `[]`; paginacja ignorowana.
 
-Implementacja: `AktaSprawyPaginacja` → `KryteriaWyszukiwaniaDokumentow::forTeczkaUidPaginated` → `DocumentListQueryFactory` → `getList` + `getListCount` (przy `USE_MATERIALIZED_VIEWS=true`: `api_document_list WHERE teczka_uid = ?`).
+Implementacja: `AktaSprawyPaginacja` → `KryteriaWyszukiwaniaDokumentow::forTeczkaUidPaginated` → `DocumentListQueryFactory` → `getList` + `getListCount` (przy `USE_MATERIALIZED_VIEWS=true`: `api_cache.api_document_list WHERE teczka_uid = ?`).
 
 ---
 

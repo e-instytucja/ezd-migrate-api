@@ -2,7 +2,39 @@
 
 Schemat PostgreSQL **nie jest definiowany w repozytorium**. Pochodzi z dumpa EZD (`scripts/`).
 
-Opis poniżej oparty na odwołaniach w `app/Source/V1/Queries/`. **Brak DDL w repo.**
+Opis poniżej oparty na odwołaniach w `app/Source/V1/Queries/`. **Brak DDL danych EZD w repo** — wyjątek: schemat `api_cache` (migracja Laravel) + MV (artisan).
+
+## Schemat `api_cache` (warstwa API)
+
+Widoki zmaterializowane list API (`api_case_list`, `api_document_list`) żyją w dedykowanym schemacie PostgreSQL, domyślnie **`api_cache`** (`DB_MV_SCHEMA` / `config('app.materialized_views_schema')`).
+
+| Schemat | Rola aplikacji (`DB_USERNAME`) | Zawartość |
+|---------|-------------------------------|-----------|
+| `public`, `cached`, … | `USAGE` + `SELECT` (bez zapisu) | dane EZD (dump) |
+| `api_cache` | `USAGE` + `CREATE` | MV list API + indeksy |
+
+Kwalifikacja nazw w kodzie: `MaterializedViewNaming::qualified('api_case_list')` → `api_cache.api_case_list`. `search_path` w `config/database.php` pozostaje `public`.
+
+### Workflow setup (po imporcie dumpa)
+
+```bash
+./scripts/import-db.sh
+php artisan migrate                              # CREATE SCHEMA api_cache + GRANT dla DB_USERNAME
+./scripts/setup-ezd-readonly-privileges.sh --yes # prod: REVOKE zapisu EZD, SELECT na public (jako superuser)
+php artisan materialized-views:refresh           # opcjonalnie, gdy USE_MATERIALIZED_VIEWS=true
+```
+
+**Lokalnie:** zwykle **pomijasz** `setup-ezd-readonly-privileges.sh` (`ENFORCE_EZD_DB_READ_ONLY=false`, pełne prawa `laravel`).
+
+**Prod:** po skrypcie ustaw `ENFORCE_EZD_DB_READ_ONLY=true` — middleware zwróci 503, jeśli GRANTy są złe.
+
+### Weryfikacja uprawnień (aplikacja)
+
+- `GET /api/v1/system/db-privileges` — diagnostyka (`compliant`, `violations`, `checks`)
+- `ENFORCE_EZD_DB_READ_ONLY` — globalna blokada HTTP przy naruszeniu (503 `configuration_error`)
+- Implementacja: `EzdDatabasePrivilegesGuard` (`has_table_privilege` / `has_schema_privilege` na `public.eurzad_teczka`)
+
+Skrypt ops: [scripts/setup-ezd-readonly-privileges.sh](../scripts/setup-ezd-readonly-privileges.sh) — czyta `DB_USERNAME`, `DB_MV_SCHEMA`, `DB_DATABASE` z `.env`.
 
 ## Konwencje identyfikatorów
 

@@ -20,6 +20,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(\App\Http\Response\FormatterFactory::class);
         $this->app->singleton(\App\Http\Response\ApiResponseRenderer::class);
         $this->app->singleton(QueryTimingCollector::class);
+        $this->app->singleton(\App\Source\V1\Support\Database\EzdDatabasePrivilegesGuard::class);
     }
 
     public function boot(): void

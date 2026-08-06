@@ -43,6 +43,31 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Materialized views schema (PostgreSQL)
+    |--------------------------------------------------------------------------
+    |
+    | Schemat dla api_case_list / api_document_list (DDL tylko artisan).
+    | Wymaga: php artisan migrate (CREATE SCHEMA) przed materialized-views:refresh.
+    |
+    */
+    'materialized_views_schema' => env('DB_MV_SCHEMA', 'api_cache'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | EZD database read-only enforcement
+    |--------------------------------------------------------------------------
+    |
+    | true = HTTP 503 gdy DB_USERNAME ma zapis do danych EZD lub CREATE na public.
+    | Weryfikacja: GET /api/v1/system/db-privileges
+    | Setup prod: scripts/setup-ezd-readonly-privileges.sh (po migrate)
+    |
+    */
+    'enforce_ezd_db_read_only' => (bool) env('ENFORCE_EZD_DB_READ_ONLY', false),
+
+    'ezd_privileges_probe_table' => env('EZD_PRIVILEGES_PROBE_TABLE', 'public.eurzad_teczka'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Madkom API token (shared secret z EZD)
     |--------------------------------------------------------------------------
     |

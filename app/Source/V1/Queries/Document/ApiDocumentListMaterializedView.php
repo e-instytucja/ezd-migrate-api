@@ -31,18 +31,18 @@ final class ApiDocumentListMaterializedView
     /**
      * @return list<string>
      */
-    public function indexStatements(): array
+    public function indexStatements(string $qualifiedView): array
     {
         $view = self::NAME;
 
         return [
-            "CREATE UNIQUE INDEX IF NOT EXISTS {$view}_id_dokumentu_uidx ON {$view} (id_dokumentu)",
-            "CREATE INDEX IF NOT EXISTS {$view}_ws_idx ON {$view} (wlasciciel_stanowisko_id)",
-            "CREATE INDEX IF NOT EXISTS {$view}_data_rej_idx ON {$view} (data_rejestracji DESC)",
-            "CREATE INDEX IF NOT EXISTS {$view}_typ_dok_idx ON {$view} (typ_dokumentu)",
-            "CREATE INDEX IF NOT EXISTS {$view}_nazwa_proc_idx ON {$view} (nazwa_znormalizowana_procesu)",
-            "CREATE INDEX IF NOT EXISTS {$view}_instance_idx ON {$view} (instance_id)",
-            "CREATE INDEX IF NOT EXISTS {$view}_teczka_data_rej_idx ON {$view} (teczka_uid, data_rejestracji DESC)",
+            "CREATE UNIQUE INDEX IF NOT EXISTS {$view}_id_dokumentu_uidx ON {$qualifiedView} (id_dokumentu)",
+            "CREATE INDEX IF NOT EXISTS {$view}_ws_idx ON {$qualifiedView} (wlasciciel_stanowisko_id)",
+            "CREATE INDEX IF NOT EXISTS {$view}_data_rej_idx ON {$qualifiedView} (data_rejestracji DESC)",
+            "CREATE INDEX IF NOT EXISTS {$view}_typ_dok_idx ON {$qualifiedView} (typ_dokumentu)",
+            "CREATE INDEX IF NOT EXISTS {$view}_nazwa_proc_idx ON {$qualifiedView} (nazwa_znormalizowana_procesu)",
+            "CREATE INDEX IF NOT EXISTS {$view}_instance_idx ON {$qualifiedView} (instance_id)",
+            "CREATE INDEX IF NOT EXISTS {$view}_teczka_data_rej_idx ON {$qualifiedView} (teczka_uid, data_rejestracji DESC)",
         ];
     }
 

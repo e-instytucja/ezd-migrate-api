@@ -10,10 +10,10 @@ alwaysApply: true
 - NIE wykonuj `INSERT` / `UPDATE` / `DELETE` / `TRUNCATE` na tabelach danych EZD (`eurzad_*`, `galaxia_*`, `users_*`, `front_office_*` itd.) — runtime API = wyłącznie `SELECT`
 - **Jedyny dozwolony zapis do PostgreSQL (poza logami):** DDL widoków zmaterializowanych list API (`CREATE` / `REFRESH` / `DROP MATERIALIZED VIEW`, indeksy na MV: `api_case_list`, `api_document_list`) — **wyłącznie** z linii poleceń: `php artisan materialized-views:refresh`, `cases:refresh-list-mv`, `documents:refresh-list-mv` (opcjonalnie `--drop`); **nie** przez endpointy HTTP (`GET|POST /api/v1/system/materialized-views` tylko przełącza `USE_MATERIALIZED_VIEWS` w `.env`)
 - NIE modyfikuj repozytorium **ezd3** w celu zmiany danych lub logiki zapisu — EZD3 to źródło prawdy o danych; site tylko czyta legacy schemat
-- NIE dodawaj migracji Laravel ani Eloquent modeli dla tabel `eurzad_*` / `galaxia_*` / `users_*`
+- NIE dodawaj migracji Laravel ani Eloquent modeli dla tabel `eurzad_*` / `galaxia_*` / `users_*` — **wyjątek:** `database/migrations/*_create_api_cache_schema.php` (tylko schemat `api_cache`)
 - NIE zakładaj, że schemat DB jest w repo — pochodzi z dumpa EZD (`scripts/import-*.sh`)
 - NIE buduj „import service" w aplikacji — import = skrypty shell + Docker Postgres
-- NIE zakładaj read-only na poziomie runtime — to konwencja; kod nie blokuje INSERT/UPDATE
+- NIE zakładaj read-only na poziomie runtime — to konwencja; na prod opcjonalnie `ENFORCE_EZD_DB_READ_ONLY=true` + `scripts/setup-ezd-readonly-privileges.sh`
 - NIE pisz do `FILES_URL` w układzie Docker — volume jest `:ro` (`docker-compose.yml`); na hoście bez `:ro` gwarancji brak
 
 ## API i kontrakt

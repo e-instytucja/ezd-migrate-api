@@ -19,10 +19,11 @@ alwaysApply: false
 
 **Case list — live SQL vs MV** (`USE_MATERIALIZED_VIEWS`, domyślnie `false`):
 - `false` → `CaseListQuery` (JOIN-y na `eurzad_*`)
-- `true` → `CaseListQueryMV` z materialized view `api_case_list` (`CaseListQueryFactory`)
+- `true` → `CaseListQueryMV` z `api_cache.api_case_list` (`CaseListQueryFactory`, schemat: `DB_MV_SCHEMA`)
 - Definicja widoku: `ApiCaseListMaterializedView` — jedyne źródło SQL CREATE/REFRESH
 - Refresh: `php artisan cases:refresh-list-mv` lub `materialized-views:refresh` (`--drop` przy zmianie kształtu kolumn widoku)
 - Przełącznik globalny: env `USE_MATERIALIZED_VIEWS`; status: `GET|POST /api/v1/system/materialized-views`
+- Kwalifikacja nazw: `MaterializedViewNaming` (nie hardcoded `public.`)
 - Przy `pokaz_udostepnione` w trybie MV nadal EXISTS na `galaxia_instance_users` (nie w kolumnach MV)
 
 Po zmianie SELECT / JOIN / filtrów / sortu w `CaseListQuery`:
@@ -34,7 +35,7 @@ Po zmianie SELECT / JOIN / filtrów / sortu w `CaseListQuery`:
 
 **Document list — live SQL vs MV** (ten sam `USE_MATERIALIZED_VIEWS`):
 - `false` → `DocumentListQuery` (UNION 5 gałęzi na `eurzad_*`)
-- `true` → `DocumentListQueryMV` z `api_document_list` (`DocumentListQueryFactory::make($filtry)`)
+- `true` → `DocumentListQueryMV` z `api_cache.api_document_list` (`DocumentListQueryFactory::make($filtry)`)
 - Scoped (`filtry.teczka_uid`) → zawsze legacy (guard w factory)
 - Definicja widoku: `ApiDocumentListMaterializedView`
 - Refresh: `php artisan documents:refresh-list-mv` lub `materialized-views:refresh`

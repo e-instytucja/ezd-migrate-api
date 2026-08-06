@@ -1,0 +1,67 @@
+---
+description: Operacje zdalne i długie — screen, logi, sudo tylko interaktywnie przez użytkownika
+alwaysApply: true
+---
+
+# Screen i logi — operacje zdalne (chojnice) i długie lokalnie
+
+## NIGDY
+
+- **`su`** (ani `su -`, `su postgres`) — nie próbuj przełączać użytkownika.
+- **`sudo -n`** / obejścia hasła sudo.
+- Bezpośrednie **`ssh -tt … sudo`** z oczekiwaniem na hasło w sesji agenta — agent jest nieinteraktywny.
+- Zabijanie / restart sesji screen bez sprawdzenia `screen -ls` i logu.
+
+## Serwer chojnice (SSH host `chojnice`)
+
+### Stała sesja `cursor-work` (preferowane)
+
+1. Helper: [`local/run-cursor-work.sh`](../local/run-cursor-work.sh) — sesja **nie zamyka się** po zadaniu (`exec bash -l`)
+2. Log: `~/logs/cursor-work.log`
+3. Podgląd: `ssh -t chojnice 'screen -x cursor-work'` lub `tail -f ~/logs/cursor-work.log`
+
+```bash
+./local/run-cursor-work.sh bash ~/repos/ezd-migrate-api/local-setup-phase3.sh
+```
+
+### Jednorazowe zadania (legacy)
+
+1. Helper: [`local/run-chojnice-screen.sh`](../local/run-chojnice-screen.sh) — osobna sesja, zamyka się po zadaniu
+2. Log: `~/logs/<nazwa-sesji>.log` na serwerze
+3. Po starcie **poinformuj użytkownika** i podaj komendę podpięcia:
+
+```bash
+ssh -t chojnice 'screen -r <nazwa-sesji>'
+```
+
+4. Jeśli zadanie wymaga **sudo** — napisz wprost: *„Podepnij się na screen i wpisz hasło sudo”*.
+5. Status po fakcie: `tail ~/logs/<nazwa-sesji>.log` (bez sudo) lub `screen -ls`.
+
+### Przykład
+
+```bash
+./local/run-chojnice-screen.sh ezd-import bash dumps/import-ezd-dump.sh
+# → użytkownik: ssh -t chojnice 'screen -r ezd-import'
+```
+
+## Lokalnie (WSL)
+
+- **Screen zalecany** dla: import DB, duży `composer`, testy >1 min, wszystko z promptem hasła.
+- **Bez screen** OK dla: krótkie `git`, `php artisan`, jednorazowe `ssh` bez sudo.
+
+Wzorzec lokalny (opcjonalnie):
+
+```bash
+mkdir -p ~/logs
+screen -dmS nazwa -L -Logfile ~/logs/nazwa.log bash -lc 'twoja_komenda 2>&1 | tee -a ~/logs/nazwa.log'
+```
+
+## Diagnostyka przerwania
+
+Gdy sesja screen zniknęła — **najpierw log**, potem wnioski:
+
+```bash
+ssh chojnice 'tail -50 ~/logs/<sesja>.log'
+```
+
+Szukaj linii `=== END … exit=N ===` — `exit=0` = sukces.

@@ -58,7 +58,7 @@ final class MaterializedViewsMode
     }
 
     /**
-     * @return array{enabled: bool, views: list<array{key: string, name: string, exists: bool, row_count: int|null, refresh_command: string}>}
+     * @return array{enabled: bool, views: list<array{key: string, name: string, schema: string, exists: bool, row_count: int|null, refresh_command: string}>}
      */
     public function status(): array
     {

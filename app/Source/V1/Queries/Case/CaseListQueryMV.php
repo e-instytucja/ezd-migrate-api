@@ -9,6 +9,7 @@ use App\Source\V1\DTO\Request\KryteriaWyszukiwaniaSpraw;
 use App\Source\V1\DTO\Request\SortowanieSpraw;
 use App\Source\V1\DTO\Request\TypFiltrSpraw;
 use App\Source\V1\Support\MaterializedViews\CaseListMaterializedView;
+use App\Source\V1\Support\MaterializedViews\MaterializedViewNaming;
 use App\Source\V1\Support\MaterializedViews\MaterializedViewRegistry;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -88,14 +89,15 @@ class CaseListQueryMV implements CaseListQueryInterface
     {
         if (!$this->materializedViewRegistry->exists(CaseListMaterializedView::NAME)) {
             throw new RuntimeException(
-                'Materialized view api_case_list nie istnieje. Uruchom: php artisan cases:refresh-list-mv',
+                'Materialized view ' . MaterializedViewNaming::qualified(CaseListMaterializedView::NAME)
+                . ' nie istnieje. Uruchom: php artisan cases:refresh-list-mv',
             );
         }
     }
 
     private function viewName(): string
     {
-        return CaseListMaterializedView::NAME;
+        return MaterializedViewNaming::qualified(CaseListMaterializedView::NAME);
     }
 
     private function getSelectSql(): string

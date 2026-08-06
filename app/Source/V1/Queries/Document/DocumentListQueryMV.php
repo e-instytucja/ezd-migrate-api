@@ -9,6 +9,7 @@ use App\Source\V1\DTO\Request\KryteriaWyszukiwaniaDokumentow;
 use App\Source\V1\DTO\Request\TypFiltrDokument;
 use App\Source\V1\Enum\TypDokument;
 use App\Source\V1\Support\MaterializedViews\DocumentListMaterializedView;
+use App\Source\V1\Support\MaterializedViews\MaterializedViewNaming;
 use App\Source\V1\Support\MaterializedViews\MaterializedViewRegistry;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -68,14 +69,15 @@ class DocumentListQueryMV implements DocumentListQueryInterface
     {
         if (!$this->materializedViewRegistry->exists(DocumentListMaterializedView::NAME)) {
             throw new RuntimeException(
-                'Materialized view api_document_list nie istnieje. Uruchom: php artisan documents:refresh-list-mv',
+                'Materialized view ' . MaterializedViewNaming::qualified(DocumentListMaterializedView::NAME)
+                . ' nie istnieje. Uruchom: php artisan documents:refresh-list-mv',
             );
         }
     }
 
     private function viewName(): string
     {
-        return DocumentListMaterializedView::NAME;
+        return MaterializedViewNaming::qualified(DocumentListMaterializedView::NAME);
     }
 
     private function getSelectSql(): string

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\Api\V1\AttachmentController;
+use App\Http\Controllers\Api\V1\DatabasePrivilegesController;
 use App\Http\Controllers\Api\V1\MaterializedViewsController;
 use App\Http\Controllers\Api\V1\CasesController;
 use App\Http\Controllers\Api\V1\DntasController;
@@ -179,4 +180,7 @@ Route::prefix('v1')
 
         Route::post('/system/materialized-views', [MaterializedViewsController::class, 'update'])
             ->name('system.materialized-views.update');
+
+        Route::get('/system/db-privileges', [DatabasePrivilegesController::class, 'show'])
+            ->name('system.db-privileges.show');
     });

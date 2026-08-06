@@ -178,15 +178,15 @@ Kontekst SQL: `docs/queries/`, `docs/database.md`.
 
 ---
 
-### Q-23 — README vs brak migracji
+### Q-23 — README vs migracje
 
 | Pole | Wartość |
 |------|---------|
-| **Opis** | README: `php artisan migrate`; w repo brak `database/migrations/`. |
+| **Opis** | README może wspominać `php artisan migrate`; w repo jest wyłącznie migracja `api_cache` (nie zastępuje importu dumpa). |
 | **Priorytet** | **Niski** |
 | **Ryzyko** | Nowy developer uruchamia migrate na pustej bazie zamiast importu dumpa. |
-| **Sugerowane działanie** | Poprawić README — wskazać `scripts/import-db.sh`. |
-| **Pliki** | `README.md`, `scripts/import-db.sh` |
+| **Sugerowane działanie** | README: kolejność `import-db.sh` → `migrate` → opcjonalnie `setup-ezd-readonly-privileges.sh`. |
+| **Pliki** | `README.md`, `scripts/import-db.sh`, `docs/database.md` |
 
 ---
 
@@ -269,11 +269,11 @@ Kontekst SQL: `docs/queries/`, `docs/database.md`.
 
 | Pole | Wartość |
 |------|---------|
-| **Opis** | Brak INSERT/UPDATE w Queries; brak globalnej blokady zapisów. |
-| **Priorytet** | **Średni** |
+| **Opis** | Brak INSERT/UPDATE w Queries; opcjonalna gwarancja przez `EzdDatabasePrivilegesGuard` + `ENFORCE_EZD_DB_READ_ONLY`. |
+| **Priorytet** | **Niski** (częściowo rozwiązane) |
 | **Ryzyko** | Przyszły kod może dodać zapis; integratorzy zakładają „tylko odczyt" bez formalnej gwarancji. |
-| **Sugerowane działanie** | ADR: read-only contract; opcjonalnie DB user z rolą SELECT only na prod. |
-| **Pliki** | `app/Source/V1/Queries/**`, `config/database.php`, `.env.example` |
+| **Sugerowane działanie** | Prod: `scripts/setup-ezd-readonly-privileges.sh` + `ENFORCE_EZD_DB_READ_ONLY=true`; status: `GET /api/v1/system/db-privileges`. |
+| **Pliki** | `app/Source/V1/Support/Database/EzdDatabasePrivilegesGuard.php`, `scripts/setup-ezd-readonly-privileges.sh`, `docs/database.md` |
 
 ---
 

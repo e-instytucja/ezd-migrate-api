@@ -1,0 +1,38 @@
+---
+description: Bezpieczny deploy i operacje zdalne na dev — tylko przez skrypty .cursor/deploy/
+alwaysApply: true
+---
+
+# Remote dev safety
+
+## MUST — połączenia i deploy
+
+1. **Wyłącznie skrypty** z `.cursor/deploy/` — nigdy bezpośrednio `ssh`, `scp`, `sftp`, `rsync`.
+2. **Kod aplikacji** → tylko `syncStagedToDev.sh` (pliki **zmienione lokalnie** — staged + unstaged, z working tree; po branch-checku).
+3. **Pliki tymczasowe / testy ad-hoc** → tylko `tempWorkspace.sh upload --task <TASK_ID>`.
+4. **Zdalne komendy** → tylko allowlista `runRemote.sh`: `identity`, `git-status`, `phpunit <ścieżka>`.
+5. **Branch mismatch** (`Branch check: FAILED`) → poinformuj użytkownika; czekaj aż **ręcznie** przełączy branch na serwerze. Bez obejścia.
+6. Po zadaniu z workspace → `tempWorkspace.sh cleanup --task <TASK_ID>`.
+7. **Untracked** — prompt interaktywny w `syncStagedToDev.sh`; `--yes` pomija untracked (tylko zmodyfikowane).
+
+## Bez confirm użytkownika
+
+- `syncStagedToDev.sh` (po OK branch-checku)
+- `tempWorkspace.sh` upload / cleanup / cleanup-stale
+- `runRemote.sh identity`, `git-status`, `phpunit`
+
+## Z confirm użytkownika
+
+Diagnostyka poza allowlistą: system, `/etc`, procesy, logi spoza projektu, inne vhosty, `sudo`. Nie obchodzić `runRemote`.
+
+Długie zadania na **chojnice** i operacje z **sudo**: patrz [`remote-screen-ops.mdc`](remote-screen-ops.mdc) — screen + log, bez `su`.
+
+## Granice bezpieczeństwa
+
+- Walidacja w skryptach (ścieżki, deny-list, branch-check, marker z `config.env`).
+- Blokada HTTP dla `$REMOTE_ROOT/.cursor/` (Apache `.htaccess`).
+- Skrypty celują wyłącznie w `REMOTE_ROOT` z `config.env`.
+
+## Odpowiedzialność
+
+Deploy wysyła working tree (najnowsza wersja z dysku). Deny-list blokuje sekrety (`.env`, klucze) + opcjonalnie `deny-paths.env`.
