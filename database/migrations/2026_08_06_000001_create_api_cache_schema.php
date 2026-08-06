@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
-use InvalidArgumentException;
 
 /**
  * Wyjątek od „brak migracji EZD” — tylko schemat warstwy API (MV list).
