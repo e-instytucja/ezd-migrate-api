@@ -34,7 +34,7 @@ php artisan materialized-views:refresh           # opcjonalnie, gdy USE_MATERIAL
 - `ENFORCE_EZD_DB_READ_ONLY` — globalna blokada HTTP przy naruszeniu (503 `configuration_error`)
 - Implementacja: `EzdDatabasePrivilegesGuard` (`has_table_privilege` / `has_schema_privilege` na `public.eurzad_teczka`)
 
-Skrypt ops: [scripts/setup-ezd-readonly-privileges.sh](../scripts/setup-ezd-readonly-privileges.sh) — czyta `DB_USERNAME`, `DB_MV_SCHEMA`, `DB_DATABASE` z `.env`.
+Skrypt ops: [scripts/setup-ezd-readonly-privileges.sh](../scripts/setup-ezd-readonly-privileges.sh) — czyta `DB_HOST`, `DB_PORT`, `DB_USERNAME`, `DB_PASSWORD`, `DB_DATABASE`, `DB_MV_SCHEMA` z `.env`.
 
 ## Konwencje identyfikatorów
 

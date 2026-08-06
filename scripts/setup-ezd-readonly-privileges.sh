@@ -12,7 +12,10 @@ ENV_FILE="$PROJECT_ROOT/.env"
 APP_USER=""
 MV_SCHEMA=""
 DATABASE=""
-SUPERUSER=""
+DB_HOST=""
+DB_PORT=""
+DB_PASSWORD=""
+PSQL_USER=""
 DRY_RUN=false
 ASSUME_YES=false
 
@@ -20,20 +23,23 @@ usage() {
   cat <<'EOF'
 Uzycie: setup-ezd-readonly-privileges.sh [opcje]
 
-Konfiguracja domyslnie z .env: DB_USERNAME, DB_MV_SCHEMA, DB_DATABASE.
+Konfiguracja domyslnie z .env: DB_HOST, DB_PORT, DB_DATABASE, DB_USERNAME,
+DB_PASSWORD, DB_MV_SCHEMA.
 
 Opcje:
   --env-file=PATH     Sciezka do .env (domyslnie: .env w katalogu projektu)
-  --app-user=USER     Nadpisanie DB_USERNAME
+  --app-user=USER     Nadpisanie DB_USERNAME (rola docelowa GRANT/REVOKE)
   --mv-schema=SCHEMA  Nadpisanie DB_MV_SCHEMA (domyslnie: api_cache)
   --database=DB       Nadpisanie DB_DATABASE
-  --superuser=USER    Uzytkownik psql z uprawnieniami DDL (domyslnie: POSTGRES_USER z kontenera db)
+  --host=HOST         Nadpisanie DB_HOST
+  --port=PORT         Nadpisanie DB_PORT
+  --superuser=USER    Uzytkownik psql (domyslnie: DB_USERNAME; Docker: POSTGRES_USER)
   --dry-run           Wypisz plan bez wykonania SQL
   --yes               Bez pytania o potwierdzenie
   -h, --help          Pomoc
 
 Przyklad (prod):
-  ./scripts/setup-ezd-readonly-privileges.sh --yes
+  bash scripts/setup-ezd-readonly-privileges.sh --yes
 EOF
 }
 
@@ -51,6 +57,14 @@ assert_identifier() {
   local label="$2"
   if [[ ! "$name" =~ ^[a-z][a-z0-9_]*$ ]]; then
     echo "Nieprawidlowy identyfikator ${label}: ${name}" >&2
+    exit 1
+  fi
+}
+
+assert_port() {
+  local port="$1"
+  if [[ ! "$port" =~ ^[0-9]+$ ]] || (( port < 1 || port > 65535 )); then
+    echo "Nieprawidlowy port DB_PORT: ${port}" >&2
     exit 1
   fi
 }
@@ -73,8 +87,16 @@ while [[ $# -gt 0 ]]; do
       DATABASE="${1#*=}"
       shift
       ;;
+    --host=*)
+      DB_HOST="${1#*=}"
+      shift
+      ;;
+    --port=*)
+      DB_PORT="${1#*=}"
+      shift
+      ;;
     --superuser=*)
-      SUPERUSER="${1#*=}"
+      PSQL_USER="${1#*=}"
       shift
       ;;
     --dry-run)
@@ -110,6 +132,17 @@ MV_SCHEMA="${MV_SCHEMA:-api_cache}"
 if [[ -z "$DATABASE" ]]; then
   DATABASE="$(read_env_value DB_DATABASE "$ENV_FILE" || true)"
 fi
+if [[ -z "$DB_HOST" ]]; then
+  DB_HOST="$(read_env_value DB_HOST "$ENV_FILE" || true)"
+fi
+if [[ -z "$DB_PORT" ]]; then
+  DB_PORT="$(read_env_value DB_PORT "$ENV_FILE" || true)"
+fi
+if [[ -z "$DB_PASSWORD" ]]; then
+  DB_PASSWORD="$(read_env_value DB_PASSWORD "$ENV_FILE" || true)"
+fi
+
+DB_PORT="${DB_PORT:-5432}"
 
 if [[ -z "$APP_USER" || -z "$DATABASE" ]]; then
   echo "Brak DB_USERNAME lub DB_DATABASE (plik: ${ENV_FILE})." >&2
@@ -119,6 +152,7 @@ fi
 assert_identifier "$APP_USER" 'app_user'
 assert_identifier "$MV_SCHEMA" 'mv_schema'
 assert_identifier "$DATABASE" 'database'
+assert_port "$DB_PORT"
 
 if [[ ! -f "$SQL_FILE" ]]; then
   echo "Brak pliku SQL: ${SQL_FILE}" >&2
@@ -143,31 +177,49 @@ if [[ "$USE_DOCKER" == true ]]; then
     echo "PostgreSQL w kontenerze db nie odpowiada." >&2
     exit 1
   fi
-  if [[ -z "$SUPERUSER" ]]; then
-    SUPERUSER="$(docker compose exec -T db sh -c 'printf %s "$POSTGRES_USER"' | tr -d '\r')"
+  if [[ -z "$PSQL_USER" ]]; then
+    PSQL_USER="$(docker compose exec -T db sh -c 'printf %s "$POSTGRES_USER"' | tr -d '\r')"
+  fi
+else
+  if [[ -z "$DB_HOST" || "$DB_HOST" == "db" ]]; then
+    DB_HOST="127.0.0.1"
+  fi
+  if [[ -z "$PSQL_USER" ]]; then
+    PSQL_USER="$APP_USER"
+  fi
+  if [[ -z "$DB_PASSWORD" ]]; then
+    echo "Brak DB_PASSWORD w ${ENV_FILE} (wymagane poza Docker)." >&2
+    exit 1
   fi
 fi
 
-if [[ -z "$SUPERUSER" ]]; then
-  SUPERUSER="${PGUSER:-postgres}"
-fi
-
-assert_identifier "$SUPERUSER" 'superuser'
+assert_identifier "$PSQL_USER" 'psql_user'
 
 echo "=== setup-ezd-readonly-privileges ==="
 echo "  env_file:   ${ENV_FILE}"
-echo "  database:   ${DATABASE}"
+echo "  database:   ${DATABASE}  (DB_DATABASE)"
 echo "  app_user:   ${APP_USER}  (DB_USERNAME)"
 echo "  mv_schema:  ${MV_SCHEMA}  (DB_MV_SCHEMA)"
-echo "  superuser:  ${SUPERUSER}"
-echo "  docker:     ${USE_DOCKER}"
+echo "  psql_user:  ${PSQL_USER}"
+if [[ "$USE_DOCKER" == true ]]; then
+  echo "  docker:     true"
+else
+  echo "  host:       ${DB_HOST}  (DB_HOST)"
+  echo "  port:       ${DB_PORT}  (DB_PORT)"
+  echo "  docker:     false"
+fi
 echo ""
 echo "UWAGA: Odbierze INSERT/UPDATE/DELETE/TRUNCATE na tabelach EZD (eurzad_*, galaxia_*, ...) dla ${APP_USER}."
 echo ""
 
 if [[ "$DRY_RUN" == true ]]; then
   echo "[dry-run] SQL: ${SQL_FILE}"
-  echo "[dry-run] psql -v app_user=${APP_USER} -v mv_schema=${MV_SCHEMA}"
+  if [[ "$USE_DOCKER" == true ]]; then
+    echo "[dry-run] docker compose exec db psql -U ${PSQL_USER} -d ${DATABASE}"
+  else
+    echo "[dry-run] psql -h ${DB_HOST} -p ${DB_PORT} -U ${PSQL_USER} -d ${DATABASE}"
+  fi
+  echo "[dry-run] vars: app_user=${APP_USER} mv_schema=${MV_SCHEMA}"
   exit 0
 fi
 
@@ -182,14 +234,16 @@ fi
 run_psql() {
   if [[ "$USE_DOCKER" == true ]]; then
     docker compose exec -T db psql -v ON_ERROR_STOP=1 \
-      -U "$SUPERUSER" \
+      -U "$PSQL_USER" \
       -d "$DATABASE" \
       -v "app_user=${APP_USER}" \
       -v "mv_schema=${MV_SCHEMA}" \
       <"$SQL_FILE"
   else
-    psql -v ON_ERROR_STOP=1 \
-      -U "$SUPERUSER" \
+    PGPASSWORD="$DB_PASSWORD" psql -v ON_ERROR_STOP=1 \
+      -h "$DB_HOST" \
+      -p "$DB_PORT" \
+      -U "$PSQL_USER" \
       -d "$DATABASE" \
       -v "app_user=${APP_USER}" \
       -v "mv_schema=${MV_SCHEMA}" \
