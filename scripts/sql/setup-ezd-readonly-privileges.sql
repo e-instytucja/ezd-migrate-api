@@ -23,10 +23,14 @@
 DROP MATERIALIZED VIEW IF EXISTS public.api_case_list CASCADE;
 DROP MATERIALIZED VIEW IF EXISTS public.api_document_list CASCADE;
 
+-- psql nie podstawia :'var' wewnątrz dollar-quote ($setup$) — najpierw set_config poza blokiem.
+SELECT set_config('app.setup_user', :'app_user', false);
+SELECT set_config('app.setup_mv_schema', :'mv_schema', false);
+
 DO $setup$
 DECLARE
-    v_app_user text := :'app_user';
-    v_mv_schema text := :'mv_schema';
+    v_app_user text := current_setting('app.setup_user');
+    v_mv_schema text := current_setting('app.setup_mv_schema');
     r record;
 BEGIN
     EXECUTE format('CREATE SCHEMA IF NOT EXISTS %I AUTHORIZATION %I', v_mv_schema, v_app_user);
