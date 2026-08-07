@@ -5,6 +5,11 @@
 
 ## Pierwsze uruchomienie
 
+| Środowisko | Instrukcja |
+|------------|------------|
+| Dev (Docker) | Opcja A poniżej |
+| **Produkcja / nowy serwer** | [docs/install-production.md](docs/install-production.md) |
+
 ### Opcja A — Docker
 
 ```bash

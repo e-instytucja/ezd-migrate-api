@@ -17,24 +17,15 @@ Kwalifikacja nazw w kodzie: `MaterializedViewNaming::qualified('api_case_list')`
 
 ### Workflow setup (po imporcie dumpa)
 
-```bash
-./scripts/import-db.sh
-php artisan migrate                              # CREATE SCHEMA api_cache + GRANT dla DB_USERNAME
-./scripts/setup-ezd-readonly-privileges.sh --yes # prod: REVOKE zapisu EZD, SELECT na public (jako superuser)
-php artisan materialized-views:refresh           # opcjonalnie, gdy USE_MATERIALIZED_VIEWS=true
-```
+**Produkcja (nowy serwer):** [install-production.md](install-production.md).
 
-**Lokalnie:** zwykle **pomijasz** `setup-ezd-readonly-privileges.sh` (`ENFORCE_EZD_DB_READ_ONLY=false`, pełne prawa `laravel`).
-
-**Prod:** po skrypcie ustaw `ENFORCE_EZD_DB_READ_ONLY=true` — middleware zwróci 503, jeśli GRANTy są złe.
+**Lokalnie (Docker):** `scripts/import-db.sh` → `php artisan migrate`; bez read-only, `ENFORCE_EZD_DB_READ_ONLY=false`.
 
 ### Weryfikacja uprawnień (aplikacja)
 
 - `GET /api/v1/system/db-privileges` — diagnostyka (`compliant`, `violations`, `checks`)
 - `ENFORCE_EZD_DB_READ_ONLY` — globalna blokada HTTP przy naruszeniu (503 `configuration_error`)
 - Implementacja: `EzdDatabasePrivilegesGuard` (`has_table_privilege` / `has_schema_privilege` na `public.eurzad_teczka`)
-
-Skrypt ops: [scripts/setup-ezd-readonly-privileges.sh](../scripts/setup-ezd-readonly-privileges.sh) — czyta `DB_HOST`, `DB_PORT`, `DB_USERNAME`, `DB_PASSWORD`, `DB_DATABASE`, `DB_MV_SCHEMA` z `.env`.
 
 ## Konwencje identyfikatorów
 

@@ -371,8 +371,10 @@ SQL . $this->bind($dataDo . ' 23:59:59');
     /*
         musiałem wykonać taki sql - żeby "INNER JOIN eurzad_obieg eo ON (eo.sprawa_uid = es.sprawa_uid AND eo.max_status_sprawy_id > 0)"
         zadziałał prawidłowo.
-        był błąd w bazie danych (pewnie w kolejnych wersjach jakaś była na to poprawka)
+        był błąd w bazie danych (pewnie MADKOM zrobił poprawkę)
         przez ten błąd - dublowały się wpisy.
+
+        żeby wyporostować - wykonać należy UPDATE na bezie MADKOM:
 WITH ranked AS (
     SELECT
         eo.status_sprawy_id,
